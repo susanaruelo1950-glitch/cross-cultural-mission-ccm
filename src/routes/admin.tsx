@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { CoordinatorAssignments } from "@/components/CoordinatorAssignments";
+import { ScriptureManager } from "@/components/ScriptureManager";
+import { PermissionError } from "@/components/PermissionError";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Cross-Cultural Mission" }] }),
@@ -46,17 +48,10 @@ function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <Card className="card-soft mx-auto max-w-md p-8 text-center">
-        <Shield className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
-        <h1 className="font-display text-2xl font-semibold">Admins only</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your account doesn't have admin permissions. Ask an administrator to grant you access, or
-          continue exploring the missionary directory.
-        </p>
-        <Button asChild variant="outline" className="mt-4 rounded-full">
-          <Link to="/missionaries">Browse missionaries</Link>
-        </Button>
-      </Card>
+      <PermissionError
+        title="Admins only"
+        message="Your account doesn't have admin permissions. Ask an administrator to grant you access."
+      />
     );
   }
 
@@ -94,6 +89,8 @@ function AdminPage() {
           ))}
         </div>
       </Card>
+
+      <ScriptureManager />
 
       <CoordinatorAssignments />
 
