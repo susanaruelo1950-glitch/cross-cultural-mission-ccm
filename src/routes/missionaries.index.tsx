@@ -23,13 +23,17 @@ export const Route = createFileRoute("/missionaries/")({
       },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    q: typeof s.q === "string" ? s.q : undefined,
+  }),
   component: Directory,
 });
 
 const ALL = "__all__";
 
 function Directory() {
-  const [q, setQ] = useState("");
+  const { q: qFromUrl } = Route.useSearch();
+  const [q, setQ] = useState(qFromUrl ?? "");
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
 
