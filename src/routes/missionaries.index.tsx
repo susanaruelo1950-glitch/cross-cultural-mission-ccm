@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { areas, missionaries, phases, getArea } from "@/lib/mission-data";
+import { getArea } from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
@@ -23,13 +24,18 @@ export const Route = createFileRoute("/missionaries/")({
       },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    q: typeof s.q === "string" ? s.q : undefined,
+  }),
   component: Directory,
 });
 
 const ALL = "__all__";
 
 function Directory() {
-  const [q, setQ] = useState("");
+  const { q: qFromUrl } = Route.useSearch();
+  const [q, setQ] = useState(qFromUrl ?? "");
+  const { phases, areas, missionaries } = useDataStore();
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
 
@@ -47,7 +53,7 @@ function Directory() {
       }
       return true;
     });
-  }, [q, phaseId, areaId]);
+  }, [q, phaseId, areaId, missionaries]);
 
   return (
     <div className="space-y-6">

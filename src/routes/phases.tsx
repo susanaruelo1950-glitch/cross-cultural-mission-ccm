@@ -3,12 +3,8 @@ import { Layers, Users, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import {
-  areasByPhase,
-  getMissionary,
-  missionariesByArea,
-  phases,
-} from "@/lib/mission-data";
+import { getMissionary } from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/phases")({
   head: () => ({
@@ -21,6 +17,9 @@ export const Route = createFileRoute("/phases")({
 });
 
 function PhasesPage() {
+  const { phases, areas, missionaries } = useDataStore();
+  const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
+  const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
   return (
     <div className="space-y-6">
       <header>
