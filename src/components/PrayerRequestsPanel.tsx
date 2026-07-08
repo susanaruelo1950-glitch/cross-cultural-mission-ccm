@@ -20,6 +20,7 @@ export interface DbPrayer {
   urgent: boolean;
   answered: boolean;
   created_at: string;
+  coordinator_approved_public?: boolean | null;
 }
 
 interface Props {
