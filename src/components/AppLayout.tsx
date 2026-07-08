@@ -254,9 +254,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-sidebar-border bg-sidebar lg:block" aria-label="Sidebar">
         <Brand />
         <NavItems />
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <ScriptureOfTheDay />
-        </div>
       </aside>
 
       {/* Top bar */}
@@ -275,9 +272,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </SheetContent>
             </Sheet>
             <Link to="/" className="flex items-center gap-2 lg:hidden">
-              <div className="grid h-8 w-8 place-items-center rounded-xl gradient-mission text-white">
-                <Cross className="h-4 w-4" aria-hidden />
-              </div>
+              <img src={ccmLogo.url} alt="CCM logo" className="h-8 w-8 rounded-xl object-cover ring-1 ring-border" />
               <span className="font-display text-sm font-semibold">Cross-Cultural Mission</span>
             </Link>
           </div>
@@ -286,11 +281,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <AuthButton />
           </div>
         </div>
-        {/* Rotating Scripture of the Day — visible on all pages */}
-        <div className="hidden border-t border-border/60 bg-primary/[0.03] px-4 py-2 sm:block sm:px-6">
+        {/* Rotating Scripture of the Day — single, visible on all pages */}
+        <div className="border-t border-border/60 bg-primary/[0.03] px-4 py-2 sm:px-6">
           <ScriptureOfTheDay compact />
         </div>
       </header>
+
 
       <main id="main-content" tabIndex={-1} className="lg:pl-72 focus:outline-none">
         <div className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-10">
