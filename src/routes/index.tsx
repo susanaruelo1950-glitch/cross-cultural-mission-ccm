@@ -37,6 +37,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
+  const { phases, areas, missionaries } = useDataStore();
+  const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
+  const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
   const byPhase = missionariesByPhaseCount();
   const maxPhase = Math.max(1, ...byPhase.map((b) => b.value));
   const urgentPrayer = prayerRequests.filter((p) => p.urgent && !p.answered);
