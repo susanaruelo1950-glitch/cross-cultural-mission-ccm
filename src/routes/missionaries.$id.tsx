@@ -145,9 +145,11 @@ function Profile() {
             <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 self-end">
-            <h1 className="font-display text-2xl font-semibold sm:text-3xl">{m.fullName}</h1>
+            <h1 className="font-display text-xl font-semibold leading-tight break-words hyphens-auto sm:text-2xl md:text-3xl">
+              {m.fullName}
+            </h1>
             {m.church ? (
-              <p className="mt-0.5 text-muted-foreground">{m.church}</p>
+              <p className="mt-0.5 break-words text-sm text-muted-foreground sm:text-base">{m.church}</p>
             ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {phase ? (
@@ -163,11 +165,13 @@ function Profile() {
                 <Badge variant="outline" className="rounded-full">{m.status}</Badge>
               ) : null}
               {m.address ? (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" /> {m.address}
+                <span className="inline-flex min-w-0 max-w-full items-start gap-1 break-words text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span className="break-words">{m.address}</span>
                 </span>
               ) : null}
             </div>
+
             <div className="mt-3">
               <MissionaryPhotoUpload missionaryId={m.id} missionaryName={m.fullName} />
             </div>
