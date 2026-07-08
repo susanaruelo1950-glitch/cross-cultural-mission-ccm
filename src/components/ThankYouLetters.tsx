@@ -1,6 +1,6 @@
 import { useState, useRef, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files } from "lucide-react";
+import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
+import { LETTER_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
 
 interface Props {
   missionaryId: string;
@@ -57,6 +58,7 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
     onSuccess: () => {
       toast.success("Letter deleted.");
       qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
+      qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
     },
     onError: (e: Error) =>
       toast.error(
@@ -65,6 +67,8 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
           : e.message,
       ),
   });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -111,31 +115,104 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
                   </div>
                   <h4 className="font-display text-base font-semibold">{l.title}</h4>
                 </div>
-                {isAdmin ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      if (confirm("Delete this letter?")) del.mutate(l.id);
-                    }}
-                    aria-label="Delete letter"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {canEdit ? (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingId(editingId === l.id ? null : l.id)}
+                      aria-label="Edit letter"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    {isAdmin ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm("Delete this letter?")) del.mutate(l.id);
+                        }}
+                        aria-label="Delete letter"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-              {l.message ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
-                  {l.message}
-                </p>
-              ) : null}
-              {l.letter_url ? <LetterAttachment path={l.letter_url} title={l.title} /> : null}
+              {editingId === l.id ? (
+                <LetterEditForm
+                  letter={l}
+                  onClose={() => setEditingId(null)}
+                  onSaved={() => {
+                    setEditingId(null);
+                    qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
+                    qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
+                  }}
+                />
+              ) : (
+                <>
+                  {l.message ? (
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
+                      {l.message}
+                    </p>
+                  ) : null}
+                  {l.letter_url ? <LetterAttachment path={l.letter_url} title={l.title} /> : null}
+                </>
+              )}
             </article>
           ))
         )}
       </div>
     </Card>
+  );
+}
+
+function LetterEditForm({
+  letter,
+  onClose,
+  onSaved,
+}: {
+  letter: Letter;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(letter.title);
+  const [message, setMessage] = useState(letter.message ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!title.trim()) return toast.error("Title is required.");
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("thank_you_letters")
+        .update({ title: title.trim(), message: message.trim() || null })
+        .eq("id", letter.id);
+      if (error) throw error;
+      toast.success("Letter updated.");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+      <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
+      <div className="flex gap-2">
+        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        </Button>
+        <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
+          <X className="h-4 w-4" /> Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -205,13 +282,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       setPreviewUrl(null);
       return;
     }
-    const okType = f.type.startsWith("image/") || f.type === "application/pdf";
-    if (!okType) {
-      toast.error("Please choose an image or PDF file.");
-      return;
-    }
-    if (f.size > MAX_MB * 1024 * 1024) {
-      toast.error(`File too large. Max ${MAX_MB} MB.`);
+    const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
+    if (!check.ok) {
+      toast.error(check.reason ?? "Invalid file.");
       return;
     }
     setFile(f);
@@ -225,8 +298,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     try {
       let letter_path: string | null = null;
       if (file) {
-        const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
-        const path = `${missionaryId}/${Date.now()}.${ext}`;
+        const check = validateFile(file, { allowed: LETTER_MIME, maxMb: MAX_MB });
+        if (!check.ok) throw new Error(check.reason);
+        const path = safeStoragePath(missionaryId, file);
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
           .upload(path, file, {
@@ -288,6 +362,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Thank you for your prayers this quarter"
           required
+          maxLength={200}
         />
       </div>
       <div className="grid gap-1.5">
@@ -298,11 +373,12 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write the thank you note here (optional if attaching a file)"
           className="min-h-[120px]"
+          maxLength={5000}
         />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="tyl-file" className="flex items-center gap-1.5">
-          <FileUp className="h-4 w-4" /> Attach letter (image or PDF, max {MAX_MB} MB)
+          <FileUp className="h-4 w-4" /> Attach letter (JPG, PNG, WebP, GIF, or PDF · max {MAX_MB} MB)
         </Label>
         <Input
           id="tyl-file"
@@ -344,8 +420,8 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
 
 /**
  * Bulk upload — accepts multiple images/PDFs and creates one thank-you-letter
- * row per file. Each file's name becomes the initial letter title so admins
- * can rename later from the admin console.
+ * row per file. Validates each file up front and uses safe collision-resistant
+ * storage paths so uploads never overwrite each other.
  */
 function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
@@ -357,13 +433,9 @@ function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
     if (!files || files.length === 0) return;
     const valid: File[] = [];
     for (const f of Array.from(files)) {
-      const okType = f.type.startsWith("image/") || f.type === "application/pdf";
-      if (!okType) {
-        toast.error(`Skipped ${f.name}: only images or PDFs are allowed.`);
-        continue;
-      }
-      if (f.size > MAX_MB * 1024 * 1024) {
-        toast.error(`Skipped ${f.name}: exceeds ${MAX_MB} MB limit.`);
+      const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
+      if (!check.ok) {
+        toast.error(`Skipped ${f.name}: ${check.reason}`);
         continue;
       }
       valid.push(f);
@@ -377,15 +449,14 @@ function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
       for (let i = 0; i < valid.length; i++) {
         const f = valid[i];
         try {
-          const ext = (f.name.split(".").pop() || "pdf").toLowerCase();
-          const path = `${missionaryId}/${Date.now()}-${i}.${ext}`;
+          const path = safeStoragePath(missionaryId, f, String(i));
           const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
             cacheControl: "3600",
             upsert: false,
             contentType: f.type || undefined,
           });
           if (upErr) throw upErr;
-          const title = f.name.replace(/\.[^.]+$/, "");
+          const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200);
           const { error: dbErr } = await supabase.from("thank_you_letters").insert({
             missionary_id: missionaryId,
             title: title || "Thank you letter",
