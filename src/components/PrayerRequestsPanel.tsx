@@ -206,6 +206,19 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                         >
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 rounded-full text-xs"
+                          onClick={() => toggleApproved.mutate({ id: p.id, approved: !p.coordinator_approved_public })}
+                          aria-label={p.coordinator_approved_public ? "Hide from public" : "Approve for public view"}
+                        >
+                          {p.coordinator_approved_public ? (
+                            <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
+                          ) : (
+                            <><Eye className="h-3.5 w-3.5" /> Approve public</>
+                          )}
+                        </Button>
                         {isAdmin ? (
                           <Button
                             size="sm"
