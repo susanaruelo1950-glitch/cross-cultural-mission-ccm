@@ -68,6 +68,26 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const toggleApproved = useMutation({
+    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+      const patch: Record<string, unknown> = { coordinator_approved_public: approved };
+      if (approved) {
+        patch.approved_by = user?.id ?? null;
+        patch.approved_at = new Date().toISOString();
+      } else {
+        patch.approved_by = null;
+        patch.approved_at = null;
+      }
+      const { error } = await supabase.from("prayer_requests_db").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.approved ? "Approved for public view." : "Hidden from public view.");
+      qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("prayer_requests_db").delete().eq("id", id);
