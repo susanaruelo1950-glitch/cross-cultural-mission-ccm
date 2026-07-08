@@ -104,7 +104,7 @@ function Profile() {
         />
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">
           <Avatar className="-mt-14 h-24 w-24 border-4 border-card shadow-lift sm:-mt-16 sm:h-32 sm:w-32">
-            <AvatarImage src={m.photo} alt={m.fullName} />
+            <AvatarImage src={photo} alt={m.fullName} />
             <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 self-end">
@@ -130,6 +130,9 @@ function Profile() {
                   <MapPin className="h-3.5 w-3.5" /> {m.address}
                 </span>
               ) : null}
+            </div>
+            <div className="mt-3">
+              <MissionaryPhotoUpload missionaryId={m.id} missionaryName={m.fullName} />
             </div>
           </div>
           <div className="col-span-2 flex gap-2 sm:col-span-1 sm:self-end">
