@@ -139,6 +139,20 @@ function Summaries() {
     }
   }
 
+  function shareWhatsApp() {
+    const m = getMissionary(missionaryId);
+    const title = m ? `${m.fullName} — Ministry Update\n\n` : "";
+    const url = `https://wa.me/?text=${encodeURIComponent(title + summary)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function shareEmail() {
+    const m = getMissionary(missionaryId);
+    const subject = m ? `${m.fullName} — Ministry Update` : "Ministry Update";
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary)}`;
+    window.location.href = url;
+  }
+
   return (
     <div className="space-y-5">
       <header>
