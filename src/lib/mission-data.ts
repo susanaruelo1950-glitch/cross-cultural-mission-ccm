@@ -254,7 +254,18 @@ export const seedAreas: Area[] = [
     description: "Alliance fellowships and church plants across Arakan Valley.",
     gps: [7.398, 125.135],
   },
+  {
+    id: "area-kidapawan",
+    phaseId: "phase-2",
+    name: "Kidapawan Area",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    coordinatorName: "Glyn Michael G. Dolauta",
+    description: "Alliance and Evangelical church plants across Kidapawan City, Makilala, and President Roxas.",
+    gps: [7.008, 125.089],
+  },
 ];
+
 
 // Small deterministic offset so pins in the same area don't stack.
 function offset(base: [number, number], i: number): [number, number] {
@@ -271,6 +282,8 @@ const maitumGps = seedAreas.find((a) => a.id === "area-maitum")!.gps!;
 const bansalanGps = seedAreas.find((a) => a.id === "area-bansalan")!.gps!;
 const digosGps = seedAreas.find((a) => a.id === "area-digos")!.gps!;
 const arakanGps = seedAreas.find((a) => a.id === "area-arakan")!.gps!;
+const kidapawanGps = seedAreas.find((a) => a.id === "area-kidapawan")!.gps!;
+
 
 export const seedMissionaries: Missionary[] = [
   // ── Bagumbayan ──────────────────────────────────────────────
@@ -979,7 +992,135 @@ export const seedMissionaries: Missionary[] = [
     municipality: "Antipas",
     gps: offset(arakanGps, 7),
   },
+
+  // ── Kidapawan Area ──────────────────────────────────────────
+  {
+    id: "m-glyn-michael-dolauta",
+    areaId: "area-kidapawan",
+    fullName: "Glyn Michael G. Dolauta",
+    church: "Grace Alliance Evangelical Church",
+    address: "New Bulatukan, Makilala, North Cotabato",
+    missionStatement:
+      "An Engineer of God who is committed to planting seeds of faith, equipping Christ-centered leaders, and advancing the Gospel in churches, communities, and workplaces for the glory of God.",
+    ministryFocus: "Church Planting",
+    status: "Active",
+    journeyStage: "Regional Leadership",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "Makilala",
+    barangay: "New Bulatukan",
+    gps: offset(kidapawanGps, 0),
+  },
+  {
+    id: "m-rogenio-david",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Rogenio M. David",
+    church: "Nuangan Bible Study Center",
+    address: "Sta. Felomina, Makilala, North Cotabato",
+    missionStatement:
+      "To proclaim the Gospel of Jesus Christ, equip believers to make disciples, and live as Christ-like witnesses in obedience to the Great Commission (Matthew 28:18–20).",
+    ministryFocus: "Discipleship",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "Makilala",
+    barangay: "Sta. Felomina",
+    gps: offset(kidapawanGps, 1),
+  },
+  {
+    id: "m-rizaldo-barsubia",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Rizaldo M. Barsubia",
+    church: "Indangan Alliance Church",
+    address: "Relocation Block 1 Lot 5, Indangan, Kidapawan City, North Cotabato",
+    missionStatement:
+      "I will faithfully go where God sends me to proclaim the Gospel and make disciples, trusting in His power, wisdom, and grace to accomplish His mission.",
+    ministryFocus: "Church Planting",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "Kidapawan City",
+    barangay: "Indangan",
+    gps: offset(kidapawanGps, 2),
+  },
+  {
+    id: "m-ariel-villahermosa",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Ariel V. Villahermosa",
+    church: "Evangelical Bible Church",
+    address: "Brgy. Tuael, President Roxas, North Cotabato",
+    missionStatement:
+      "To cultivate a heart of worship to people, grow them as Christ-centered disciples across every generation, and send them out to serve our community with the love and power of Jesus.",
+    ministryFocus: "Discipleship",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "President Roxas",
+    barangay: "Tuael",
+    gps: offset(kidapawanGps, 3),
+  },
+  {
+    id: "m-judy-ansuay",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Judy A. Ansuay",
+    church: "Church of Christ",
+    address: "Purok 7, Ginatilan, Kidapawan City, North Cotabato",
+    missionStatement:
+      "Plant more Christ-centered churches by sharing the Gospel, discipling believers, and equipping local leaders to continue the work of evangelism and disciple-making.",
+    ministryFocus: "Church Planting",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "Kidapawan City",
+    barangay: "Ginatilan",
+    gps: offset(kidapawanGps, 5),
+  },
+  {
+    id: "m-ricky-abrigo",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Ricky A. Abrigo",
+    church: "Tuael Alliance Church",
+    address: "Brgy. Tuael, President Roxas, North Cotabato",
+    missionStatement: "Mission-driven Christ servant in transforming communities for the glory of God.",
+    ministryFocus: "Church Planting",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "President Roxas",
+    barangay: "Tuael",
+    gps: offset(kidapawanGps, 6),
+  },
+  {
+    id: "m-julius-ganas",
+    areaId: "area-kidapawan",
+    fullName: "Ptr. Julius S. Ganas",
+    church: "Church Planting Kalaisan Church",
+    address: "Sto. Niño, Makilala, North Cotabato",
+    missionStatement:
+      "My mission is to proclaim God's Word through my words and deeds and to faithfully serve His Kingdom. I will obey His will and be a good example of faith to others.",
+    ministryFocus: "Church Planting",
+    status: "Active",
+    journeyStage: "Church Planting",
+    country: "Philippines",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    municipality: "Makilala",
+    barangay: "Sto. Niño",
+    gps: offset(kidapawanGps, 7),
+  },
 ];
+
 
 export const seedReports: MinistryReport[] = [];
 export const seedPrayer: PrayerRequest[] = [];

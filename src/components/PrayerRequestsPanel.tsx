@@ -218,27 +218,52 @@ function PrayerEditForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const qc = useQueryClient();
   const [title, setTitle] = useState(prayer.title);
   const [detail, setDetail] = useState(prayer.detail ?? "");
   const [urgent, setUrgent] = useState(prayer.urgent);
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    if (!title.trim()) return toast.error("Title is required.");
-    setSaving(true);
-    try {
+  const keys = [
+    ["prayer_requests_db", prayer.missionary_id],
+    ["prayer_requests_db", "__all__"],
+  ] as const;
+
+  const save = useMutation({
+    mutationFn: async (patch: { title: string; detail: string | null; urgent: boolean }) => {
       const { error } = await supabase
         .from("prayer_requests_db")
-        .update({ title: title.trim(), detail: detail.trim() || null, urgent })
+        .update(patch)
         .eq("id", prayer.id);
       if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      const snapshots = await Promise.all(
+        keys.map(async (key) => {
+          await qc.cancelQueries({ queryKey: key });
+          return [key, qc.getQueryData(key)] as const;
+        }),
+      );
+      for (const [key] of snapshots) {
+        qc.setQueryData<DbPrayer[] | undefined>(key, (prev) =>
+          prev?.map((p) => (p.id === prayer.id ? { ...p, ...patch } : p)),
+        );
+      }
+      return { snapshots };
+    },
+    onError: (err, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(err instanceof Error ? `Update failed: ${err.message}. Reverted.` : "Update failed. Reverted.");
+    },
+    onSuccess: () => {
       toast.success("Prayer request updated.");
       onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed.");
-    } finally {
-      setSaving(false);
-    }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["prayer_requests_db"] }),
+  });
+
+  function submit() {
+    if (!title.trim()) return toast.error("Title is required.");
+    save.mutate({ title: title.trim(), detail: detail.trim() || null, urgent });
   }
 
   return (
@@ -249,8 +274,8 @@ function PrayerEditForm({
         <Checkbox checked={urgent} onCheckedChange={(v) => setUrgent(Boolean(v))} /> Urgent
       </label>
       <div className="flex gap-2">
-        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
         </Button>
         <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
@@ -259,6 +284,7 @@ function PrayerEditForm({
     </div>
   );
 }
+
 
 
 function PrayerForm({ missionaryId }: { missionaryId: string }) {

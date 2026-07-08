@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { LETTER_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
+
 
 interface Props {
   missionaryId: string;
@@ -178,26 +180,51 @@ function LetterEditForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const qc = useQueryClient();
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    if (!title.trim()) return toast.error("Title is required.");
-    setSaving(true);
-    try {
+  const keys = [
+    ["thank_you_letters", letter.missionary_id],
+    ["thank_you_letters_admin", letter.missionary_id],
+  ] as const;
+
+  const save = useMutation({
+    mutationFn: async (patch: { title: string; message: string | null }) => {
       const { error } = await supabase
         .from("thank_you_letters")
-        .update({ title: title.trim(), message: message.trim() || null })
+        .update(patch)
         .eq("id", letter.id);
       if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      const snapshots = await Promise.all(
+        keys.map(async (key) => {
+          await qc.cancelQueries({ queryKey: key });
+          return [key, qc.getQueryData(key)] as const;
+        }),
+      );
+      for (const [key] of snapshots) {
+        qc.setQueryData<Letter[] | undefined>(key, (prev) =>
+          prev?.map((l) => (l.id === letter.id ? { ...l, ...patch } : l)),
+        );
+      }
+      return { snapshots };
+    },
+    onError: (err, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(err instanceof Error ? `Update failed: ${err.message}. Reverted.` : "Update failed. Reverted.");
+    },
+    onSuccess: () => {
       toast.success("Letter updated.");
       onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed.");
-    } finally {
-      setSaving(false);
-    }
+    },
+    onSettled: () => keys.forEach((k) => qc.invalidateQueries({ queryKey: k })),
+  });
+
+  function submit() {
+    if (!title.trim()) return toast.error("Title is required.");
+    save.mutate({ title: title.trim(), message: message.trim() || null });
   }
 
   return (
@@ -205,8 +232,8 @@ function LetterEditForm({
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
       <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
       <div className="flex gap-2">
-        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
         </Button>
         <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
@@ -216,9 +243,11 @@ function LetterEditForm({
   );
 }
 
+
 function LetterAttachment({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
   const isPdf = /\.pdf(\?|$)/i.test(path);
+  const [previewOpen, setPreviewOpen] = useState(false);
   if (isLoading) {
     return (
       <div className="mt-3 flex h-32 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
@@ -229,12 +258,11 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
   if (!url) return null;
   return (
     <div className="mt-3 flex flex-wrap items-start gap-3">
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group block overflow-hidden rounded-xl border border-border bg-muted"
-        aria-label={`Open thank you letter: ${title}`}
+      <button
+        type="button"
+        onClick={() => (isPdf ? setPreviewOpen(true) : window.open(url, "_blank", "noopener,noreferrer"))}
+        className="group block overflow-hidden rounded-xl border border-border bg-muted text-left"
+        aria-label={`Preview thank you letter: ${title}`}
       >
         {isPdf ? (
           <div className="flex h-32 w-40 flex-col items-center justify-center gap-1 text-muted-foreground group-hover:bg-muted/70">
@@ -250,8 +278,18 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
             className="h-32 w-40 object-cover transition-transform group-hover:scale-105"
           />
         )}
-      </a>
+      </button>
       <div className="flex flex-col gap-2">
+        {isPdf ? (
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full"
+            onClick={() => setPreviewOpen(true)}
+          >
+            <FileText className="h-4 w-4" /> Preview letter
+          </Button>
+        ) : null}
         <a
           href={url}
           target="_blank"
@@ -259,13 +297,17 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
           className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
         >
           {isPdf ? <Download className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
-          {isPdf ? "Open PDF letter" : "View full letter"}
+          {isPdf ? "Open in new tab" : "View full letter"}
         </a>
         <span className="text-[11px] text-muted-foreground">Signed link expires after a while.</span>
       </div>
+      {isPdf ? (
+        <PdfPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} url={url} title={title} />
+      ) : null}
     </div>
   );
 }
+
 
 function LetterForm({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
