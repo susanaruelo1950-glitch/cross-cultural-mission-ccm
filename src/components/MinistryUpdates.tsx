@@ -176,31 +176,44 @@ function UpdateEditForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const qc = useQueryClient();
   const [title, setTitle] = useState(update.title);
   const [summary, setSummary] = useState(update.summary ?? "");
   const [body, setBody] = useState(update.body ?? "");
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    if (!title.trim()) return toast.error("Title is required.");
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("ministry_updates")
-        .update({
-          title: title.trim(),
-          summary: summary.trim() || null,
-          body: body.trim() || null,
-        })
-        .eq("id", update.id);
+  const key = ["ministry_updates", update.missionary_id] as const;
+
+  const save = useMutation({
+    mutationFn: async (patch: { title: string; summary: string | null; body: string | null }) => {
+      const { error } = await supabase.from("ministry_updates").update(patch).eq("id", update.id);
       if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<Update[] | undefined>(key);
+      qc.setQueryData<Update[] | undefined>(key, (prev) =>
+        prev?.map((u) => (u.id === update.id ? { ...u, ...patch } : u)),
+      );
+      return { previous };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx) qc.setQueryData(key, ctx.previous);
+      toast.error(err instanceof Error ? `Update failed: ${err.message}. Reverted.` : "Update failed. Reverted.");
+    },
+    onSuccess: () => {
       toast.success("Update saved.");
       onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed.");
-    } finally {
-      setSaving(false);
-    }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  function submit() {
+    if (!title.trim()) return toast.error("Title is required.");
+    save.mutate({
+      title: title.trim(),
+      summary: summary.trim() || null,
+      body: body.trim() || null,
+    });
   }
 
   return (
@@ -209,8 +222,8 @@ function UpdateEditForm({
       <Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Short summary" maxLength={280} />
       <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Full update" className="min-h-[120px]" maxLength={10000} />
       <div className="flex gap-2">
-        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
         </Button>
         <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
@@ -219,6 +232,7 @@ function UpdateEditForm({
     </div>
   );
 }
+
 
 function UpdateImage({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
