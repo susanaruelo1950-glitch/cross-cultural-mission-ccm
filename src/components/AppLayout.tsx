@@ -157,7 +157,7 @@ function Brand() {
   );
 }
 
-function MobileBottomNav() {
+function MobileBottomNav({ onMore }: { onMore: () => void }) {
   const pathname = useActive();
   return (
     <nav
@@ -184,6 +184,17 @@ function MobileBottomNav() {
             </li>
           );
         })}
+        <li>
+          <button
+            type="button"
+            onClick={onMore}
+            aria-label="More navigation"
+            className="flex w-full flex-col items-center gap-0.5 px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:bg-accent"
+          >
+            <Menu className="h-5 w-5" aria-hidden />
+            <span>More</span>
+          </button>
+        </li>
       </ul>
     </nav>
   );
