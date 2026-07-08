@@ -181,20 +181,8 @@ function Profile() {
       {/* Prayer counter — DB-backed "I prayed for this pastor" */}
       <PrayerCounter missionaryId={m.id} />
 
-      {/* Mission journey timeline — commissioning through multiplication */}
-      <Card className="card-soft p-6">
-        <div className="mb-4 flex items-baseline justify-between gap-2">
-          <h2 className="font-display text-lg font-semibold">Support Status Timeline</h2>
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Mission Journey
-          </span>
-        </div>
-        <JourneyTimeline
-          current={m.journeyStage ?? "Church Planting"}
-          editable
-          onChange={updateStage}
-        />
-      </Card>
+      {/* Thank You Letters — replaces the old Support Status Timeline */}
+      <ThankYouLetters missionaryId={m.id} missionaryName={m.fullName} />
 
       {/* Ministry updates (DB-backed, admin can add with photo) */}
       <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />
