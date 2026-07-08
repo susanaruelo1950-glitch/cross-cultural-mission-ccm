@@ -141,6 +141,7 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
 
 function LetterAttachment({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  const isPdf = /\.pdf(\?|$)/i.test(path);
   if (isLoading) {
     return (
       <div className="mt-3 flex h-32 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
@@ -149,27 +150,43 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     );
   }
   if (!url) return null;
-  const isPdf = /\.pdf(\?|$)/i.test(path);
-  if (isPdf) {
-    return (
+  return (
+    <div className="mt-3 flex flex-wrap items-start gap-3">
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+        className="group block overflow-hidden rounded-xl border border-border bg-muted"
+        aria-label={`Open thank you letter: ${title}`}
       >
-        <Download className="h-4 w-4" /> Open thank you letter (PDF)
+        {isPdf ? (
+          <div className="flex h-32 w-40 flex-col items-center justify-center gap-1 text-muted-foreground group-hover:bg-muted/70">
+            <FileText className="h-8 w-8" />
+            <span className="text-[11px] font-medium uppercase tracking-wide">PDF letter</span>
+          </div>
+        ) : (
+          <img
+            src={url}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="h-32 w-40 object-cover transition-transform group-hover:scale-105"
+          />
+        )}
       </a>
-    );
-  }
-  return (
-    <img
-      src={url}
-      alt={title}
-      className="mt-3 max-h-96 w-full rounded-xl object-contain bg-muted"
-      loading="lazy"
-      decoding="async"
-    />
+      <div className="flex flex-col gap-2">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+        >
+          {isPdf ? <Download className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+          {isPdf ? "Open PDF letter" : "View full letter"}
+        </a>
+        <span className="text-[11px] text-muted-foreground">Signed link expires after a while.</span>
+      </div>
+    </div>
   );
 }
 
