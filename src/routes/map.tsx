@@ -241,8 +241,23 @@ function ClusteredMarkers({
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
 }) {
-  // Access the map via react-leaflet hook (dynamic import ensures rl loaded)
-  const { useMap } = require("react-leaflet") as typeof import("react-leaflet");
+  const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
+  useEffect(() => {
+    import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
+  }, []);
+  if (!useMapHook) return null;
+  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} />;
+}
+
+function ClusteredInner({
+  L,
+  pinned,
+  useMap,
+}: {
+  L: typeof import("leaflet");
+  pinned: (Missionary & { gps: [number, number] })[];
+  useMap: typeof import("react-leaflet").useMap;
+}) {
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
 
