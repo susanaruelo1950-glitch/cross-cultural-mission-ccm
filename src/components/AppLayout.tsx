@@ -111,14 +111,16 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <Link to="/" className="flex items-center gap-3 px-4 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl gradient-mission text-white shadow-soft">
-        <Cross className="h-5 w-5" aria-hidden />
-      </div>
+      <img
+        src={ccmLogo.url}
+        alt="Cross-Cultural Mission logo"
+        className="h-11 w-11 shrink-0 rounded-2xl object-cover shadow-soft ring-1 ring-border"
+      />
       <div className="min-w-0">
         <div className="font-display text-lg font-semibold leading-tight text-sidebar-foreground">
           Cross-Cultural Mission
         </div>
-        <div className="truncate text-xs text-muted-foreground">Mission Management</div>
+        <div className="truncate text-xs text-muted-foreground">CCM · Mission Management</div>
       </div>
     </Link>
   );
