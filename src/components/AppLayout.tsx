@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useMissionarySync } from "@/hooks/use-missionary-sync";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -47,23 +48,44 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   role?: Role;
 };
+type NavGroup = { label: string; items: readonly NavItem[] };
 
-const nav: readonly NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/missionaries", label: "Missionaries", icon: Users },
-  { to: "/phases", label: "Phases & Areas", icon: Layers },
-  { to: "/map", label: "Mission Map", icon: MapIcon },
-  { to: "/pray", label: "Prayer Mode", icon: Heart },
-  { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
-  { to: "/reports", label: "Ministry Reports", icon: FileText },
-  { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
-  { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
-  { to: "/support", label: "Support Center", icon: Wallet },
-  { to: "/documents", label: "Documents", icon: FolderOpen },
-  { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
-  { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
-  { to: "/assistant", label: "AI Assistant", icon: Sparkles },
-  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
+const navGroups: readonly NavGroup[] = [
+  {
+    label: "Directory",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/missionaries", label: "Missionaries", icon: Users },
+      { to: "/phases", label: "Phases & Areas", icon: Layers },
+      { to: "/map", label: "Mission Map", icon: MapIcon },
+    ],
+  },
+  {
+    label: "Prayer & Support",
+    items: [
+      { to: "/pray", label: "Prayer Mode", icon: Heart },
+      { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
+      { to: "/support", label: "Support Center", icon: Wallet },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { to: "/reports", label: "Ministry Reports", icon: FileText },
+      { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
+      { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
+      { to: "/assistant", label: "AI Assistant", icon: Sparkles },
+    ],
+  },
+  {
+    label: "Content & Admin",
+    items: [
+      { to: "/documents", label: "Documents", icon: FolderOpen },
+      { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
+      { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
+      { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
+    ],
+  },
 ];
 
 const mobileNav = [
@@ -71,7 +93,6 @@ const mobileNav = [
   { to: "/missionaries", label: "People", icon: Users },
   { to: "/map", label: "Map", icon: MapIcon },
   { to: "/pray", label: "Pray", icon: Heart },
-  { to: "/analytics", label: "Stats", icon: BarChart3 },
 ] as const;
 
 function useActive() {
