@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles, Copy, Loader2, Download, Share2, FileText } from "lucide-react";
+import { Sparkles, Copy, Loader2, Download, Share2, FileText, MessageCircle, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
