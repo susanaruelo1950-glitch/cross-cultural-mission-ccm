@@ -183,7 +183,7 @@ function MissionMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <ClusteredMarkers L={L} pinned={pinned} />
+                <ClusteredMarkers L={L} pinned={deferredPinned} />
               </MapContainer>
             </div>
           </Card>
