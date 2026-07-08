@@ -24,9 +24,12 @@ function MissionMap() {
     Promise.all([
       import("react-leaflet"),
       import("leaflet"),
-      // @ts-expect-error - side-effect css import at runtime
       import("leaflet/dist/leaflet.css"),
     ]).then(([rl, l]) => {
+      if (!mounted) return;
+      setLeaflet(rl);
+      setL(l);
+    });
       if (!mounted) return;
       setLeaflet(rl);
       setL(l);
