@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as SummariesRouteImport } from './routes/summaries'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PrayerRouteImport } from './routes/prayer'
+import { Route as PrayRouteImport } from './routes/pray'
 import { Route as PhasesRouteImport } from './routes/phases'
 import { Route as MissionariesRouteImport } from './routes/missionaries'
 import { Route as MapRouteImport } from './routes/map'
@@ -20,6 +22,7 @@ import { Route as ManageRouteImport } from './routes/manage'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AssistantRouteImport } from './routes/assistant'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MissionariesIndexRouteImport } from './routes/missionaries.index'
@@ -28,6 +31,11 @@ import { Route as MissionariesIdRouteImport } from './routes/missionaries.$id'
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SummariesRoute = SummariesRouteImport.update({
+  id: '/summaries',
+  path: '/summaries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -43,6 +51,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const PrayerRoute = PrayerRouteImport.update({
   id: '/prayer',
   path: '/prayer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrayRoute = PrayRouteImport.update({
+  id: '/pray',
+  path: '/pray',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PhasesRoute = PhasesRouteImport.update({
@@ -80,6 +93,11 @@ const AssistantRoute = AssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -104,6 +122,7 @@ const MissionariesIdRoute = MissionariesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
@@ -111,9 +130,11 @@ export interface FileRoutesByFullPath {
   '/map': typeof MapRoute
   '/missionaries': typeof MissionariesRouteWithChildren
   '/phases': typeof PhasesRoute
+  '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -121,15 +142,18 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
   '/map': typeof MapRoute
   '/phases': typeof PhasesRoute
+  '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries': typeof MissionariesIndexRoute
@@ -138,6 +162,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
@@ -145,9 +170,11 @@ export interface FileRoutesById {
   '/map': typeof MapRoute
   '/missionaries': typeof MissionariesRouteWithChildren
   '/phases': typeof PhasesRoute
+  '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -157,6 +184,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/analytics'
     | '/assistant'
     | '/documents'
     | '/import'
@@ -164,9 +192,11 @@ export interface FileRouteTypes {
     | '/map'
     | '/missionaries'
     | '/phases'
+    | '/pray'
     | '/prayer'
     | '/reports'
     | '/sitemap.xml'
+    | '/summaries'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -174,15 +204,18 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/analytics'
     | '/assistant'
     | '/documents'
     | '/import'
     | '/manage'
     | '/map'
     | '/phases'
+    | '/pray'
     | '/prayer'
     | '/reports'
     | '/sitemap.xml'
+    | '/summaries'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries'
@@ -190,6 +223,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/analytics'
     | '/assistant'
     | '/documents'
     | '/import'
@@ -197,9 +231,11 @@ export interface FileRouteTypes {
     | '/map'
     | '/missionaries'
     | '/phases'
+    | '/pray'
     | '/prayer'
     | '/reports'
     | '/sitemap.xml'
+    | '/summaries'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -208,6 +244,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   DocumentsRoute: typeof DocumentsRoute
   ImportRoute: typeof ImportRoute
@@ -215,9 +252,11 @@ export interface RootRouteChildren {
   MapRoute: typeof MapRoute
   MissionariesRoute: typeof MissionariesRouteWithChildren
   PhasesRoute: typeof PhasesRoute
+  PrayRoute: typeof PrayRoute
   PrayerRoute: typeof PrayerRoute
   ReportsRoute: typeof ReportsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SummariesRoute: typeof SummariesRoute
   SupportRoute: typeof SupportRoute
 }
 
@@ -228,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/summaries': {
+      id: '/summaries'
+      path: '/summaries'
+      fullPath: '/summaries'
+      preLoaderRoute: typeof SummariesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -249,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/prayer'
       fullPath: '/prayer'
       preLoaderRoute: typeof PrayerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pray': {
+      id: '/pray'
+      path: '/pray'
+      fullPath: '/pray'
+      preLoaderRoute: typeof PrayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/phases': {
@@ -300,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -348,6 +408,7 @@ const MissionariesRouteWithChildren = MissionariesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   DocumentsRoute: DocumentsRoute,
   ImportRoute: ImportRoute,
@@ -355,9 +416,11 @@ const rootRouteChildren: RootRouteChildren = {
   MapRoute: MapRoute,
   MissionariesRoute: MissionariesRouteWithChildren,
   PhasesRoute: PhasesRoute,
+  PrayRoute: PrayRoute,
   PrayerRoute: PrayerRoute,
   ReportsRoute: ReportsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SummariesRoute: SummariesRoute,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport

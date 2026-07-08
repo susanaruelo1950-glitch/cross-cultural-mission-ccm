@@ -16,6 +16,9 @@ import {
   Layers,
   UserPlus,
   Upload,
+  Heart,
+  BarChart3,
+  Wand2,
 } from "lucide-react";
 import { useState, type ReactNode, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
@@ -29,8 +32,11 @@ const nav = [
   { to: "/missionaries", label: "Missionaries", icon: Users },
   { to: "/phases", label: "Phases & Areas", icon: Layers },
   { to: "/map", label: "Mission Map", icon: MapIcon },
+  { to: "/pray", label: "Prayer Mode", icon: Heart },
   { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
   { to: "/reports", label: "Ministry Reports", icon: FileText },
+  { to: "/summaries", label: "AI Summaries", icon: Wand2 },
+  { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
   { to: "/support", label: "Support Center", icon: Wallet },
   { to: "/documents", label: "Documents", icon: FolderOpen },
   { to: "/manage", label: "Manage", icon: UserPlus },
@@ -43,8 +49,8 @@ const mobileNav = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/missionaries", label: "People", icon: Users },
   { to: "/map", label: "Map", icon: MapIcon },
-  { to: "/prayer", label: "Prayer", icon: HeartHandshake },
-  { to: "/reports", label: "Reports", icon: FileText },
+  { to: "/pray", label: "Pray", icon: Heart },
+  { to: "/analytics", label: "Stats", icon: BarChart3 },
 ] as const;
 
 function useActive() {
