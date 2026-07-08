@@ -124,12 +124,14 @@ function Summaries() {
   async function share() {
     const m = getMissionary(missionaryId);
     const title = m ? `${m.fullName} — Ministry Update` : "Ministry Update";
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    if (!nav) return;
     try {
-      if (typeof navigator !== "undefined" && "share" in navigator) {
-        await navigator.share({ title, text: summary });
+      if (typeof nav.share === "function") {
+        await nav.share({ title, text: summary });
         toast.success("Shared.");
       } else {
-        await navigator.clipboard.writeText(summary);
+        await nav.clipboard.writeText(summary);
         toast.success("Sharing not supported — copied to clipboard instead.");
       }
     } catch {
