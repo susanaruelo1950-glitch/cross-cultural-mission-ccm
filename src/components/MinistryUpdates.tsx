@@ -256,12 +256,9 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
       setPreviewUrl(null);
       return;
     }
-    if (!f.type.startsWith("image/")) {
-      toast.error("Please choose an image file.");
-      return;
-    }
-    if (f.size > MAX_MB * 1024 * 1024) {
-      toast.error(`Image too large. Max ${MAX_MB} MB.`);
+    const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
+    if (!check.ok) {
+      toast.error(check.reason ?? "Invalid image.");
       return;
     }
     setFile(f);
@@ -275,8 +272,9 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
     try {
       let image_path: string | null = null;
       if (file) {
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${missionaryId}/${Date.now()}.${ext}`;
+        const check = validateFile(file, { allowed: IMAGE_MIME, maxMb: MAX_MB });
+        if (!check.ok) throw new Error(check.reason);
+        const path = safeStoragePath(missionaryId, file);
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
           .upload(path, file, {
@@ -287,6 +285,7 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
         if (upErr) throw upErr;
         image_path = path;
       }
+
 
       const { error } = await supabase.from("ministry_updates").insert({
         missionary_id: missionaryId,
