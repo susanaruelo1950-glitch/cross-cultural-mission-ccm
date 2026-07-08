@@ -131,13 +131,16 @@ function Profile() {
       <div className="card-soft overflow-hidden">
         <div className="relative">
           <div
-            className="h-48 w-full gradient-mission bg-cover bg-center sm:h-60"
+            className="relative h-64 w-full gradient-mission bg-cover bg-center sm:h-80 md:h-96 lg:h-[28rem]"
             style={cover ? { backgroundImage: `url(${cover})` } : undefined}
-          />
+          >
+            {/* Bottom gradient to keep any overlaid text or the tucked avatar readable */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card via-card/60 to-transparent" />
+          </div>
           <MissionaryCoverUpload missionaryId={m.id} missionaryName={m.fullName} />
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">
-          <Avatar className="-mt-14 h-24 w-24 border-4 border-card shadow-lift sm:-mt-16 sm:h-32 sm:w-32">
+          <Avatar className="-mt-16 h-28 w-28 border-4 border-card shadow-lift sm:-mt-20 sm:h-36 sm:w-36">
             <AvatarImage src={photo} alt={m.fullName} />
             <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
