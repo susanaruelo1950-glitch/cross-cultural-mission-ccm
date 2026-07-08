@@ -27,6 +27,7 @@ import {
   reportsByMissionary,
   type Missionary,
 } from "@/lib/mission-data";
+import { JourneyTimeline } from "@/components/JourneyTimeline";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
@@ -118,6 +119,17 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Mission journey timeline — commissioning through multiplication */}
+      <Card className="card-soft p-6">
+        <div className="mb-4 flex items-baseline justify-between gap-2">
+          <h2 className="font-display text-lg font-semibold">Support Status Timeline</h2>
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Mission Journey
+          </span>
+        </div>
+        <JourneyTimeline current={m.journeyStage ?? "Church Planting"} />
+      </Card>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto rounded-full bg-muted p-1">
