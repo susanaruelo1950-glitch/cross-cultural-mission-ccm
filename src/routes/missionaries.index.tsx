@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Search, Users, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { MissionaryCard } from "@/components/MissionaryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,9 @@ import {
 } from "@/components/ui/select";
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
+import { useLowData } from "@/hooks/use-low-data";
+import { supabase } from "@/integrations/supabase/client";
+import { createDisplayUrl } from "@/lib/storage-signed";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
