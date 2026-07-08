@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Church, MapPin } from "lucide-react";
 import type { Missionary } from "@/lib/mission-data";
 import { getArea, getPhase } from "@/lib/mission-data";
+import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 
 function initials(name: string) {
   return name
