@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { getArea } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
