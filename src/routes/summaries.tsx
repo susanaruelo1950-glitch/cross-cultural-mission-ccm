@@ -222,12 +222,28 @@ function Summaries() {
         </Card>
 
         <Card className="card-soft p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold">Shareable update</h2>
             {summary ? (
-              <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
-                <Copy className="h-4 w-4" /> Copy
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
+                  <Copy className="h-4 w-4" /> Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={share} className="rounded-full">
+                  <Share2 className="h-4 w-4" /> Share
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full">
+                  <Download className="h-4 w-4" /> .txt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadSlideHtml}
+                  className="rounded-full"
+                >
+                  <FileText className="h-4 w-4" /> Slides
+                </Button>
+              </div>
             ) : null}
           </div>
           {summary ? (
@@ -236,7 +252,8 @@ function Summaries() {
             </pre>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">
-              Your AI-generated update will appear here.
+              Your AI-generated update will appear here. Once ready, copy, share, download as text,
+              or export as newsletter-ready slides you can print or paste into presentations.
             </p>
           )}
         </Card>
