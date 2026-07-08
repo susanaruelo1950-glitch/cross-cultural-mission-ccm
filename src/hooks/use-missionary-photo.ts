@@ -9,7 +9,7 @@ const BUCKET = "missionary-photos";
  * display URL, or null if none exists (caller should fall back to the
  * JSON-bundled photo).
  */
-export function useMissionaryPhoto(missionaryId: string) {
+export function useMissionaryPhoto(missionaryId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["missionary_photo", missionaryId],
     queryFn: async (): Promise<string | null> => {
@@ -22,6 +22,7 @@ export function useMissionaryPhoto(missionaryId: string) {
       if (!data?.photo_url) return null;
       return createDisplayUrl(BUCKET, data.photo_url);
     },
+    enabled: options?.enabled ?? true,
     // Aggressive caching for low-bandwidth: keep photo URLs fresh for
     // 30 minutes and hold them in memory for 24 hours between visits.
     staleTime: 30 * 60 * 1000,

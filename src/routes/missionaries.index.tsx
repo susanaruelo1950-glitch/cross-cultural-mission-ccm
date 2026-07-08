@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Search, Users, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react";
 import { MissionaryCard } from "@/components/MissionaryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,9 @@ import {
 } from "@/components/ui/select";
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
+import { useLowData } from "@/hooks/use-low-data";
+import { supabase } from "@/integrations/supabase/client";
+import { createDisplayUrl } from "@/lib/storage-signed";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
@@ -53,6 +57,8 @@ function Directory() {
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
   const [page, setPage] = useState(1);
+  const { lowData, setLowData } = useLowData();
+  const qc = useQueryClient();
 
   // Build an area lookup map keyed by area id — the same id lives on
   // missionary.areaId regardless of whether the source is DB or seed data.
@@ -111,6 +117,28 @@ function Directory() {
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const nextPageItems = filtered.slice(pageStart + PAGE_SIZE, pageStart + PAGE_SIZE * 2);
+
+  // Prefetch signed photo URLs for the next page so pagination feels instant.
+  // Skip in low-data mode to keep bandwidth minimal.
+  useEffect(() => {
+    if (lowData || nextPageItems.length === 0) return;
+    for (const m of nextPageItems) {
+      qc.prefetchQuery({
+        queryKey: ["missionary_photo", m.id],
+        queryFn: async () => {
+          const { data } = await supabase
+            .from("missionary_photos")
+            .select("photo_url")
+            .eq("missionary_id", m.id)
+            .maybeSingle();
+          if (!data?.photo_url) return null;
+          return createDisplayUrl("missionary-photos", data.photo_url);
+        },
+        staleTime: 30 * 60 * 1000,
+      });
+    }
+  }, [nextPageItems, lowData, qc]);
 
   function resetFilter<T>(setter: (v: T) => void, value: T) {
     setter(value);
@@ -119,11 +147,24 @@ function Directory() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Missionary Directory</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Meet every church planter pastor. Filter by region, province, phase, or area, or search by name or church.
-        </p>
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex-1">
+          <h1 className="font-display text-3xl font-semibold sm:text-4xl">Missionary Directory</h1>
+          <p className="max-w-2xl text-muted-foreground">
+            Meet every church planter pastor. Filter by region, province, phase, or area, or search by name or church.
+          </p>
+        </div>
+        <Button
+          variant={lowData ? "default" : "outline"}
+          size="sm"
+          className="rounded-full self-start sm:self-end"
+          onClick={() => setLowData(!lowData)}
+          aria-pressed={lowData}
+          title="Defer photos and covers until each card scrolls into view"
+        >
+          {lowData ? <WifiOff className="h-4 w-4" /> : <Wifi className="h-4 w-4" />}
+          {lowData ? "Low-data mode on" : "Low-data mode"}
+        </Button>
       </header>
 
       <div className="card-soft grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">

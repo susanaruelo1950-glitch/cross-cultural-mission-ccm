@@ -31,8 +31,10 @@ import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
 import { ThankYouLetters } from "@/components/ThankYouLetters";
 import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
+import { MissionaryCoverUpload } from "@/components/MissionaryCoverUpload";
 import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
+import { useMissionaryCover } from "@/hooks/use-missionary-cover";
 import { useState } from "react";
 
 export const Route = createFileRoute("/missionaries/$id")({
@@ -102,7 +104,9 @@ function initials(name: string) {
 function Profile() {
   const { m } = Route.useLoaderData() as { m: Missionary };
   const { data: photoOverride } = useMissionaryPhoto(m.id);
+  const { data: coverOverride } = useMissionaryCover(m.id);
   const photo = photoOverride ?? m.photo;
+  const cover = coverOverride ?? m.cover;
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const myReports = reportsByMissionary(m.id);
@@ -125,10 +129,13 @@ function Profile() {
 
       {/* Cover + identity */}
       <div className="card-soft overflow-hidden">
-        <div
-          className="h-48 w-full gradient-mission bg-cover bg-center sm:h-60"
-          style={m.cover ? { backgroundImage: `url(${m.cover})` } : undefined}
-        />
+        <div className="relative">
+          <div
+            className="h-48 w-full gradient-mission bg-cover bg-center sm:h-60"
+            style={cover ? { backgroundImage: `url(${cover})` } : undefined}
+          />
+          <MissionaryCoverUpload missionaryId={m.id} missionaryName={m.fullName} />
+        </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">
           <Avatar className="-mt-14 h-24 w-24 border-4 border-card shadow-lift sm:-mt-16 sm:h-32 sm:w-32">
             <AvatarImage src={photo} alt={m.fullName} />

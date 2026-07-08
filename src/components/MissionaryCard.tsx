@@ -6,6 +6,7 @@ import { Church, MapPin } from "lucide-react";
 import type { Missionary } from "@/lib/mission-data";
 import { getArea, getPhase } from "@/lib/mission-data";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
+import { useInView, useLowData } from "@/hooks/use-low-data";
 
 function initials(name: string) {
   return name
@@ -19,8 +20,14 @@ function initials(name: string) {
 export function MissionaryCard({ m }: { m: Missionary }) {
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
-  const { data: photoOverride } = useMissionaryPhoto(m.id);
-  const photo = photoOverride ?? m.photo;
+  const { lowData } = useLowData();
+  const { ref, inView } = useInView<HTMLDivElement>("300px");
+  // In low-data mode wait until the card scrolls near the viewport before
+  // fetching the signed-URL override; that avoids N storage calls up-front.
+  const shouldLoadPhoto = !lowData || inView;
+  const { data: photoOverride } = useMissionaryPhoto(m.id, { enabled: shouldLoadPhoto });
+  const photo = shouldLoadPhoto ? (photoOverride ?? m.photo) : undefined;
+  const showCover = !lowData && m.cover;
 
   return (
     <Link
@@ -28,9 +35,9 @@ export function MissionaryCard({ m }: { m: Missionary }) {
       params={{ id: m.id }}
       className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
     >
-      <Card className="card-soft flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-lift">
+      <Card ref={ref} className="card-soft flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-lift">
         <div className="relative h-24 w-full gradient-mission">
-          {m.cover ? (
+          {showCover ? (
             <img
               src={m.cover}
               alt=""
