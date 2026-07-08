@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Shield, Users, Key, History, Database } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Shield, Users, Key, History, Database, Lock, LogIn } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Great Commission" }] }),
@@ -20,11 +22,51 @@ const roles = [
 ];
 
 function AdminPage() {
+  const { user, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="card-soft mx-auto max-w-md p-8 text-center">
+        <Lock className="mx-auto mb-3 h-10 w-10 text-primary" aria-hidden />
+        <h1 className="font-display text-2xl font-semibold">Admin sign-in required</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Please sign in with your Admin account to access this panel.
+        </p>
+        <Button asChild className="mt-4 rounded-full">
+          <Link to="/auth"><LogIn className="h-4 w-4" /> Sign in</Link>
+        </Button>
+      </Card>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Card className="card-soft mx-auto max-w-md p-8 text-center">
+        <Shield className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+        <h1 className="font-display text-2xl font-semibold">Admins only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Your account doesn't have admin permissions. Ask an administrator to grant you access, or
+          continue exploring the missionary directory.
+        </p>
+        <Button asChild variant="outline" className="mt-4 rounded-full">
+          <Link to="/missionaries">Browse missionaries</Link>
+        </Button>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl font-semibold sm:text-4xl">Admin Panel</h1>
-        <p className="mt-1 text-muted-foreground">Role-based permissions, audit logs, backups, and settings.</p>
+        <p className="mt-1 text-muted-foreground">
+          Signed in as <strong>{user.email}</strong>. Post ministry updates and photos from any
+          missionary profile page.
+        </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-4">
