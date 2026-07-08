@@ -21,6 +21,7 @@ import { Route as MapRouteImport } from './routes/map'
 import { Route as ManageRouteImport } from './routes/manage'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -88,6 +89,11 @@ const DocumentsRoute = DocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AssistantRoute = AssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/assistant'
+    | '/auth'
     | '/documents'
     | '/import'
     | '/manage'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/assistant'
+    | '/auth'
     | '/documents'
     | '/import'
     | '/manage'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/assistant'
+    | '/auth'
     | '/documents'
     | '/import'
     | '/manage'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
+  AuthRoute: typeof AuthRoute
   DocumentsRoute: typeof DocumentsRoute
   ImportRoute: typeof ImportRoute
   ManageRoute: typeof ManageRoute
@@ -346,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/assistant': {
       id: '/assistant'
       path: '/assistant'
@@ -410,6 +430,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
+  AuthRoute: AuthRoute,
   DocumentsRoute: DocumentsRoute,
   ImportRoute: ImportRoute,
   ManageRoute: ManageRoute,

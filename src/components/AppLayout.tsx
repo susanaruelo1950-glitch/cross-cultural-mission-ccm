@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Menu,
   Search,
-  Bell,
   Cross,
   Layers,
   UserPlus,
@@ -19,6 +18,9 @@ import {
   Heart,
   BarChart3,
   Wand2,
+  LogIn,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import { useState, type ReactNode, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
@@ -26,8 +28,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
+import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 
-const nav = [
+type Role = "public" | "any-auth" | "admin";
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  role?: Role;
+};
+
+const nav: readonly NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/missionaries", label: "Missionaries", icon: Users },
   { to: "/phases", label: "Phases & Areas", icon: Layers },
@@ -35,15 +55,15 @@ const nav = [
   { to: "/pray", label: "Prayer Mode", icon: Heart },
   { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
   { to: "/reports", label: "Ministry Reports", icon: FileText },
-  { to: "/summaries", label: "AI Summaries", icon: Wand2 },
+  { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
   { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
   { to: "/support", label: "Support Center", icon: Wallet },
   { to: "/documents", label: "Documents", icon: FolderOpen },
-  { to: "/manage", label: "Manage", icon: UserPlus },
-  { to: "/import", label: "Import / Export", icon: Upload },
+  { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
+  { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
   { to: "/assistant", label: "AI Assistant", icon: Sparkles },
-  { to: "/admin", label: "Admin", icon: ShieldCheck },
-] as const;
+  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
+];
 
 const mobileNav = [
   { to: "/", label: "Home", icon: LayoutDashboard },
@@ -59,28 +79,31 @@ function useActive() {
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useActive();
+  const { isAdmin } = useAuth();
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
-      {nav.map(({ to, label, icon: Icon }) => {
-        const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-        return (
-          <Link
-            key={to}
-            to={to}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-              active
-                ? "bg-primary text-primary-foreground shadow-soft"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">{label}</span>
-          </Link>
-        );
-      })}
+      {nav
+        .filter((item) => item.role !== "admin" || isAdmin)
+        .map(({ to, label, icon: Icon }) => {
+          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+                active
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">{label}</span>
+            </Link>
+          );
+        })}
     </nav>
   );
 }
@@ -157,6 +180,61 @@ function HeaderSearch() {
   );
 }
 
+function AuthButton() {
+  const { user, isAdmin, isCoordinator, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) {
+    return (
+      <Button asChild size="sm" className="rounded-full">
+        <Link to="/auth">
+          <LogIn className="h-4 w-4" /> <span className="hidden sm:inline">Sign in</span>
+        </Link>
+      </Button>
+    );
+  }
+
+  const label = user.email ?? "Account";
+  const roleLabel = isAdmin ? "Admin" : isCoordinator ? "Coordinator" : "Supporter";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-2 rounded-full" aria-label="Account menu">
+          <div className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
+            <UserIcon className="h-3.5 w-3.5" aria-hidden />
+          </div>
+          <span className="hidden max-w-[140px] truncate text-xs font-medium sm:inline">
+            {label}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          <div className="truncate">{label}</div>
+          <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
+            {roleLabel}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {isAdmin ? (
+          <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+            <ShieldCheck className="h-4 w-4" /> Admin panel
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem
+          onSelect={async () => {
+            await signOut();
+            navigate({ to: "/" });
+          }}
+        >
+          <LogOut className="h-4 w-4" /> Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
@@ -174,12 +252,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Brand />
         <NavItems />
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/50 p-4">
-            <p className="font-display text-sm font-semibold text-sidebar-accent-foreground">
-              "How beautiful are the feet..."
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Romans 10:15</p>
-          </div>
+          <ScriptureOfTheDay />
         </div>
       </aside>
 
@@ -207,10 +280,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <HeaderSearch />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Notifications">
-              <Bell className="h-5 w-5" aria-hidden />
-            </Button>
+            <AuthButton />
           </div>
+        </div>
+        {/* Rotating Scripture of the Day — visible on all pages */}
+        <div className="hidden border-t border-border/60 bg-primary/[0.03] px-4 py-2 sm:block sm:px-6">
+          <ScriptureOfTheDay compact />
         </div>
       </header>
 
