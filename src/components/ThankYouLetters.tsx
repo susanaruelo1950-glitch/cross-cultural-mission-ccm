@@ -265,9 +265,12 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} className="rounded-full" size="sm">
-        <Plus className="h-4 w-4" /> Upload thank you letter
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => setOpen(true)} className="rounded-full" size="sm">
+          <Plus className="h-4 w-4" /> Upload thank you letter
+        </Button>
+        <BulkLetterUpload missionaryId={missionaryId} />
+      </div>
     );
   }
 
@@ -336,5 +339,106 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Bulk upload — accepts multiple images/PDFs and creates one thank-you-letter
+ * row per file. Each file's name becomes the initial letter title so admins
+ * can rename later from the admin console.
+ */
+function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
+  const qc = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  async function upload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const valid: File[] = [];
+    for (const f of Array.from(files)) {
+      const okType = f.type.startsWith("image/") || f.type === "application/pdf";
+      if (!okType) {
+        toast.error(`Skipped ${f.name}: only images or PDFs are allowed.`);
+        continue;
+      }
+      if (f.size > MAX_MB * 1024 * 1024) {
+        toast.error(`Skipped ${f.name}: exceeds ${MAX_MB} MB limit.`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
+    setBusy(true);
+    setProgress({ done: 0, total: valid.length });
+    let successes = 0;
+    let failures = 0;
+    try {
+      for (let i = 0; i < valid.length; i++) {
+        const f = valid[i];
+        try {
+          const ext = (f.name.split(".").pop() || "pdf").toLowerCase();
+          const path = `${missionaryId}/${Date.now()}-${i}.${ext}`;
+          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: f.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const title = f.name.replace(/\.[^.]+$/, "");
+          const { error: dbErr } = await supabase.from("thank_you_letters").insert({
+            missionary_id: missionaryId,
+            title: title || "Thank you letter",
+            letter_url: path,
+          });
+          if (dbErr) throw dbErr;
+          successes++;
+        } catch (err) {
+          failures++;
+          console.error("bulk upload failed for", f.name, err);
+        } finally {
+          setProgress({ done: i + 1, total: valid.length });
+        }
+      }
+      if (successes > 0) {
+        toast.success(`Uploaded ${successes} letter${successes === 1 ? "" : "s"}.`);
+        qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
+        qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
+      }
+      if (failures > 0) toast.error(`${failures} file${failures === 1 ? "" : "s"} failed to upload.`);
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED}
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = e.target.files;
+          e.target.value = "";
+          void upload(files);
+        }}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        aria-label="Bulk upload thank-you letters"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Files className="h-4 w-4" />}
+        {busy && progress
+          ? `Uploading ${progress.done}/${progress.total}…`
+          : "Bulk upload files"}
+      </Button>
+    </>
   );
 }
