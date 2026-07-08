@@ -104,7 +104,9 @@ function initials(name: string) {
 function Profile() {
   const { m } = Route.useLoaderData() as { m: Missionary };
   const { data: photoOverride } = useMissionaryPhoto(m.id);
+  const { data: coverOverride } = useMissionaryCover(m.id);
   const photo = photoOverride ?? m.photo;
+  const cover = coverOverride ?? m.cover;
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const myReports = reportsByMissionary(m.id);
