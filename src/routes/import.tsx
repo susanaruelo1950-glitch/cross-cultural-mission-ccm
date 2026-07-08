@@ -18,8 +18,16 @@ export const Route = createFileRoute("/import")({
   head: () => ({
     meta: [
       { title: "Import Data — Cross-Cultural Mission" },
-      { name: "description", content: "Bulk upload phases, areas, and missionaries via CSV or JSON." },
+      { name: "description", content: "Bulk upload phases, areas, and missionaries to Cross-Cultural Mission via CSV or JSON." },
+      { property: "og:title", content: "Import Data — Cross-Cultural Mission" },
+      { property: "og:description", content: "Bulk upload phases, areas, and missionaries to Cross-Cultural Mission via CSV or JSON." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/import" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Import Data — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Bulk upload phases, areas, and missionaries to Cross-Cultural Mission via CSV or JSON." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/import" }],
   }),
   component: ImportPage,
 });

@@ -11,8 +11,16 @@ export const Route = createFileRoute("/support")({
   head: () => ({
     meta: [
       { title: "Support Center — Cross-Cultural Mission" },
-      { name: "description", content: "Monthly support needs and special projects for every missionary." },
+      { name: "description", content: "Monthly support needs and special projects for Cross-Cultural Mission missionaries." },
+      { property: "og:title", content: "Support Center — Cross-Cultural Mission" },
+      { property: "og:description", content: "Monthly support needs and special projects for Cross-Cultural Mission missionaries." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/support" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Support Center — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Monthly support needs and special projects for Cross-Cultural Mission missionaries." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/support" }],
   }),
   component: SupportPage,
 });

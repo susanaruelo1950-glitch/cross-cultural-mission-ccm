@@ -4,7 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/documents")({
-  head: () => ({ meta: [{ title: "Document Library — Cross-Cultural Mission" }] }),
+  head: () => ({
+    meta: [
+      { title: "Document Library — Cross-Cultural Mission" },
+      { name: "description", content: "Training materials, newsletters, and mission policies for Cross-Cultural Mission." },
+      { property: "og:title", content: "Document Library — Cross-Cultural Mission" },
+      { property: "og:description", content: "Training materials, newsletters, and mission policies for Cross-Cultural Mission." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/documents" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Document Library — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Training materials, newsletters, and mission policies for Cross-Cultural Mission." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+    ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/documents" }],
+  }),
   component: DocsPage,
 });
 

@@ -26,12 +26,16 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "Mission Map — Cross-Cultural Mission" },
-      {
-        name: "description",
-        content:
-          "Interactive Philippines map of every church planter — filter by phase and area, cluster nearby pins, and browse the list view.",
-      },
+      { name: "description", content: "Interactive geographic map of every Cross-Cultural Mission field, area, and church planter." },
+      { property: "og:title", content: "Mission Map — Cross-Cultural Mission" },
+      { property: "og:description", content: "Interactive geographic map of every Cross-Cultural Mission field, area, and church planter." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/map" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Mission Map — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Interactive geographic map of every Cross-Cultural Mission field, area, and church planter." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/map" }],
   }),
   component: MissionMap,
 });

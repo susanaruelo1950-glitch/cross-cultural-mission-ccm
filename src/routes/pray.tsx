@@ -30,12 +30,16 @@ export const Route = createFileRoute("/pray")({
   head: () => ({
     meta: [
       { title: "Prayer Mode — Cross-Cultural Mission" },
-      {
-        name: "description",
-        content:
-          "Swipe through missionaries one at a time to pray for their photo, latest update, and prayer requests.",
-      },
+      { name: "description", content: "Guided prayer walk through every Cross-Cultural Mission church planter pastor." },
+      { property: "og:title", content: "Prayer Mode — Cross-Cultural Mission" },
+      { property: "og:description", content: "Guided prayer walk through every Cross-Cultural Mission church planter pastor." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/pray" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Prayer Mode — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Guided prayer walk through every Cross-Cultural Mission church planter pastor." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/pray" }],
   }),
   component: PrayerMode,
 });

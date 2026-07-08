@@ -19,11 +19,16 @@ export const Route = createFileRoute("/missionaries/")({
   head: () => ({
     meta: [
       { title: "Missionary Directory — Cross-Cultural Mission" },
-      {
-        name: "description",
-        content: "Browse every church planter pastor by phase, area, and ministry focus.",
-      },
+      { name: "description", content: "Browse every Cross-Cultural Mission church planter pastor by phase, area, and ministry focus." },
+      { property: "og:title", content: "Missionary Directory — Cross-Cultural Mission" },
+      { property: "og:description", content: "Browse every Cross-Cultural Mission church planter pastor by phase, area, and ministry focus." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/missionaries" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Missionary Directory — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Browse every Cross-Cultural Mission church planter pastor by phase, area, and ministry focus." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/missionaries" }],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
     q: typeof s.q === "string" ? s.q : undefined,
