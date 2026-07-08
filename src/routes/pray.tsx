@@ -97,6 +97,25 @@ function PrayerMode() {
     window.localStorage.setItem(STATE_KEY, JSON.stringify(state));
   }, [order, i, paused, viewedPrayerIds, hydrated]);
 
+  // Keyboard nav (arrows + space) — placed BEFORE any early return to keep hook order stable
+  useEffect(() => {
+    if (missionaries.length === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt?.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "ArrowRight") setI((v) => (v + 1) % missionaries.length);
+      else if (e.key === "ArrowLeft")
+        setI((v) => (v - 1 + missionaries.length) % missionaries.length);
+      else if (e.key === " ") {
+        e.preventDefault();
+        setPaused((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [missionaries.length]);
+
+
   if (missionaries.length === 0) {
     return (
       <EmptyState
