@@ -282,6 +282,8 @@ const maitumGps = seedAreas.find((a) => a.id === "area-maitum")!.gps!;
 const bansalanGps = seedAreas.find((a) => a.id === "area-bansalan")!.gps!;
 const digosGps = seedAreas.find((a) => a.id === "area-digos")!.gps!;
 const arakanGps = seedAreas.find((a) => a.id === "area-arakan")!.gps!;
+const kidapawanGps = seedAreas.find((a) => a.id === "area-kidapawan")!.gps!;
+
 
 export const seedMissionaries: Missionary[] = [
   // ── Bagumbayan ──────────────────────────────────────────────
