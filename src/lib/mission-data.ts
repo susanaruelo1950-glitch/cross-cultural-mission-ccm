@@ -1170,6 +1170,30 @@ function merge<T extends { id: string }>(seed: T[], extras: T[]): T[] {
   return Array.from(map.values());
 }
 
+/** Normalize a person name for redundancy checks: strip titles, punctuation,
+ *  collapse whitespace, and lowercase. Handles common Filipino/Christian
+ *  honorifics so "Ptr. Juan D. Cruz" and "Pastor Juan Cruz" collide. */
+export function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(ptr|pastor|pst|rev|reverend|bro|sis|dr|mr|mrs|ms)\.?\b/g, "")
+    .replace(/[.,()'"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Merge entries that share a normalized name — later entries win. This
+ *  keeps the directory clean even if past imports created duplicates. */
+function dedupeByName(list: Missionary[]): Missionary[] {
+  const byKey = new Map<string, Missionary>();
+  for (const m of list) {
+    const key = normalizeName(m.fullName);
+    if (!key) { byKey.set(m.id, m); continue; }
+    byKey.set(key, { ...(byKey.get(key) ?? {}), ...m });
+  }
+  return Array.from(byKey.values());
+}
+
 export function allPhases(): Phase[] {
   return merge(seedPhases, readStore().phases);
 }
@@ -1177,32 +1201,59 @@ export function allAreas(): Area[] {
   return merge(seedAreas, readStore().areas);
 }
 export function allMissionaries(): Missionary[] {
-  return merge(seedMissionaries, readStore().missionaries);
+  return dedupeByName(merge(seedMissionaries, readStore().missionaries));
+}
+
+/** Find an existing missionary with the same normalized name (any source). */
+export function findMissionaryByName(name: string, excludeId?: string): Missionary | undefined {
+  const key = normalizeName(name);
+  if (!key) return undefined;
+  return allMissionaries().find(
+    (m) => m.id !== excludeId && normalizeName(m.fullName) === key,
+  );
 }
 
 export const phases: Phase[] = allPhases();
 export const areas: Area[] = allAreas();
 export const missionaries: Missionary[] = allMissionaries();
 
-export function upsertPhase(p: Phase) {
+export function upsertPhase(p: Phase, opts?: { silent?: boolean }) {
   const s = readStore();
   s.phases = s.phases.filter((x) => x.id !== p.id).concat(p);
   writeStore(s);
+  if (!opts?.silent) {
+    void import("@/lib/missionary-sync").then((m) => m.broadcastSync({ kind: "phase_upsert", phase: p }));
+  }
 }
-export function upsertArea(a: Area) {
+export function upsertArea(a: Area, opts?: { silent?: boolean }) {
   const s = readStore();
   s.areas = s.areas.filter((x) => x.id !== a.id).concat(a);
   writeStore(s);
+  if (!opts?.silent) {
+    void import("@/lib/missionary-sync").then((m) => m.broadcastSync({ kind: "area_upsert", area: a }));
+  }
 }
-export function upsertMissionary(m: Missionary) {
+/** Upsert a missionary. If another entry shares the normalized name, it is
+ *  treated as the same person (id is reused), preventing duplicates. */
+export function upsertMissionary(m: Missionary, opts?: { silent?: boolean }) {
   const s = readStore();
-  s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
+  const existing = findMissionaryByName(m.fullName, m.id);
+  const merged = existing ? { ...existing, ...m, id: existing.id } : m;
+  s.missionaries = s.missionaries.filter((x) => x.id !== merged.id).concat(merged);
   writeStore(s);
+  if (!opts?.silent) {
+    void import("@/lib/missionary-sync").then((mod) =>
+      mod.broadcastSync({ kind: "missionary_upsert", missionary: merged }),
+    );
+  }
 }
-export function deleteMissionary(id: string) {
+export function deleteMissionary(id: string, opts?: { silent?: boolean }) {
   const s = readStore();
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
   writeStore(s);
+  if (!opts?.silent) {
+    void import("@/lib/missionary-sync").then((m) => m.broadcastSync({ kind: "missionary_delete", id }));
+  }
 }
 export function resetRuntimeStore() {
   if (typeof window === "undefined") return;
