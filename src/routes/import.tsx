@@ -154,7 +154,7 @@ function ImportPage() {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const csv = [CSV_HEADERS.join(",")].concat(
-      rows.map((m) => CSV_HEADERS.map((h) => escape((m as Record<string, unknown>)[h])).join(",")),
+      rows.map((m) => CSV_HEADERS.map((h) => escape((m as unknown as Record<string, unknown>)[h])).join(",")),
     ).join("\n");
     download("missionaries.csv", csv, "text/csv");
   }

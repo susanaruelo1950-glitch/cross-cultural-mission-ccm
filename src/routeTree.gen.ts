@@ -16,6 +16,8 @@ import { Route as PrayerRouteImport } from './routes/prayer'
 import { Route as PhasesRouteImport } from './routes/phases'
 import { Route as MissionariesRouteImport } from './routes/missionaries'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as ManageRouteImport } from './routes/manage'
+import { Route as ImportRouteImport } from './routes/import'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -58,6 +60,16 @@ const MapRoute = MapRouteImport.update({
   path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManageRoute = ManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportRoute = ImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -94,6 +106,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
+  '/import': typeof ImportRoute
+  '/manage': typeof ManageRoute
   '/map': typeof MapRoute
   '/missionaries': typeof MissionariesRouteWithChildren
   '/phases': typeof PhasesRoute
@@ -109,6 +123,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
+  '/import': typeof ImportRoute
+  '/manage': typeof ManageRoute
   '/map': typeof MapRoute
   '/phases': typeof PhasesRoute
   '/prayer': typeof PrayerRoute
@@ -124,6 +140,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/assistant': typeof AssistantRoute
   '/documents': typeof DocumentsRoute
+  '/import': typeof ImportRoute
+  '/manage': typeof ManageRoute
   '/map': typeof MapRoute
   '/missionaries': typeof MissionariesRouteWithChildren
   '/phases': typeof PhasesRoute
@@ -141,6 +159,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/assistant'
     | '/documents'
+    | '/import'
+    | '/manage'
     | '/map'
     | '/missionaries'
     | '/phases'
@@ -156,6 +176,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/assistant'
     | '/documents'
+    | '/import'
+    | '/manage'
     | '/map'
     | '/phases'
     | '/prayer'
@@ -170,6 +192,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/assistant'
     | '/documents'
+    | '/import'
+    | '/manage'
     | '/map'
     | '/missionaries'
     | '/phases'
@@ -186,6 +210,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AssistantRoute: typeof AssistantRoute
   DocumentsRoute: typeof DocumentsRoute
+  ImportRoute: typeof ImportRoute
+  ManageRoute: typeof ManageRoute
   MapRoute: typeof MapRoute
   MissionariesRoute: typeof MissionariesRouteWithChildren
   PhasesRoute: typeof PhasesRoute
@@ -244,6 +270,20 @@ declare module '@tanstack/react-router' {
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage': {
+      id: '/manage'
+      path: '/manage'
+      fullPath: '/manage'
+      preLoaderRoute: typeof ManageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import': {
+      id: '/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof ImportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documents': {
@@ -310,6 +350,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AssistantRoute: AssistantRoute,
   DocumentsRoute: DocumentsRoute,
+  ImportRoute: ImportRoute,
+  ManageRoute: ManageRoute,
   MapRoute: MapRoute,
   MissionariesRoute: MissionariesRouteWithChildren,
   PhasesRoute: PhasesRoute,
