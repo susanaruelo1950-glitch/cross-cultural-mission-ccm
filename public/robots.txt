@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://cross-cultural-mission-ccm.lovable.app/sitemap.xml

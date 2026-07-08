@@ -10,8 +10,16 @@ export const Route = createFileRoute("/phases")({
   head: () => ({
     meta: [
       { title: "Phases & Areas — Cross-Cultural Mission" },
-      { name: "description", content: "Organizational structure: every phase, area, coordinator, and team." },
+      { name: "description", content: "Cross-Cultural Mission organizational structure — every phase, area, and coordinator." },
+      { property: "og:title", content: "Phases & Areas — Cross-Cultural Mission" },
+      { property: "og:description", content: "Cross-Cultural Mission organizational structure — every phase, area, and coordinator." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/phases" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Phases & Areas — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Cross-Cultural Mission organizational structure — every phase, area, and coordinator." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/phases" }],
   }),
   component: PhasesPage,
 });

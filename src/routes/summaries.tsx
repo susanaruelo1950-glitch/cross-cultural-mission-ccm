@@ -21,12 +21,16 @@ export const Route = createFileRoute("/summaries")({
   head: () => ({
     meta: [
       { title: "AI Summaries — Cross-Cultural Mission" },
-      {
-        name: "description",
-        content:
-          "Turn monthly ministry reports into short, shareable updates for newsletters, slides, or prayer bulletins.",
-      },
+      { name: "description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
+      { property: "og:title", content: "AI Summaries — Cross-Cultural Mission" },
+      { property: "og:description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/summaries" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "AI Summaries — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/summaries" }],
   }),
   component: Summaries,
 });

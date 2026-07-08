@@ -1,0 +1,23 @@
+# Cross-Cultural Mission
+
+> Cross-Cultural Mission (CCM) is a church-planting operations platform that surfaces church planter pastors, phases, areas, ministry reports, and prayer requests in one live dashboard.
+
+CCM helps mission coordinators and supporters see where church planters are serving, what stage each field is in, and how to pray for and support them.
+
+## Pages
+
+- [Dashboard](/): Live snapshot of missionaries, phases, areas, prayer requests, and reports.
+- [Missionary Directory](/missionaries): Browse every church planter pastor by phase, area, and ministry focus.
+- [Mission Map](/map): Geographic view of every field and planting area.
+- [Phases & Areas](/phases): Organizational structure — phases, areas, and coordinators.
+- [Prayer Center](/prayer): Current prayer requests from the field.
+- [Prayer Mode](/pray): Guided prayer walk through each missionary.
+- [Ministry Reports](/reports): Latest field reports from every missionary.
+- [Support Center](/support): Monthly support needs and special projects.
+- [Document Library](/documents): Training materials, newsletters, and mission policies.
+- [AI Assistant](/assistant): Ask questions grounded in the platform's data.
+
+## Optional
+
+- [Annual Analytics](/analytics): Aggregate ministry analytics.
+- [AI Summaries](/summaries): AI-generated report summaries.

@@ -10,8 +10,16 @@ export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
       { title: "Ministry Reports — Cross-Cultural Mission" },
-      { name: "description", content: "Latest field reports from every missionary." },
+      { name: "description", content: "Latest field reports from every Cross-Cultural Mission church planter pastor." },
+      { property: "og:title", content: "Ministry Reports — Cross-Cultural Mission" },
+      { property: "og:description", content: "Latest field reports from every Cross-Cultural Mission church planter pastor." },
+      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/reports" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:title", content: "Ministry Reports — Cross-Cultural Mission" },
+      { name: "twitter:description", content: "Latest field reports from every Cross-Cultural Mission church planter pastor." },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
+    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/reports" }],
   }),
   component: ReportsPage,
 });
