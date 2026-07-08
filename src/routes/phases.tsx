@@ -17,6 +17,9 @@ export const Route = createFileRoute("/phases")({
 });
 
 function PhasesPage() {
+  const { phases, areas, missionaries } = useDataStore();
+  const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
+  const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
   return (
     <div className="space-y-6">
       <header>

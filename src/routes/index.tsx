@@ -15,16 +15,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import {
-  areas,
-  areasByPhase,
-  missionaries,
-  missionariesByArea,
   missionariesByPhaseCount,
   missionStats,
-  phases,
   prayerRequests,
   reports,
 } from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
