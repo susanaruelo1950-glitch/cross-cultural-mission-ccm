@@ -152,8 +152,9 @@ function PrayerMode() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold sm:text-4xl">Prayer Mode</h1>
-          <p className="mt-1 text-muted-foreground">
-            Card {i + 1} of {order.length} · {viewedPrayerIds.length} prayer request
+          <p className="mt-1 text-muted-foreground" aria-live="polite" aria-atomic="true">
+            Praying for <strong>{m.fullName}</strong> — card {i + 1} of {order.length} ·{" "}
+            {viewedPrayerIds.length} prayer request
             {viewedPrayerIds.length === 1 ? "" : "s"} viewed
             {paused ? " · paused" : ""}
           </p>
