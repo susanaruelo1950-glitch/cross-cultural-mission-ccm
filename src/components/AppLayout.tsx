@@ -103,29 +103,38 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useActive();
   const { isAdmin } = useAuth();
   return (
-    <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
-      {nav
-        .filter((item) => item.role !== "admin" || isAdmin)
-        .map(({ to, label, icon: Icon }) => {
-          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-                active
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="truncate">{label}</span>
-            </Link>
-          );
-        })}
+    <nav className="flex flex-col gap-4 overflow-y-auto p-3 pb-8" aria-label="Primary">
+      {navGroups.map((group) => {
+        const items = group.items.filter((i) => i.role !== "admin" || isAdmin);
+        if (items.length === 0) return null;
+        return (
+          <div key={group.label} className="flex flex-col gap-1">
+            <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              {group.label}
+            </div>
+            {items.map(({ to, label, icon: Icon }) => {
+              const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="truncate">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
     </nav>
   );
 }
