@@ -97,6 +97,25 @@ function PrayerMode() {
     window.localStorage.setItem(STATE_KEY, JSON.stringify(state));
   }, [order, i, paused, viewedPrayerIds, hydrated]);
 
+  // Keyboard nav (arrows + space) — placed BEFORE any early return to keep hook order stable
+  useEffect(() => {
+    if (missionaries.length === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt?.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "ArrowRight") setI((v) => (v + 1) % missionaries.length);
+      else if (e.key === "ArrowLeft")
+        setI((v) => (v - 1 + missionaries.length) % missionaries.length);
+      else if (e.key === " ") {
+        e.preventDefault();
+        setPaused((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [missionaries.length]);
+
+
   if (missionaries.length === 0) {
     return (
       <EmptyState
@@ -152,8 +171,9 @@ function PrayerMode() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold sm:text-4xl">Prayer Mode</h1>
-          <p className="mt-1 text-muted-foreground">
-            Card {i + 1} of {order.length} · {viewedPrayerIds.length} prayer request
+          <p className="mt-1 text-muted-foreground" aria-live="polite" aria-atomic="true">
+            Praying for <strong>{m.fullName}</strong> — card {i + 1} of {order.length} ·{" "}
+            {viewedPrayerIds.length} prayer request
             {viewedPrayerIds.length === 1 ? "" : "s"} viewed
             {paused ? " · paused" : ""}
           </p>

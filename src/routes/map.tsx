@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { MapIcon, List, ExternalLink } from "lucide-react";
 import {
   allAreas,
@@ -94,6 +94,8 @@ function MissionMap() {
         .filter((m): m is Missionary & { gps: [number, number] } => !!m),
     [filteredMissionaries],
   );
+  // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
+  const deferredPinned = useDeferredValue(pinned);
 
   const header = (
     <header className="flex flex-col gap-3">
@@ -181,7 +183,7 @@ function MissionMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <ClusteredMarkers L={L} pinned={pinned} />
+                <ClusteredMarkers L={L} pinned={deferredPinned} />
               </MapContainer>
             </div>
           </Card>
