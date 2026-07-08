@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { LETTER_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
+
 
 interface Props {
   missionaryId: string;
