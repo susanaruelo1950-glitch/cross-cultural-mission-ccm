@@ -94,7 +94,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md lg:pl-72">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md lg:ml-72">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
             <Sheet open={open} onOpenChange={setOpen}>
