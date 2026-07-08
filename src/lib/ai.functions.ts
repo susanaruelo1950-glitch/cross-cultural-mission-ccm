@@ -1,32 +1,53 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const SummarizeInput = z.object({
-  missionaryName: z.string().min(1),
-  church: z.string().default(""),
-  reportText: z.string().min(1),
-  audience: z.enum(["newsletter", "presentation", "prayer-list"]).default("newsletter"),
-});
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
 /**
  * Turn a monthly ministry report into a short, shareable update using
  * the Lovable AI Gateway. Keep the model call, prompt, and API key
  * server-side.
  */
 export const summarizeReport = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => SummarizeInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const { requireSupabaseAuth } = await import("@/integrations/supabase/auth-middleware");
-    await requireSupabaseAuth.options.server({
-      context,
-      data,
-      next: async () => undefined,
-    } as never);
-
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        missionaryName: z.string().min(1),
+        church: z.string().default(""),
+        reportText: z.string().min(1),
+        audience: z.enum(["newsletter", "presentation", "prayer-list"]).default("newsletter"),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY is not configured on the server.");
+
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const request = getRequest();
+    const authHeader = request?.headers?.get("authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      throw new Error("Unauthorized: No authorization header provided");
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    if (token.split(".").length !== 3) {
+      throw new Error("Unauthorized: Invalid token");
+    }
+
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      throw new Error("Authentication is not configured on the server.");
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      throw new Error("Unauthorized: Invalid token");
+    }
 
     const audienceHint = {
       newsletter:
@@ -36,6 +57,8 @@ export const summarizeReport = createServerFn({ method: "POST" })
       "prayer-list":
         "Write a compact prayer bulletin: 1 short intro sentence, then 3-5 bulleted specific prayer points.",
     }[data.audience];
+
+    const gateway = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
     const prompt = `You are helping a Filipino church-planting network share ministry updates.
 Missionary: ${data.missionaryName}
@@ -51,7 +74,7 @@ Source ministry report:
 ${data.reportText}
 """`;
 
-    const res = await fetch(GATEWAY, {
+    const res = await fetch(gateway, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
