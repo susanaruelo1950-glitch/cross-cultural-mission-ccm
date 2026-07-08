@@ -174,6 +174,11 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           <Sparkles className="h-3 w-3" /> Answered
                         </Badge>
                       ) : null}
+                      {p.coordinator_approved_public ? (
+                        <Badge variant="outline" className="rounded-full">
+                          <Eye className="h-3 w-3" /> Public
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                   {p.detail ? (
