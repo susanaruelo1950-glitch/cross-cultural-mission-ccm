@@ -147,11 +147,24 @@ function Directory() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Missionary Directory</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Meet every church planter pastor. Filter by region, province, phase, or area, or search by name or church.
-        </p>
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex-1">
+          <h1 className="font-display text-3xl font-semibold sm:text-4xl">Missionary Directory</h1>
+          <p className="max-w-2xl text-muted-foreground">
+            Meet every church planter pastor. Filter by region, province, phase, or area, or search by name or church.
+          </p>
+        </div>
+        <Button
+          variant={lowData ? "default" : "outline"}
+          size="sm"
+          className="rounded-full self-start sm:self-end"
+          onClick={() => setLowData(!lowData)}
+          aria-pressed={lowData}
+          title="Defer photos and covers until each card scrolls into view"
+        >
+          {lowData ? <WifiOff className="h-4 w-4" /> : <Wifi className="h-4 w-4" />}
+          {lowData ? "Low-data mode on" : "Low-data mode"}
+        </Button>
       </header>
 
       <div className="card-soft grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
