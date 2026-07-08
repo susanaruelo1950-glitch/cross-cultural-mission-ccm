@@ -39,12 +39,12 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports.",
+          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Mission.",
       },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/" },
       { property: "og:image", content: SOCIAL_IMAGE },
       { name: "twitter:title", content: "Cross-Cultural Mission — Church Planting Dashboard" },
-      { name: "twitter:description", content: "Live snapshot of pastors, areas, prayer, and reports." },
+      { name: "twitter:description", content: "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Mission." },
       { name: "twitter:image", content: SOCIAL_IMAGE },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/" }],
