@@ -1,19 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Heart, HeartHandshake, Sparkles } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { HeartHandshake, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EmptyState } from "@/components/EmptyState";
-import { getMissionary, prayerRequests } from "@/lib/mission-data";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { getMissionary } from "@/lib/mission-data";
+import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
+import { PrayerRequestsPanel, type DbPrayer } from "@/components/PrayerRequestsPanel";
 
 export const Route = createFileRoute("/prayer")({
   head: () => ({
     meta: [
       { title: "Prayer Center — Great Commission" },
-      { name: "description", content: "Daily and urgent prayer requests from missionaries in the field." },
+      { name: "description", content: "Live prayer requests from missionaries in the field." },
     ],
   }),
   component: PrayerCenter,
@@ -24,66 +26,42 @@ function initials(name: string) {
 }
 
 function PrayerCenter() {
-  const [prayed, setPrayed] = useState<Set<string>>(new Set());
-  const urgent = prayerRequests.filter((p) => p.urgent && !p.answered);
-  const active = prayerRequests.filter((p) => !p.answered);
-  const answered = prayerRequests.filter((p) => p.answered);
+  const [q, setQ] = useState("");
 
-  const togglePrayed = (id: string) => {
-    setPrayed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
+  const { data, isLoading } = useQuery({
+    queryKey: ["prayer_requests_db", "__all__"],
+    queryFn: async (): Promise<DbPrayer[]> => {
+      const { data, error } = await supabase
+        .from("prayer_requests_db")
+        .select("id, missionary_id, title, detail, urgent, answered, created_at")
+        .order("urgent", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
-  const renderList = (list: typeof prayerRequests) => (
-    list.length === 0 ? (
-      <p className="py-10 text-center text-sm text-muted-foreground">Nothing here yet.</p>
-    ) : (
-      <div className="grid gap-4 md:grid-cols-2">
-        {list.map((p) => {
-          const m = getMissionary(p.missionaryId);
-          const isPrayed = prayed.has(p.id);
-          return (
-            <Card key={p.id} className={`card-soft p-5 ${p.answered ? "bg-accent" : ""}`}>
-              <div className="flex items-start gap-3">
-                {m ? (
-                  <Avatar className="h-11 w-11">
-                    <AvatarImage src={m.photo} alt={m.fullName} />
-                    <AvatarFallback className="bg-primary/10 text-primary">{initials(m.fullName)}</AvatarFallback>
-                  </Avatar>
-                ) : null}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="truncate font-display text-base font-semibold">{p.title}</h3>
-                    {p.urgent && !p.answered ? <Badge variant="destructive" className="rounded-full">Urgent</Badge> : null}
-                    {p.answered ? <Badge className="rounded-full bg-secondary text-secondary-foreground">Answered</Badge> : null}
-                  </div>
-                  <p className="mt-1 text-sm text-foreground/90">{p.detail}</p>
-                  {m ? (
-                    <Link to="/missionaries/$id" params={{ id: m.id }} className="mt-2 inline-block text-xs font-medium text-primary hover:underline">
-                      {m.fullName} · {m.church}
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-              {!p.answered ? (
-                <Button
-                  onClick={() => togglePrayed(p.id)}
-                  variant={isPrayed ? "secondary" : "outline"}
-                  className="mt-4 w-full rounded-full"
-                >
-                  <Heart className={`h-4 w-4 ${isPrayed ? "fill-current" : ""}`} />
-                  {isPrayed ? "Prayed" : "Mark as Prayed"}
-                </Button>
-              ) : null}
-            </Card>
-          );
-        })}
-      </div>
-    )
-  );
+  const grouped = useMemo(() => {
+    const map = new Map<string, DbPrayer[]>();
+    for (const p of data ?? []) {
+      const arr = map.get(p.missionary_id) ?? [];
+      arr.push(p);
+      map.set(p.missionary_id, arr);
+    }
+    // Filter by search
+    const needle = q.trim().toLowerCase();
+    return Array.from(map.entries())
+      .filter(([mid, items]) => {
+        if (!needle) return true;
+        const m = getMissionary(mid);
+        const hay = `${m?.fullName ?? ""} ${m?.church ?? ""} ${items.map((i) => i.title + " " + (i.detail ?? "")).join(" ")}`.toLowerCase();
+        return hay.includes(needle);
+      });
+  }, [data, q]);
+
+  const urgent = (data ?? []).filter((p) => p.urgent && !p.answered);
+  const active = (data ?? []).filter((p) => !p.answered);
+  const answered = (data ?? []).filter((p) => p.answered);
 
   return (
     <div className="space-y-6">
@@ -94,7 +72,6 @@ function PrayerCenter() {
             "Pray earnestly to the Lord of the harvest to send out laborers into his harvest." — Matthew 9:38
           </p>
         </div>
-        <Button className="rounded-full"><HeartHandshake className="h-4 w-4" /> Prayer Calendar</Button>
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
@@ -111,36 +88,75 @@ function PrayerCenter() {
           <div className="mt-1 font-display text-2xl font-semibold text-secondary">{answered.length}</div>
         </Card>
         <Card className="card-soft p-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Prayed Today</div>
-          <div className="mt-1 font-display text-2xl font-semibold text-warm-foreground">{prayed.size}</div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
+          <div className="mt-1 font-display text-2xl font-semibold">{(data ?? []).length}</div>
         </Card>
       </div>
 
-      {prayerRequests.length === 0 ? (
-        <EmptyState
-          icon={HeartHandshake}
-          title="No prayer requests yet"
-          description="Add prayer requests through the missionary detail page or seed them in src/lib/mission-data.ts."
-        />
+      <div className="card-soft p-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by missionary, church, or request…"
+            className="pl-9"
+            aria-label="Search prayer requests"
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">Loading prayer requests…</p>
+      ) : grouped.length === 0 ? (
+        <Card className="card-soft p-10 text-center">
+          <HeartHandshake className="mx-auto mb-3 h-10 w-10 text-primary" aria-hidden />
+          <h2 className="font-display text-xl font-semibold">No prayer requests yet</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Admins and area coordinators can post prayer requests from a missionary's profile page.
+          </p>
+        </Card>
       ) : (
-        <Tabs defaultValue="active">
-          <TabsList className="rounded-full bg-muted p-1">
-            <TabsTrigger value="urgent" className="rounded-full">Urgent</TabsTrigger>
-            <TabsTrigger value="active" className="rounded-full">Active</TabsTrigger>
-            <TabsTrigger value="answered" className="rounded-full">Answered</TabsTrigger>
-          </TabsList>
-          <TabsContent value="urgent" className="mt-6">{renderList(urgent)}</TabsContent>
-          <TabsContent value="active" className="mt-6">{renderList(active)}</TabsContent>
-          <TabsContent value="answered" className="mt-6">
-            {answered.length ? (
-              <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
-                <Sparkles className="h-4 w-4" /> Praise God for these answered prayers!
-              </div>
-            ) : null}
-            {renderList(answered)}
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-6">
+          {grouped.map(([mid, items]) => (
+            <MissionaryGroup key={mid} missionaryId={mid} count={items.length} />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+function MissionaryGroup({ missionaryId, count }: { missionaryId: string; count: number }) {
+  const m = getMissionary(missionaryId);
+  const { data: override } = useMissionaryPhoto(missionaryId);
+  const name = m?.fullName ?? "Missionary";
+  const photo = override ?? m?.photo;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={photo} alt={name} />
+          <AvatarFallback className="bg-primary/10 text-primary">{initials(name)}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          {m ? (
+            <Link
+              to="/missionaries/$id"
+              params={{ id: m.id }}
+              className="font-display text-lg font-semibold hover:underline"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="font-display text-lg font-semibold">{name}</span>
+          )}
+          {m?.church ? <div className="text-xs text-muted-foreground">{m.church}</div> : null}
+        </div>
+        <Badge variant="secondary" className="rounded-full">{count}</Badge>
+      </div>
+      <PrayerRequestsPanel missionaryId={missionaryId} missionaryName={name} />
+    </section>
   );
 }
