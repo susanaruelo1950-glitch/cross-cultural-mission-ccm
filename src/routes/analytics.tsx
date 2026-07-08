@@ -350,7 +350,7 @@ function Analytics() {
         <StatCard label="Provinces reached" value={missionStats.totalProvinces} icon={BarChart3} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div ref={chartsRef} className="grid gap-6 bg-background lg:grid-cols-2">
         <Card className="card-soft p-6">
           <h2 className="font-display text-lg font-semibold">Missionaries by phase</h2>
           <div className="mt-4 h-64">
