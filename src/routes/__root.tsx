@@ -92,31 +92,40 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "CCM" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { title: "Cross-Cultural Mission" },
-      {
-        name: "description",
-        content:
-          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports.",
-      },
       { name: "author", content: "Cross-Cultural Mission" },
-      { property: "og:title", content: "Cross-Cultural Mission" },
-      {
-        property: "og:description",
-        content:
-          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports.",
-      },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Cross-Cultural Mission" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Cross-Cultural Mission",
+          alternateName: "CCM",
+          url: "https://cross-cultural-mission-ccm.lovable.app",
+          logo: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp",
+          description:
+            "Church-planting operations platform surfacing church planter pastors, phases, areas, prayer requests, and ministry reports.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Cross-Cultural Mission",
+          url: "https://cross-cultural-mission-ccm.lovable.app",
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,
