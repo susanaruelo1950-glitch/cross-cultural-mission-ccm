@@ -22,10 +22,10 @@ export function MissionaryCard({ m }: { m: Missionary }) {
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const { lowData } = useLowData();
-  const { ref, inView } = useInView<HTMLDivElement>("300px");
+  const { ref } = useInView<HTMLDivElement>("300px");
   // Manual per-card reveal for low-data mode.
   const [revealed, setRevealed] = useState(false);
-  const showPhoto = !lowData || revealed || (inView && !lowData);
+  const showPhoto = !lowData || revealed;
   const { data: photoOverride, isFetching: photoFetching } = useMissionaryPhoto(m.id, {
     enabled: showPhoto,
   });
