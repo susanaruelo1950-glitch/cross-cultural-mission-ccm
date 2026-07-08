@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Church, MapPin } from "lucide-react";
+import { Church, MapPin, ImageOff, ImagePlus } from "lucide-react";
 import type { Missionary } from "@/lib/mission-data";
 import { getArea, getPhase } from "@/lib/mission-data";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
@@ -22,12 +23,14 @@ export function MissionaryCard({ m }: { m: Missionary }) {
   const phase = area ? getPhase(area.phaseId) : undefined;
   const { lowData } = useLowData();
   const { ref, inView } = useInView<HTMLDivElement>("300px");
-  // In low-data mode wait until the card scrolls near the viewport before
-  // fetching the signed-URL override; that avoids N storage calls up-front.
-  const shouldLoadPhoto = !lowData || inView;
-  const { data: photoOverride } = useMissionaryPhoto(m.id, { enabled: shouldLoadPhoto });
-  const photo = shouldLoadPhoto ? (photoOverride ?? m.photo) : undefined;
-  const showCover = !lowData && m.cover;
+  // Manual per-card reveal for low-data mode.
+  const [revealed, setRevealed] = useState(false);
+  const showPhoto = !lowData || revealed || (inView && !lowData);
+  const { data: photoOverride, isFetching: photoFetching } = useMissionaryPhoto(m.id, {
+    enabled: showPhoto,
+  });
+  const photo = showPhoto ? (photoOverride ?? m.photo) : undefined;
+  const showCover = (!lowData || revealed) && m.cover;
 
   return (
     <Link
@@ -45,17 +48,35 @@ export function MissionaryCard({ m }: { m: Missionary }) {
               decoding="async"
               className="absolute inset-0 h-full w-full object-cover opacity-90"
             />
+          ) : lowData && !revealed ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setRevealed(true);
+              }}
+              className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/10 text-xs font-medium text-white/95 backdrop-blur-sm transition hover:bg-black/20"
+              aria-label={`Show photos for ${m.fullName}`}
+            >
+              <ImagePlus className="h-3.5 w-3.5" /> Show photos
+            </button>
           ) : null}
         </div>
         <div className="-mt-8 flex flex-1 flex-col px-5 pb-5">
           <Avatar className="h-16 w-16 border-4 border-card shadow-soft">
-            <AvatarImage
-              src={photo}
-              alt={m.fullName}
-              loading="lazy"
-              decoding="async"
-            />
-            <AvatarFallback className="bg-primary/10 text-primary">{initials(m.fullName)}</AvatarFallback>
+            {showPhoto ? (
+              <AvatarImage src={photo} alt={m.fullName} loading="lazy" decoding="async" />
+            ) : null}
+            <AvatarFallback className="bg-primary/10 text-primary" aria-label={initials(m.fullName)}>
+              {photoFetching && showPhoto ? (
+                <span className="block h-full w-full animate-pulse bg-muted" />
+              ) : !showPhoto ? (
+                <ImageOff className="h-5 w-5 opacity-60" />
+              ) : (
+                initials(m.fullName)
+              )}
+            </AvatarFallback>
           </Avatar>
           <div className="mt-3">
             <h3 className="font-display text-lg font-semibold leading-tight text-foreground">
