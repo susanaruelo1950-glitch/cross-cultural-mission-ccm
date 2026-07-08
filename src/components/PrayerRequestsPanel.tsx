@@ -70,14 +70,11 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
 
   const toggleApproved = useMutation({
     mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
-      const patch: Record<string, unknown> = { coordinator_approved_public: approved };
-      if (approved) {
-        patch.approved_by = user?.id ?? null;
-        patch.approved_at = new Date().toISOString();
-      } else {
-        patch.approved_by = null;
-        patch.approved_at = null;
-      }
+      const patch = {
+        coordinator_approved_public: approved,
+        approved_by: approved ? user?.id ?? null : null,
+        approved_at: approved ? new Date().toISOString() : null,
+      };
       const { error } = await supabase.from("prayer_requests_db").update(patch).eq("id", id);
       if (error) throw error;
     },
