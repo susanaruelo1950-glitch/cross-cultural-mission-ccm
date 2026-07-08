@@ -116,7 +116,7 @@ function Brand() {
       </div>
       <div className="min-w-0">
         <div className="font-display text-lg font-semibold leading-tight text-sidebar-foreground">
-          Great Commission
+          Cross-Cultural Mission
         </div>
         <div className="truncate text-xs text-muted-foreground">Mission Management</div>
       </div>
@@ -275,7 +275,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <div className="grid h-8 w-8 place-items-center rounded-xl gradient-mission text-white">
                 <Cross className="h-4 w-4" aria-hidden />
               </div>
-              <span className="font-display text-sm font-semibold">Great Commission</span>
+              <span className="font-display text-sm font-semibold">Cross-Cultural Mission</span>
             </Link>
           </div>
           <HeaderSearch />

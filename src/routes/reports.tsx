@@ -9,7 +9,7 @@ import { getMissionary, reports } from "@/lib/mission-data";
 export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
-      { title: "Ministry Reports — Great Commission" },
+      { title: "Ministry Reports — Cross-Cultural Mission" },
       { name: "description", content: "Latest field reports from every missionary." },
     ],
   }),

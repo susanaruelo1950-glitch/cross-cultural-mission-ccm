@@ -37,7 +37,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 export const Route = createFileRoute("/manage")({
   head: () => ({
     meta: [
-      { title: "Manage Missionaries — Great Commission" },
+      { title: "Manage Missionaries — Cross-Cultural Mission" },
       { name: "description", content: "Add, edit, and organize phases, areas, and missionaries." },
     ],
   }),

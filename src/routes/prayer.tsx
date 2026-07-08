@@ -14,7 +14,7 @@ import { PrayerRequestsPanel, type DbPrayer } from "@/components/PrayerRequestsP
 export const Route = createFileRoute("/prayer")({
   head: () => ({
     meta: [
-      { title: "Prayer Center — Great Commission" },
+      { title: "Prayer Center — Cross-Cultural Mission" },
       { name: "description", content: "Live prayer requests from missionaries in the field." },
     ],
   }),

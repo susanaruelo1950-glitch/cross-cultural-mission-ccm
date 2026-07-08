@@ -45,7 +45,7 @@ export const Route = createFileRoute("/missionaries/$id")({
     return { m };
   },
   head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [{ title: "Missionary — Great Commission" }] };
+    if (!loaderData) return { meta: [{ title: "Missionary — Cross-Cultural Mission" }] };
     const m = loaderData.m;
     const meta: { name?: string; property?: string; content: string; title?: string }[] = [
       { name: "description", content: m.missionStatement || `${m.fullName} — ${m.church}` },

@@ -25,7 +25,7 @@ export const Route = createFileRoute("/map")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Mission Map — Great Commission" },
+      { title: "Mission Map — Cross-Cultural Mission" },
       {
         name: "description",
         content:

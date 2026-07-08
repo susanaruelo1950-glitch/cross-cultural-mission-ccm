@@ -18,7 +18,7 @@ import { useDirectory } from "@/hooks/use-directory";
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
     meta: [
-      { title: "Missionary Directory — Great Commission" },
+      { title: "Missionary Directory — Cross-Cultural Mission" },
       {
         name: "description",
         content: "Browse every church planter pastor by phase, area, and ministry focus.",

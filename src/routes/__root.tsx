@@ -87,14 +87,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Great Commission — Cross-Cultural Mission Management" },
+      { title: "Cross-Cultural Mission — Cross-Cultural Mission Management" },
       {
         name: "description",
         content:
           "Monitor, pray for, and support Filipino church planter pastors serving across the nations.",
       },
-      { name: "author", content: "Great Commission" },
-      { property: "og:title", content: "Great Commission — Mission Management" },
+      { name: "author", content: "Cross-Cultural Mission" },
+      { property: "og:title", content: "Cross-Cultural Mission — Mission Management" },
       {
         property: "og:description",
         content:

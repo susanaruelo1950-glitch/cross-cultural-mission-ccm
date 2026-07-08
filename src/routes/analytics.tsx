@@ -30,7 +30,7 @@ import {
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Annual Analytics — Great Commission" },
+      { title: "Annual Analytics — Cross-Cultural Mission" },
       {
         name: "description",
         content:
@@ -113,7 +113,7 @@ function Analytics() {
 
   function exportReport() {
     const rows: (string | number)[][] = [];
-    rows.push([`Great Commission — Annual Ministry Report ${year}`]);
+    rows.push([`Cross-Cultural Mission — Annual Ministry Report ${year}`]);
     rows.push([`Generated`, new Date().toISOString()]);
     rows.push([]);
     rows.push(["Summary"]);

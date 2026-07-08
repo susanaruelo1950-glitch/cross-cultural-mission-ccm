@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { missionaries, prayerRequests, reports } from "@/lib/mission-data";
 
 export const Route = createFileRoute("/assistant")({
-  head: () => ({ meta: [{ title: "AI Mission Assistant — Great Commission" }] }),
+  head: () => ({ meta: [{ title: "AI Mission Assistant — Cross-Cultural Mission" }] }),
   component: Assistant,
 });
 

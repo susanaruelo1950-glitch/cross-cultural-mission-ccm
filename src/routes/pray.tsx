@@ -29,7 +29,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/pray")({
   head: () => ({
     meta: [
-      { title: "Prayer Mode — Great Commission" },
+      { title: "Prayer Mode — Cross-Cultural Mission" },
       {
         name: "description",
         content:

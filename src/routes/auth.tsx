@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Great Commission" },
+      { title: "Sign in — Cross-Cultural Mission" },
       {
         name: "description",
         content: "Sign in or create an account to manage missionaries, post updates, and pray for church planters.",
@@ -94,7 +94,7 @@ function AuthPage() {
             <Cross className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-semibold">Great Commission</h1>
+            <h1 className="font-display text-2xl font-semibold">Cross-Cultural Mission</h1>
             <p className="text-sm text-muted-foreground">Sign in to manage & pray</p>
           </div>
         </div>
