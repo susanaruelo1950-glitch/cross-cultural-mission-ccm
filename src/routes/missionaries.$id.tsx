@@ -32,6 +32,9 @@ import {
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
+import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
+import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
+import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useState } from "react";
 import { toast } from "sonner";
 
