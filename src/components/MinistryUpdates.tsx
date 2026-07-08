@@ -67,6 +67,8 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
       ),
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   return (
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -109,34 +111,112 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                   </div>
                   <h4 className="font-display text-base font-semibold">{u.title}</h4>
                 </div>
-                {isAdmin ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      if (confirm("Delete this update?")) del.mutate(u.id);
-                    }}
-                    aria-label="Delete update"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {canEdit ? (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingId(editingId === u.id ? null : u.id)}
+                      aria-label="Edit update"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    {isAdmin ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm("Delete this update?")) del.mutate(u.id);
+                        }}
+                        aria-label="Delete update"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-              {u.image_url ? <UpdateImage path={u.image_url} title={u.title} /> : null}
-              {u.summary ? (
-                <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
-              ) : null}
-              {u.body ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-                  {u.body}
-                </p>
-              ) : null}
+              {editingId === u.id ? (
+                <UpdateEditForm
+                  update={u}
+                  onClose={() => setEditingId(null)}
+                  onSaved={() => {
+                    setEditingId(null);
+                    qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
+                  }}
+                />
+              ) : (
+                <>
+                  {u.image_url ? <UpdateImage path={u.image_url} title={u.title} /> : null}
+                  {u.summary ? (
+                    <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
+                  ) : null}
+                  {u.body ? (
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+                      {u.body}
+                    </p>
+                  ) : null}
+                </>
+              )}
             </article>
           ))
         )}
       </div>
     </Card>
+  );
+}
+
+function UpdateEditForm({
+  update,
+  onClose,
+  onSaved,
+}: {
+  update: Update;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(update.title);
+  const [summary, setSummary] = useState(update.summary ?? "");
+  const [body, setBody] = useState(update.body ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!title.trim()) return toast.error("Title is required.");
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("ministry_updates")
+        .update({
+          title: title.trim(),
+          summary: summary.trim() || null,
+          body: body.trim() || null,
+        })
+        .eq("id", update.id);
+      if (error) throw error;
+      toast.success("Update saved.");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
+      <Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Short summary" maxLength={280} />
+      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Full update" className="min-h-[120px]" maxLength={10000} />
+      <div className="flex gap-2">
+        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        </Button>
+        <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
+          <X className="h-4 w-4" /> Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 
