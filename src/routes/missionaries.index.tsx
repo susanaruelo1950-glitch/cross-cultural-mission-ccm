@@ -117,6 +117,28 @@ function Directory() {
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const nextPageItems = filtered.slice(pageStart + PAGE_SIZE, pageStart + PAGE_SIZE * 2);
+
+  // Prefetch signed photo URLs for the next page so pagination feels instant.
+  // Skip in low-data mode to keep bandwidth minimal.
+  useEffect(() => {
+    if (lowData || nextPageItems.length === 0) return;
+    for (const m of nextPageItems) {
+      qc.prefetchQuery({
+        queryKey: ["missionary_photo", m.id],
+        queryFn: async () => {
+          const { data } = await supabase
+            .from("missionary_photos")
+            .select("photo_url")
+            .eq("missionary_id", m.id)
+            .maybeSingle();
+          if (!data?.photo_url) return null;
+          return createDisplayUrl("missionary-photos", data.photo_url);
+        },
+        staleTime: 30 * 60 * 1000,
+      });
+    }
+  }, [nextPageItems, lowData, qc]);
 
   function resetFilter<T>(setter: (v: T) => void, value: T) {
     setter(value);
