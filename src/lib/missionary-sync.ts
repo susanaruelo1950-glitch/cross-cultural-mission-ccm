@@ -29,7 +29,13 @@ function ensureChannel() {
   return channel;
 }
 
-export function broadcastSync(payload: Omit<SyncEvent, "senderId">) {
+type SyncPayload =
+  | { kind: "missionary_upsert"; missionary: Missionary }
+  | { kind: "missionary_delete"; id: string }
+  | { kind: "area_upsert"; area: Area }
+  | { kind: "phase_upsert"; phase: Phase };
+
+export function broadcastSync(payload: SyncPayload) {
   const ch = ensureChannel();
   if (!ch) return;
   const event = { ...payload, senderId: SENDER_ID } as SyncEvent;
