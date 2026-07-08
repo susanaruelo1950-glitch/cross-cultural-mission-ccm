@@ -39,7 +39,7 @@ export function useDirectory() {
     queryFn: async (): Promise<Area[]> => {
       const { data, error } = await supabase
         .from("areas")
-        .select("id, phase_id, name, region_id, province_id, description, coordinator_name, gps_lat, gps_lng");
+        .select("id, phase_id, name, region_id, province_id, description, gps_lat, gps_lng");
       if (error) throw error;
       return (data ?? []).map((a) => ({
         id: a.id,
@@ -48,7 +48,6 @@ export function useDirectory() {
         region: a.region_id ?? undefined,
         province: a.province_id ?? undefined,
         description: a.description ?? undefined,
-        coordinatorName: a.coordinator_name ?? undefined,
         gps: a.gps_lat != null && a.gps_lng != null ? [a.gps_lat, a.gps_lng] : undefined,
       }));
     },
