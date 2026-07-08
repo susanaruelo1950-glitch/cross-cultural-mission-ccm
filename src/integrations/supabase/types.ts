@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       areas: {
         Row: {
-          coordinator_name: string | null
           created_at: string
           description: string | null
           gps_lat: number | null
@@ -28,7 +27,6 @@ export type Database = {
           region_id: string | null
         }
         Insert: {
-          coordinator_name?: string | null
           created_at?: string
           description?: string | null
           gps_lat?: number | null
@@ -40,7 +38,6 @@ export type Database = {
           region_id?: string | null
         }
         Update: {
-          coordinator_name?: string | null
           created_at?: string
           description?: string | null
           gps_lat?: number | null
