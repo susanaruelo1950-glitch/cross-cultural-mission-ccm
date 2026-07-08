@@ -14,7 +14,7 @@ import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
-import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
+
 import {
   missionariesByPhaseCount,
   missionStats,
