@@ -94,6 +94,8 @@ function MissionMap() {
         .filter((m): m is Missionary & { gps: [number, number] } => !!m),
     [filteredMissionaries],
   );
+  // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
+  const deferredPinned = useDeferredValue(pinned);
 
   const header = (
     <header className="flex flex-col gap-3">
