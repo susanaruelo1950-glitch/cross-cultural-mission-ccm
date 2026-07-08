@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles, Copy, Loader2, Download, Share2, FileText } from "lucide-react";
+import { Sparkles, Copy, Loader2, Download, Share2, FileText, MessageCircle, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -139,6 +139,20 @@ function Summaries() {
     }
   }
 
+  function shareWhatsApp() {
+    const m = getMissionary(missionaryId);
+    const title = m ? `${m.fullName} — Ministry Update\n\n` : "";
+    const url = `https://wa.me/?text=${encodeURIComponent(title + summary)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function shareEmail() {
+    const m = getMissionary(missionaryId);
+    const subject = m ? `${m.fullName} — Ministry Update` : "Ministry Update";
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary)}`;
+    window.location.href = url;
+  }
+
   return (
     <div className="space-y-5">
       <header>
@@ -229,10 +243,16 @@ function Summaries() {
                 <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
                   <Copy className="h-4 w-4" /> Copy
                 </Button>
-                <Button variant="outline" size="sm" onClick={share} className="rounded-full">
+                <Button variant="outline" size="sm" onClick={share} className="rounded-full" aria-label="Share via device">
                   <Share2 className="h-4 w-4" /> Share
                 </Button>
-                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full">
+                <Button variant="outline" size="sm" onClick={shareWhatsApp} className="rounded-full" aria-label="Share to WhatsApp">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </Button>
+                <Button variant="outline" size="sm" onClick={shareEmail} className="rounded-full" aria-label="Share by email">
+                  <Mail className="h-4 w-4" /> Email
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full" aria-label="Download as text file">
                   <Download className="h-4 w-4" /> .txt
                 </Button>
                 <Button
@@ -240,6 +260,7 @@ function Summaries() {
                   size="sm"
                   onClick={downloadSlideHtml}
                   className="rounded-full"
+                  aria-label="Download as slide deck"
                 >
                   <FileText className="h-4 w-4" /> Slides
                 </Button>

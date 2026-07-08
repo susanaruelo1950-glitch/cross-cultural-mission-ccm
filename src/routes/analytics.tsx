@@ -170,9 +170,16 @@ function Analytics() {
     downloadCsv(`great-commission-annual-report-${year}.csv`, rows);
   }
 
+  const [pdfStage, setPdfStage] = useState<string>("");
+
   async function exportPdf() {
-    if (!chartsRef.current) return;
+    if (!chartsRef.current) {
+      toast.error("Charts not ready yet — scroll down so charts render, then try again.");
+      return;
+    }
     setPdfBusy(true);
+    setPdfStage("Loading PDF engine…");
+    const progressToast = toast.loading("Loading PDF engine…");
     try {
       const [{ default: jsPDF }, autoTableMod, { default: html2canvas }] = await Promise.all([
         import("jspdf"),
@@ -184,6 +191,8 @@ function Analytics() {
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
 
+      setPdfStage("Rendering cover & summary…");
+      toast.loading("Rendering cover & summary…", { id: progressToast });
       // ── Cover page ────────────────────────────
       doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageW, pageH, "F");
@@ -234,12 +243,13 @@ function Analytics() {
       });
 
       // ── Charts (rasterized) ──────────────────
+      setPdfStage("Rasterizing charts…");
+      toast.loading("Rasterizing charts (this can take a few seconds)…", { id: progressToast });
       const canvas = await html2canvas(chartsRef.current, {
         backgroundColor: "#ffffff",
         scale: 1.5,
         useCORS: true,
       });
-      const imgData = canvas.toDataURL("image/png");
       const imgW = pageW - 80;
       const imgH = (canvas.height * imgW) / canvas.width;
       doc.addPage();
@@ -250,7 +260,6 @@ function Analytics() {
       let remaining = imgH;
       let sourceY = 0;
       const pageAvail = pageH - 100;
-      // Slice the tall image across pages
       while (remaining > 0) {
         const sliceH = Math.min(remaining, pageAvail);
         const sliceCanvas = document.createElement("canvas");
@@ -277,10 +286,10 @@ function Analytics() {
           y = 40;
         }
       }
-      // Undo the extra "Charts" heading page if empty — already used, fine.
-      void imgData;
 
       // ── Roster page ──────────────────────────
+      setPdfStage("Compiling roster…");
+      toast.loading("Compiling missionary roster…", { id: progressToast });
       doc.addPage();
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
@@ -304,14 +313,20 @@ function Analytics() {
         headStyles: { fillColor: [30, 58, 138] },
       });
 
+      setPdfStage("Saving file…");
       doc.save(`great-commission-annual-report-${year}.pdf`);
-      toast.success("PDF report ready.");
+      toast.success("PDF report ready — check your downloads.", { id: progressToast });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to build PDF.");
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`PDF export failed: ${msg}. Try closing other tabs or exporting CSV instead.`, {
+        id: progressToast,
+      });
     } finally {
       setPdfBusy(false);
+      setPdfStage("");
     }
   }
+
 
 
   return (
@@ -329,10 +344,10 @@ function Analytics() {
           <Button onClick={exportReport} variant="outline" className="rounded-full">
             <Download className="h-4 w-4" /> CSV
           </Button>
-          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full">
+          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full" aria-live="polite">
             {pdfBusy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Building PDF…
+                <Loader2 className="h-4 w-4 animate-spin" /> {pdfStage || "Building PDF…"}
               </>
             ) : (
               <>
