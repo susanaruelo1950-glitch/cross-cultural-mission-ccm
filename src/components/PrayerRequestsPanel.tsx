@@ -83,6 +83,7 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
   const urgent = items.filter((p) => p.urgent && !p.answered);
   const active = items.filter((p) => !p.answered);
   const answered = items.filter((p) => p.answered);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -131,53 +132,75 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                   : "border-border"
               }`}
             >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h4 className="font-display text-base font-semibold">{p.title}</h4>
-                <div className="flex items-center gap-2">
-                  {p.urgent && !p.answered ? (
-                    <Badge variant="destructive" className="rounded-full">
-                      <AlertTriangle className="h-3 w-3" /> Urgent
-                    </Badge>
+              {editingId === p.id ? (
+                <PrayerEditForm
+                  prayer={p}
+                  onClose={() => setEditingId(null)}
+                  onSaved={() => {
+                    setEditingId(null);
+                    qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h4 className="font-display text-base font-semibold">{p.title}</h4>
+                    <div className="flex items-center gap-2">
+                      {p.urgent && !p.answered ? (
+                        <Badge variant="destructive" className="rounded-full">
+                          <AlertTriangle className="h-3 w-3" /> Urgent
+                        </Badge>
+                      ) : null}
+                      {p.answered ? (
+                        <Badge className="rounded-full bg-secondary text-secondary-foreground">
+                          <Sparkles className="h-3 w-3" /> Answered
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                  {p.detail ? (
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/90">{p.detail}</p>
                   ) : null}
-                  {p.answered ? (
-                    <Badge className="rounded-full bg-secondary text-secondary-foreground">
-                      <Sparkles className="h-3 w-3" /> Answered
-                    </Badge>
-                  ) : null}
-                </div>
-              </div>
-              {p.detail ? (
-                <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/90">{p.detail}</p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>{new Date(p.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
-                {canEdit ? (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 rounded-full text-xs"
-                      onClick={() => toggleAnswered.mutate({ id: p.id, answered: !p.answered })}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      {p.answered ? "Mark active" : "Mark answered"}
-                    </Button>
-                    {isAdmin ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 rounded-full text-xs text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Delete this prayer request?")) del.mutate(p.id);
-                        }}
-                        aria-label="Delete prayer request"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{new Date(p.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+                    {canEdit ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 rounded-full text-xs"
+                          onClick={() => toggleAnswered.mutate({ id: p.id, answered: !p.answered })}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {p.answered ? "Mark active" : "Mark answered"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 rounded-full text-xs"
+                          onClick={() => setEditingId(p.id)}
+                          aria-label="Edit prayer request"
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        {isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 rounded-full text-xs text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              if (confirm("Delete this prayer request?")) del.mutate(p.id);
+                            }}
+                            aria-label="Delete prayer request"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
+                </>
+              )}
             </li>
           ))}
         </ul>
@@ -185,6 +208,58 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     </Card>
   );
 }
+
+function PrayerEditForm({
+  prayer,
+  onClose,
+  onSaved,
+}: {
+  prayer: DbPrayer;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(prayer.title);
+  const [detail, setDetail] = useState(prayer.detail ?? "");
+  const [urgent, setUrgent] = useState(prayer.urgent);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!title.trim()) return toast.error("Title is required.");
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("prayer_requests_db")
+        .update({ title: title.trim(), detail: detail.trim() || null, urgent })
+        .eq("id", prayer.id);
+      if (error) throw error;
+      toast.success("Prayer request updated.");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
+      <Textarea value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Details" className="min-h-[80px]" maxLength={2000} />
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox checked={urgent} onCheckedChange={(v) => setUrgent(Boolean(v))} /> Urgent
+      </label>
+      <div className="flex gap-2">
+        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        </Button>
+        <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
+          <X className="h-4 w-4" /> Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 function PrayerForm({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
