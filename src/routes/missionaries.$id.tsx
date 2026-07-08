@@ -59,7 +59,7 @@ export const Route = createFileRoute("/missionaries/$id")({
     const m = loaderData.m;
     const title = `${m.fullName} — Missionary Profile`;
     const desc = m.missionStatement || `${m.fullName} — ${m.church}`;
-    const meta: { name?: string; property?: string; content: string; title?: string }[] = [
+    const meta: Array<{ name?: string; property?: string; content?: string; title?: string }> = [
       { title },
       { name: "description", content: desc },
       { property: "og:title", content: `${m.fullName} — ${m.church}` },
