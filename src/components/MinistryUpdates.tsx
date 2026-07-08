@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ImagePlus, Trash2, Calendar } from "lucide-react";
+import { Loader2, Plus, ImagePlus, Trash2, Calendar, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignedUrl } from "@/hooks/use-signed-url";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +30,8 @@ interface Update {
 }
 
 const BUCKET = "ministry-updates";
+const MAX_MB = 5;
 
-/**
- * DB-backed list + admin form for a missionary's ministry updates.
- * - Anyone can read
- * - Admin/Coordinator can add (with an optional image upload) or delete
- */
 export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   const { canEdit, isAdmin } = useAuth();
   const qc = useQueryClient();
@@ -61,7 +58,12 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
       toast.success("Update deleted.");
       qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) =>
+      toast.error(
+        /row-level|permission/i.test(e.message)
+          ? "You don't have permission to delete this update."
+          : e.message,
+      ),
   });
 
   return (
@@ -120,14 +122,7 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                   </Button>
                 ) : null}
               </div>
-              {u.image_url ? (
-                <img
-                  src={u.image_url}
-                  alt=""
-                  className="mt-3 max-h-80 w-full rounded-xl object-cover"
-                  loading="lazy"
-                />
-              ) : null}
+              {u.image_url ? <UpdateImage path={u.image_url} title={u.title} /> : null}
               {u.summary ? (
                 <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
               ) : null}
@@ -144,31 +139,72 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   );
 }
 
+function UpdateImage({ path, title }: { path: string; title: string }) {
+  const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  if (isLoading) {
+    return (
+      <div className="mt-3 flex h-40 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
+        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Loading image…
+      </div>
+    );
+  }
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt={title}
+      className="mt-3 max-h-80 w-full rounded-xl object-cover"
+      loading="lazy"
+    />
+  );
+}
+
 function UpdateForm({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+
+  function pickFile(f: File | null) {
+    if (!f) {
+      setFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+    if (!f.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (f.size > MAX_MB * 1024 * 1024) {
+      toast.error(`Image too large. Max ${MAX_MB} MB.`);
+      return;
+    }
+    setFile(f);
+    setPreviewUrl(URL.createObjectURL(f));
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return toast.error("Title is required.");
     setBusy(true);
     try {
-      let image_url: string | null = null;
+      let image_path: string | null = null;
       if (file) {
-        const ext = file.name.split(".").pop() ?? "jpg";
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${missionaryId}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+        const { error: upErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type || undefined,
+          });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-        image_url = pub.publicUrl;
+        image_path = path;
       }
 
       const { error } = await supabase.from("ministry_updates").insert({
@@ -176,18 +212,23 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
         title: title.trim(),
         summary: summary.trim() || null,
         body: body.trim() || null,
-        image_url,
+        image_url: image_path,
       });
       if (error) throw error;
       toast.success("Update posted.");
       setTitle("");
       setSummary("");
       setBody("");
-      setFile(null);
+      pickFile(null);
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to post update.");
+      const msg = err instanceof Error ? err.message : "Failed to post update.";
+      toast.error(
+        /row-level|permission/i.test(msg)
+          ? "You don't have permission to post updates for this missionary."
+          : msg,
+      );
     } finally {
       setBusy(false);
     }
@@ -232,18 +273,32 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="mu-photo" className="flex items-center gap-1.5">
-          <ImagePlus className="h-4 w-4" /> Photo (optional)
+          <ImagePlus className="h-4 w-4" /> Photo (optional, max {MAX_MB} MB)
         </Label>
         <Input
           id="mu-photo"
           type="file"
           accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
         />
-        {file ? (
-          <p className="text-xs text-muted-foreground">
-            {file.name} · {(file.size / 1024).toFixed(0)} KB
-          </p>
+        {previewUrl ? (
+          <div className="relative mt-1 w-fit">
+            <img
+              src={previewUrl}
+              alt=""
+              className="max-h-40 rounded-xl object-cover"
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="absolute right-1 top-1 h-7 w-7 rounded-full bg-background/80"
+              onClick={() => pickFile(null)}
+              aria-label="Remove image"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         ) : null}
       </div>
       <div className="flex flex-wrap gap-2">
