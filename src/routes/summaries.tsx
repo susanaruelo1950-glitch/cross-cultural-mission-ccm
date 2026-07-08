@@ -243,10 +243,16 @@ function Summaries() {
                 <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
                   <Copy className="h-4 w-4" /> Copy
                 </Button>
-                <Button variant="outline" size="sm" onClick={share} className="rounded-full">
+                <Button variant="outline" size="sm" onClick={share} className="rounded-full" aria-label="Share via device">
                   <Share2 className="h-4 w-4" /> Share
                 </Button>
-                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full">
+                <Button variant="outline" size="sm" onClick={shareWhatsApp} className="rounded-full" aria-label="Share to WhatsApp">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </Button>
+                <Button variant="outline" size="sm" onClick={shareEmail} className="rounded-full" aria-label="Share by email">
+                  <Mail className="h-4 w-4" /> Email
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full" aria-label="Download as text file">
                   <Download className="h-4 w-4" /> .txt
                 </Button>
                 <Button
@@ -254,6 +260,7 @@ function Summaries() {
                   size="sm"
                   onClick={downloadSlideHtml}
                   className="rounded-full"
+                  aria-label="Download as slide deck"
                 >
                   <FileText className="h-4 w-4" /> Slides
                 </Button>
