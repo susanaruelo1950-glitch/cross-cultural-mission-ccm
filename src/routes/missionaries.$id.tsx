@@ -44,19 +44,56 @@ export const Route = createFileRoute("/missionaries/$id")({
     if (!m) throw notFound();
     return { m };
   },
-  head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [{ title: "Missionary — Cross-Cultural Mission" }] };
+  head: ({ params, loaderData }) => {
+    const base = "https://cross-cultural-mission-ccm.lovable.app";
+    const url = `${base}/missionaries/${params.id}`;
+    if (!loaderData) {
+      return {
+        meta: [
+          { title: "Missionary — Cross-Cultural Mission" },
+          { property: "og:url", content: url },
+        ],
+        links: [{ rel: "canonical", href: url }],
+      };
+    }
     const m = loaderData.m;
+    const title = `${m.fullName} — Missionary Profile`;
+    const desc = m.missionStatement || `${m.fullName} — ${m.church}`;
     const meta: { name?: string; property?: string; content: string; title?: string }[] = [
-      { name: "description", content: m.missionStatement || `${m.fullName} — ${m.church}` },
+      { title },
+      { name: "description", content: desc },
       { property: "og:title", content: `${m.fullName} — ${m.church}` },
-      { property: "og:description", content: m.missionStatement || m.church },
+      { property: "og:description", content: desc },
+      { property: "og:type", content: "profile" },
+      { property: "og:url", content: url },
+      { name: "twitter:title", content: `${m.fullName} — ${m.church}` },
+      { name: "twitter:description", content: desc },
     ];
     if (m.cover) {
       meta.push({ property: "og:image", content: m.cover });
       meta.push({ name: "twitter:image", content: m.cover });
     }
-    return { meta: [{ title: `${m.fullName} — Missionary Profile` }, ...meta] };
+    return {
+      meta,
+      links: [{ rel: "canonical", href: url }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ProfilePage",
+            mainEntity: {
+              "@type": "Person",
+              name: m.fullName,
+              description: desc,
+              affiliation: { "@type": "Organization", name: m.church || "Cross-Cultural Mission" },
+              image: m.cover || undefined,
+              url,
+            },
+          }),
+        },
+      ],
+    };
   },
   component: Profile,
 });
