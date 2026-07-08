@@ -121,12 +121,6 @@ function Profile() {
   const gallery: NonNullable<Missionary["gallery"]> = m.gallery ?? [];
   const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
 
-  function updateStage(stage: JourneyStage) {
-    const updated = { ...m, journeyStage: stage };
-    setM(updated);
-    upsertMissionary(updated);
-    toast.success(`Milestone updated to “${stage}”.`);
-  }
 
   return (
     <div className="space-y-6">
