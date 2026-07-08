@@ -19,6 +19,8 @@ function initials(name: string) {
 export function MissionaryCard({ m }: { m: Missionary }) {
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
+  const { data: photoOverride } = useMissionaryPhoto(m.id);
+  const photo = photoOverride ?? m.photo;
 
   return (
     <Link
