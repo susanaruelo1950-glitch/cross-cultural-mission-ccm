@@ -82,6 +82,7 @@ function Dashboard() {
 
   return (
     <div className="space-y-8">
+      <h1 className="sr-only">Cross-Cultural Mission — Church Planting Dashboard</h1>
       {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
       <section
         aria-label="Scripture of the day"
