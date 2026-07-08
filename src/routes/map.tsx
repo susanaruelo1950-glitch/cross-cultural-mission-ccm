@@ -30,10 +30,6 @@ function MissionMap() {
       setLeaflet(rl);
       setL(l);
     });
-      if (!mounted) return;
-      setLeaflet(rl);
-      setL(l);
-    });
     return () => {
       mounted = false;
     };
