@@ -25,11 +25,8 @@ import {
   getPhase,
   prayerByMissionary,
   reportsByMissionary,
-  upsertMissionary,
-  type JourneyStage,
   type Missionary,
 } from "@/lib/mission-data";
-import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
 import { ThankYouLetters } from "@/components/ThankYouLetters";
@@ -37,7 +34,6 @@ import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
 import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useState } from "react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
