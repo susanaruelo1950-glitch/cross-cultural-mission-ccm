@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { areas, missionaries, phases, getArea } from "@/lib/mission-data";
+import { getArea } from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
@@ -34,6 +35,7 @@ const ALL = "__all__";
 function Directory() {
   const { q: qFromUrl } = Route.useSearch();
   const [q, setQ] = useState(qFromUrl ?? "");
+  const { phases, areas, missionaries } = useDataStore();
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
 
