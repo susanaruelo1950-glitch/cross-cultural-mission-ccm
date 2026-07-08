@@ -254,7 +254,18 @@ export const seedAreas: Area[] = [
     description: "Alliance fellowships and church plants across Arakan Valley.",
     gps: [7.398, 125.135],
   },
+  {
+    id: "area-kidapawan",
+    phaseId: "phase-2",
+    name: "Kidapawan Area",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    coordinatorName: "Glyn Michael G. Dolauta",
+    description: "Alliance and Evangelical church plants across Kidapawan City, Makilala, and President Roxas.",
+    gps: [7.008, 125.089],
+  },
 ];
+
 
 // Small deterministic offset so pins in the same area don't stack.
 function offset(base: [number, number], i: number): [number, number] {
