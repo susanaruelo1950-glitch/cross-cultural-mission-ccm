@@ -180,26 +180,51 @@ function LetterEditForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const qc = useQueryClient();
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
-  const [saving, setSaving] = useState(false);
 
-  async function save() {
-    if (!title.trim()) return toast.error("Title is required.");
-    setSaving(true);
-    try {
+  const keys = [
+    ["thank_you_letters", letter.missionary_id],
+    ["thank_you_letters_admin", letter.missionary_id],
+  ] as const;
+
+  const save = useMutation({
+    mutationFn: async (patch: { title: string; message: string | null }) => {
       const { error } = await supabase
         .from("thank_you_letters")
-        .update({ title: title.trim(), message: message.trim() || null })
+        .update(patch)
         .eq("id", letter.id);
       if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      const snapshots = await Promise.all(
+        keys.map(async (key) => {
+          await qc.cancelQueries({ queryKey: key });
+          return [key, qc.getQueryData(key)] as const;
+        }),
+      );
+      for (const [key] of snapshots) {
+        qc.setQueryData<Letter[] | undefined>(key, (prev) =>
+          prev?.map((l) => (l.id === letter.id ? { ...l, ...patch } : l)),
+        );
+      }
+      return { snapshots };
+    },
+    onError: (err, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(err instanceof Error ? `Update failed: ${err.message}. Reverted.` : "Update failed. Reverted.");
+    },
+    onSuccess: () => {
       toast.success("Letter updated.");
       onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed.");
-    } finally {
-      setSaving(false);
-    }
+    },
+    onSettled: () => keys.forEach((k) => qc.invalidateQueries({ queryKey: k })),
+  });
+
+  function submit() {
+    if (!title.trim()) return toast.error("Title is required.");
+    save.mutate({ title: title.trim(), message: message.trim() || null });
   }
 
   return (
@@ -207,8 +232,8 @@ function LetterEditForm({
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
       <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
       <div className="flex gap-2">
-        <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
         </Button>
         <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
@@ -217,6 +242,7 @@ function LetterEditForm({
     </div>
   );
 }
+
 
 function LetterAttachment({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
