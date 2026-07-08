@@ -17,7 +17,7 @@ import {
 export const Route = createFileRoute("/import")({
   head: () => ({
     meta: [
-      { title: "Import Data — Great Commission" },
+      { title: "Import Data — Cross-Cultural Mission" },
       { name: "description", content: "Bulk upload phases, areas, and missionaries via CSV or JSON." },
     ],
   }),

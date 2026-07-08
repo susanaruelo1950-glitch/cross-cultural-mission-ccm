@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CoordinatorAssignments } from "@/components/CoordinatorAssignments";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — Great Commission" }] }),
+  head: () => ({ meta: [{ title: "Admin — Cross-Cultural Mission" }] }),
   component: AdminPage,
 });
 

@@ -20,7 +20,7 @@ import { summarizeReport } from "@/lib/ai.functions";
 export const Route = createFileRoute("/summaries")({
   head: () => ({
     meta: [
-      { title: "AI Summaries — Great Commission" },
+      { title: "AI Summaries — Cross-Cultural Mission" },
       {
         name: "description",
         content:

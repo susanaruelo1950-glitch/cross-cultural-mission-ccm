@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/documents")({
-  head: () => ({ meta: [{ title: "Document Library — Great Commission" }] }),
+  head: () => ({ meta: [{ title: "Document Library — Cross-Cultural Mission" }] }),
   component: DocsPage,
 });
 

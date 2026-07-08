@@ -9,7 +9,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 export const Route = createFileRoute("/phases")({
   head: () => ({
     meta: [
-      { title: "Phases & Areas — Great Commission" },
+      { title: "Phases & Areas — Cross-Cultural Mission" },
       { name: "description", content: "Organizational structure: every phase, area, coordinator, and team." },
     ],
   }),

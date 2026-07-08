@@ -14,7 +14,7 @@ import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
-import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
+
 import {
   missionariesByPhaseCount,
   missionStats,
@@ -26,7 +26,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mission Dashboard — Great Commission" },
+      { title: "Mission Dashboard — Cross-Cultural Mission" },
       {
         name: "description",
         content:
@@ -97,8 +97,6 @@ function Dashboard() {
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
       </section>
 
-      {/* Compact scripture card echoed below for high-contrast surfaces */}
-      <ScriptureOfTheDay />
 
 
       {/* Stat grid */}
