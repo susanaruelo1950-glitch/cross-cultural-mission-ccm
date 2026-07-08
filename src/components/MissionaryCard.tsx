@@ -39,7 +39,7 @@ export function MissionaryCard({ m }: { m: Missionary }) {
         </div>
         <div className="-mt-8 flex flex-1 flex-col px-5 pb-5">
           <Avatar className="h-16 w-16 border-4 border-card shadow-soft">
-            <AvatarImage src={m.photo} alt={m.fullName} loading="lazy" />
+            <AvatarImage src={photo} alt={m.fullName} loading="lazy" />
             <AvatarFallback className="bg-primary/10 text-primary">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="mt-3">
