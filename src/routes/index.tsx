@@ -14,6 +14,7 @@ import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import {
   missionariesByPhaseCount,
   missionStats,
@@ -36,6 +37,21 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
+const DASHBOARD_VERSES: { ref: string; text: string }[] = [
+  { ref: "Matthew 28:19", text: "Therefore go and make disciples of all nations." },
+  { ref: "Isaiah 6:8", text: "Here am I. Send me!" },
+  { ref: "Acts 1:8", text: "You will be my witnesses… to the ends of the earth." },
+  { ref: "Mark 16:15", text: "Go into all the world and preach the gospel to all creation." },
+  { ref: "Psalm 96:3", text: "Declare his glory among the nations, his marvelous deeds among all peoples." },
+  { ref: "Matthew 9:37-38", text: "The harvest is plentiful but the workers are few." },
+  { ref: "Romans 10:15", text: "How beautiful are the feet of those who bring good news!" },
+  { ref: "John 4:35", text: "Look at the fields! They are ripe for harvest." },
+  { ref: "Luke 10:2", text: "Ask the Lord of the harvest to send out workers into his harvest field." },
+  { ref: "Revelation 7:9", text: "A great multitude… from every nation, tribe, people and language." },
+  { ref: "Habakkuk 2:14", text: "The earth will be filled with the knowledge of the glory of the LORD." },
+  { ref: "Matthew 16:18", text: "I will build my church, and the gates of Hades will not overcome it." },
+];
+
 function Dashboard() {
   const { phases, areas, missionaries } = useDataStore();
   const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
@@ -46,32 +62,44 @@ function Dashboard() {
   const recentReports = [...reports]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 4);
+  const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
+
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10">
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" /> Mission Snapshot
-          </div>
-          <h1 className="mt-4 font-display text-3xl font-semibold leading-tight sm:text-5xl">
-            Every people group. Every area. Every prayer.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
-            Track church planter pastors across every phase and area — for the glory of Christ.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="secondary" className="rounded-full">
-              <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" /></Link>
-            </Button>
-            <Button asChild size="sm" variant="ghost" className="rounded-full bg-white/10 text-white hover:bg-white/20">
-              <Link to="/phases">View phases & areas</Link>
-            </Button>
+      {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
+      <section
+        aria-label="Scripture of the day"
+        className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10"
+      >
+        <div className="relative z-10 grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture of the Day
+            </div>
+            <blockquote className="mt-4 font-display text-2xl font-semibold leading-tight sm:text-4xl">
+              "{TODAYS_VERSE.text}"
+            </blockquote>
+            <div className="mt-3 text-sm font-medium text-white/80">— {TODAYS_VERSE.ref}</div>
+            <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
+              Every people group. Every area. Every prayer — for the glory of Christ.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary" className="rounded-full">
+                <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" /></Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost" className="rounded-full bg-white/10 text-white hover:bg-white/20">
+                <Link to="/prayer">Open Prayer Center</Link>
+              </Button>
+            </div>
           </div>
         </div>
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
       </section>
+
+      {/* Compact scripture card echoed below for high-contrast surfaces */}
+      <ScriptureOfTheDay />
+
 
       {/* Stat grid */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
