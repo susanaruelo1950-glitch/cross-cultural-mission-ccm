@@ -25,9 +25,13 @@ import {
   getPhase,
   prayerByMissionary,
   reportsByMissionary,
+  upsertMissionary,
+  type JourneyStage,
   type Missionary,
 } from "@/lib/mission-data";
 import { JourneyTimeline } from "@/components/JourneyTimeline";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
@@ -57,7 +61,8 @@ function initials(name: string) {
 }
 
 function Profile() {
-  const { m } = Route.useLoaderData() as { m: Missionary };
+  const { m: initial } = Route.useLoaderData() as { m: Missionary };
+  const [m, setM] = useState<Missionary>(initial);
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const myReports = reportsByMissionary(m.id);
@@ -70,6 +75,13 @@ function Profile() {
   const needs: string[] = m.needs ?? [];
   const gallery: NonNullable<Missionary["gallery"]> = m.gallery ?? [];
   const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
+
+  function updateStage(stage: JourneyStage) {
+    const updated = { ...m, journeyStage: stage };
+    setM(updated);
+    upsertMissionary(updated);
+    toast.success(`Milestone updated to “${stage}”.`);
+  }
 
   return (
     <div className="space-y-6">
@@ -128,7 +140,11 @@ function Profile() {
             Mission Journey
           </span>
         </div>
-        <JourneyTimeline current={m.journeyStage ?? "Church Planting"} />
+        <JourneyTimeline
+          current={m.journeyStage ?? "Church Planting"}
+          editable
+          onChange={updateStage}
+        />
       </Card>
 
       <Tabs defaultValue="overview" className="w-full">

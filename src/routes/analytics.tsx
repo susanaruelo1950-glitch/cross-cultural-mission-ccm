@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Download, BarChart3 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Download, BarChart3, FileDown, Loader2 } from "lucide-react";
 import {
   allAreas,
   allMissionaries,
@@ -12,6 +12,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
+import { toast } from "sonner";
 import {
   Bar,
   BarChart,
@@ -69,6 +70,8 @@ function Analytics() {
   const missionaries = allMissionaries();
   const phases = allPhases();
   const areas = allAreas();
+  const chartsRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const byPhase = useMemo(
     () =>
@@ -167,6 +170,150 @@ function Analytics() {
     downloadCsv(`great-commission-annual-report-${year}.csv`, rows);
   }
 
+  async function exportPdf() {
+    if (!chartsRef.current) return;
+    setPdfBusy(true);
+    try {
+      const [{ default: jsPDF }, autoTableMod, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+        import("html2canvas"),
+      ]);
+      const autoTable = (autoTableMod as unknown as { default: typeof import("jspdf-autotable").default }).default;
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+
+      // ── Cover page ────────────────────────────
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, pageH, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("GREAT COMMISSION", pageW / 2, pageH / 2 - 100, { align: "center" });
+      doc.setFontSize(34);
+      doc.text("Annual Ministry Report", pageW / 2, pageH / 2 - 40, { align: "center" });
+      doc.setFontSize(48);
+      doc.setTextColor(148, 197, 255);
+      doc.text(String(year), pageW / 2, pageH / 2 + 30, { align: "center" });
+      doc.setFontSize(12);
+      doc.setTextColor(200, 210, 230);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `${missionStats.totalMissionaries} missionaries · ${missionStats.totalAreas} areas · ${missionStats.totalChurches} churches`,
+        pageW / 2,
+        pageH / 2 + 70,
+        { align: "center" },
+      );
+      doc.setFontSize(10);
+      doc.text(`Generated ${new Date().toLocaleDateString()}`, pageW / 2, pageH - 60, {
+        align: "center",
+      });
+
+      // ── Summary page ──────────────────────────
+      doc.addPage();
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("Summary", 40, 60);
+      autoTable(doc, {
+        startY: 80,
+        head: [["Metric", "Value"]],
+        body: [
+          ["Total missionaries", String(missionStats.totalMissionaries)],
+          ["Total phases", String(missionStats.totalPhases)],
+          ["Total areas", String(missionStats.totalAreas)],
+          ["Total churches", String(missionStats.totalChurches)],
+          ["Active missionaries", String(missionStats.totalActive)],
+          ["Churches planted", String(missionStats.totalChurchesPlanted)],
+          ["Baptisms", String(missionStats.totalBaptisms)],
+          ["Leaders trained", String(missionStats.totalLeadersTrained)],
+        ],
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [30, 58, 138] },
+      });
+
+      // ── Charts (rasterized) ──────────────────
+      const canvas = await html2canvas(chartsRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 1.5,
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const imgW = pageW - 80;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("Charts", 40, 60);
+      let y = 80;
+      let remaining = imgH;
+      let sourceY = 0;
+      const pageAvail = pageH - 100;
+      // Slice the tall image across pages
+      while (remaining > 0) {
+        const sliceH = Math.min(remaining, pageAvail);
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = (sliceH * canvas.width) / imgW;
+        const ctx = sliceCanvas.getContext("2d");
+        if (!ctx) break;
+        ctx.drawImage(
+          canvas,
+          0,
+          (sourceY * canvas.width) / imgW,
+          canvas.width,
+          sliceCanvas.height,
+          0,
+          0,
+          canvas.width,
+          sliceCanvas.height,
+        );
+        doc.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 40, y, imgW, sliceH);
+        remaining -= sliceH;
+        sourceY += sliceH;
+        if (remaining > 0) {
+          doc.addPage();
+          y = 40;
+        }
+      }
+      // Undo the extra "Charts" heading page if empty — already used, fine.
+      void imgData;
+
+      // ── Roster page ──────────────────────────
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("Missionary Roster", 40, 60);
+      autoTable(doc, {
+        startY: 80,
+        head: [["Name", "Church", "Phase", "Area", "Focus", "Stage"]],
+        body: missionaries.map((m) => {
+          const a = areas.find((x) => x.id === m.areaId);
+          const p = phases.find((x) => x.id === a?.phaseId);
+          return [
+            m.fullName,
+            m.church,
+            p?.name.replace(/^Phase \d+ — /, "") ?? "",
+            a?.name ?? "",
+            m.ministryFocus ?? "",
+            m.journeyStage ?? "",
+          ];
+        }),
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [30, 58, 138] },
+      });
+
+      doc.save(`great-commission-annual-report-${year}.pdf`);
+      toast.success("PDF report ready.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to build PDF.");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -178,9 +325,22 @@ function Analytics() {
             Ministry metrics compiled from the entire missionary directory.
           </p>
         </div>
-        <Button onClick={exportReport} className="rounded-full">
-          <Download className="h-4 w-4" /> Download report (CSV)
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={exportReport} variant="outline" className="rounded-full">
+            <Download className="h-4 w-4" /> CSV
+          </Button>
+          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full">
+            {pdfBusy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Building PDF…
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4" /> PDF (with charts)
+              </>
+            )}
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -190,7 +350,7 @@ function Analytics() {
         <StatCard label="Provinces reached" value={missionStats.totalProvinces} icon={BarChart3} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div ref={chartsRef} className="grid gap-6 bg-background lg:grid-cols-2">
         <Card className="card-soft p-6">
           <h2 className="font-display text-lg font-semibold">Missionaries by phase</h2>
           <div className="mt-4 h-64">

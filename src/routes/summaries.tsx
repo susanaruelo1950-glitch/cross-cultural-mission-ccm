@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles, Copy, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Loader2, Download, Share2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,74 @@ function Summaries() {
   async function copy() {
     await navigator.clipboard.writeText(summary);
     toast.success("Copied to clipboard.");
+  }
+
+  function fileBase() {
+    const m = getMissionary(missionaryId);
+    const name = (m?.fullName ?? "missionary").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return `summary-${name}-${audience}`;
+  }
+
+  function downloadTxt() {
+    const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileBase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded as text.");
+  }
+
+  function downloadSlideHtml() {
+    const m = getMissionary(missionaryId);
+    const title = m ? `${m.fullName} — ${m.church}` : "Ministry Update";
+    const slides = summary
+      .split(/\n\s*\n/)
+      .map(
+        (block, idx) =>
+          `<section class="slide"><h2>${idx === 0 ? title : `Slide ${idx + 1}`}</h2><div>${block
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/\n/g, "<br/>")}</div></section>`,
+      )
+      .join("\n");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0b1220;margin:0;padding:24px;color:#0f172a}
+  .slide{background:white;border-radius:16px;padding:56px;margin:0 auto 24px;max-width:960px;min-height:540px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  h2{font-size:32px;margin:0 0 24px;color:#1e3a8a}
+  div{font-size:20px;line-height:1.55}
+  @media print{ body{background:white} .slide{box-shadow:none;page-break-after:always} }
+</style></head><body>${slides}
+<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),400))</script>
+</body></html>`;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileBase()}-slides.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Slides downloaded — open the file to present or print to PDF.");
+  }
+
+  async function share() {
+    const m = getMissionary(missionaryId);
+    const title = m ? `${m.fullName} — Ministry Update` : "Ministry Update";
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    if (!nav) return;
+    try {
+      if (typeof nav.share === "function") {
+        await nav.share({ title, text: summary });
+        toast.success("Shared.");
+      } else {
+        await nav.clipboard.writeText(summary);
+        toast.success("Sharing not supported — copied to clipboard instead.");
+      }
+    } catch {
+      /* user cancelled */
+    }
   }
 
   return (
@@ -154,12 +222,28 @@ function Summaries() {
         </Card>
 
         <Card className="card-soft p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold">Shareable update</h2>
             {summary ? (
-              <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
-                <Copy className="h-4 w-4" /> Copy
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={copy} className="rounded-full">
+                  <Copy className="h-4 w-4" /> Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={share} className="rounded-full">
+                  <Share2 className="h-4 w-4" /> Share
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadTxt} className="rounded-full">
+                  <Download className="h-4 w-4" /> .txt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadSlideHtml}
+                  className="rounded-full"
+                >
+                  <FileText className="h-4 w-4" /> Slides
+                </Button>
+              </div>
             ) : null}
           </div>
           {summary ? (
@@ -168,7 +252,8 @@ function Summaries() {
             </pre>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">
-              Your AI-generated update will appear here.
+              Your AI-generated update will appear here. Once ready, copy, share, download as text,
+              or export as newsletter-ready slides you can print or paste into presentations.
             </p>
           )}
         </Card>
