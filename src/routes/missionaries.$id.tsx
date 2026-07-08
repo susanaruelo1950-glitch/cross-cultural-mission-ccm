@@ -126,11 +126,13 @@ function Profile() {
             </div>
           </div>
           <div className="col-span-2 flex gap-2 sm:col-span-1 sm:self-end">
-            <Button className="rounded-full"><Heart className="h-4 w-4" /> Pray</Button>
             <Button variant="outline" className="rounded-full"><HeartHandshake className="h-4 w-4" /> Support</Button>
           </div>
         </div>
       </div>
+
+      {/* Prayer counter — DB-backed "I prayed for this pastor" */}
+      <PrayerCounter missionaryId={m.id} />
 
       {/* Mission journey timeline — commissioning through multiplication */}
       <Card className="card-soft p-6">
@@ -146,6 +148,9 @@ function Profile() {
           onChange={updateStage}
         />
       </Card>
+
+      {/* Ministry updates (DB-backed, admin can add with photo) */}
+      <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto rounded-full bg-muted p-1">
