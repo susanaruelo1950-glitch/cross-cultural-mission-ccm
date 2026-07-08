@@ -56,7 +56,7 @@ function initials(name: string) {
 }
 
 function Profile() {
-  const { m } = Route.useLoaderData();
+  const { m } = Route.useLoaderData() as { m: Missionary };
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const myReports = reportsByMissionary(m.id);
@@ -64,11 +64,11 @@ function Profile() {
   const needed = m.monthlySupportNeeded ?? 0;
   const received = m.supportReceived ?? 0;
   const supportPct = needed ? Math.round((received / needed) * 100) : 0;
-  const children = m.children ?? [];
-  const languages = m.languages ?? [];
-  const needs = m.needs ?? [];
-  const gallery = m.gallery ?? [];
-  const timeline = m.timeline ?? [];
+  const children: string[] = m.children ?? [];
+  const languages: string[] = m.languages ?? [];
+  const needs: string[] = m.needs ?? [];
+  const gallery: NonNullable<Missionary["gallery"]> = m.gallery ?? [];
+  const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
 
   return (
     <div className="space-y-6">
