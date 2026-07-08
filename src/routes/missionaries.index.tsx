@@ -57,6 +57,8 @@ function Directory() {
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
   const [page, setPage] = useState(1);
+  const { lowData, setLowData } = useLowData();
+  const qc = useQueryClient();
 
   // Build an area lookup map keyed by area id — the same id lives on
   // missionary.areaId regardless of whether the source is DB or seed data.
