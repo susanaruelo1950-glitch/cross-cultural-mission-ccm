@@ -122,21 +122,6 @@ function PrayerMode() {
     setI((v) => (v + 1) % order.length);
   };
   const prev = () => setI((v) => (v - 1 + order.length) % order.length);
-  // Keyboard nav: ← previous, → next, space toggle pause
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
-      if (e.key === "ArrowRight") next();
-      else if (e.key === "ArrowLeft") prev();
-      else if (e.key === " " || e.key === "Spacebar") {
-        e.preventDefault();
-        setPaused((p) => !p);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order.length, prayers.length]);
   const shuffle = () => {
     const shuffled = [...order].sort(() => Math.random() - 0.5);
     setOrder(shuffled);
