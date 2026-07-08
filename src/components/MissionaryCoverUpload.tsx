@@ -1,13 +1,16 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
 
 const BUCKET = "missionary-photos";
 const MAX_MB = 8;
+// Matches the hero container (~1200x240 on desktop, ~360x192 on mobile).
+const COVER_ASPECT = 16 / 5;
 
 interface Props {
   missionaryId: string;
@@ -16,15 +19,17 @@ interface Props {
 
 /**
  * Admin / scoped-coordinator upload for the profile cover/background image
- * (e.g. a family photo). Stores the storage path under `missionary_photos.cover_url`.
+ * (e.g. a family photo). Opens a crop dialog so the framing fits the hero
+ * container regardless of the source image aspect. Stores the storage path
+ * under `missionary_photos.cover_url`.
  */
 export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sourceName, setSourceName] = useState<string>("cover.jpg");
   const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [selected, setSelected] = useState<File | null>(null);
 
   const mut = useMutation({
     mutationFn: async (file: File): Promise<string> => {
@@ -36,18 +41,16 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
         contentType: file.type || undefined,
       });
       if (upErr) throw upErr;
-      const { error: dbErr } = await supabase
-        .from("missionary_photos")
-        .upsert(
-          {
-            missionary_id: missionaryId,
-            // photo_url is NOT NULL — preserve any existing value with a fallback
-            photo_url: (await currentPhotoUrl(missionaryId)) ?? path,
-            cover_url: path,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "missionary_id" },
-        );
+      const { error: dbErr } = await supabase.from("missionary_photos").upsert(
+        {
+          missionary_id: missionaryId,
+          // photo_url is NOT NULL — preserve any existing value with a fallback.
+          photo_url: (await currentPhotoUrl(missionaryId)) ?? path,
+          cover_url: path,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "missionary_id" },
+      );
       if (dbErr) throw dbErr;
       return path;
     },
@@ -55,8 +58,7 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
       toast.success(`Cover updated for ${missionaryName}.`);
       qc.invalidateQueries({ queryKey: ["missionary_cover", missionaryId] });
       qc.invalidateQueries({ queryKey: ["signed-url", BUCKET] });
-      setPreview(null);
-      setSelected(null);
+      closeDialog();
     },
     onError: (e: Error) => {
       const msg = /row-level|permission/i.test(e.message)
@@ -80,8 +82,13 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
       toast.error(`Image is too large. Max ${MAX_MB} MB.`);
       return;
     }
-    setSelected(f);
-    setPreview(URL.createObjectURL(f));
+    setSourceName(f.name);
+    setPreviewUrl(URL.createObjectURL(f));
+  }
+
+  function closeDialog() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
   }
 
   return (
@@ -98,46 +105,33 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
           if (f) pickFile(f);
         }}
       />
-      {preview ? (
-        <div className="flex items-center gap-2 rounded-full bg-background/95 p-1 pl-3 shadow-lift backdrop-blur">
-          <img src={preview} alt="" className="h-8 w-14 rounded-md object-cover" />
-          <Button
-            size="sm"
-            className="rounded-full"
-            disabled={busy}
-            onClick={() => {
-              if (!selected) return;
-              setBusy(true);
-              mut.mutate(selected);
-            }}
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            {busy ? "Uploading…" : "Save cover"}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="rounded-full"
-            disabled={busy}
-            aria-label="Cancel"
-            onClick={() => {
-              setPreview(null);
-              setSelected(null);
-            }}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="rounded-full bg-background/85 backdrop-blur hover:bg-background"
-          onClick={() => inputRef.current?.click()}
-        >
-          <ImagePlus className="h-4 w-4" /> Upload family/background photo
-        </Button>
-      )}
+      <Button
+        size="sm"
+        variant="secondary"
+        className="rounded-full bg-background/85 backdrop-blur hover:bg-background"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+        {busy ? "Uploading…" : "Upload family/background photo"}
+      </Button>
+
+      {previewUrl ? (
+        <ImageCropDialog
+          open
+          onOpenChange={(v) => (v ? null : closeDialog())}
+          imageSrc={previewUrl}
+          filename={sourceName.replace(/\.[^.]+$/, "") + ".jpg"}
+          aspect={COVER_ASPECT}
+          title="Crop cover photo"
+          description="Drag and zoom to fit your family photo to the profile background."
+          busy={busy}
+          onCropped={(cropped) => {
+            setBusy(true);
+            mut.mutate(cropped);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

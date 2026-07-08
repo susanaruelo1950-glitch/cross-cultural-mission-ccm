@@ -1,6 +1,23 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Loader2, Mail, Pencil, Save, Trash2, X } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Loader2, Mail, Pencil, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useDataStore } from "@/hooks/use-data-store";
@@ -29,9 +46,8 @@ interface Row {
 }
 
 /**
- * Admin console for thank-you letters. Lets an admin pick a missionary,
- * upload new letters (reusing the profile-side form), reorder them, edit
- * title/message inline, and delete.
+ * Admin console for thank-you letters. Missionary picker, bulk & single
+ * upload, drag-and-drop reorder, inline edit, and delete.
  */
 export function ThankYouLettersAdmin() {
   const { missionaries } = useDataStore();
@@ -58,19 +74,32 @@ export function ThankYouLettersAdmin() {
     },
   });
 
-  const swap = useMutation({
-    mutationFn: async ({ a, b }: { a: Row; b: Row }) => {
-      const { error } = await supabase.from("thank_you_letters").upsert([
-        { id: a.id, missionary_id: a.missionary_id, title: a.title, sort_order: b.sort_order },
-        { id: b.id, missionary_id: b.missionary_id, title: b.title, sort_order: a.sort_order },
-      ]);
+  // Local optimistic order so drag feels instant.
+  const [order, setOrder] = useState<Row[]>([]);
+  useEffect(() => {
+    if (letters) setOrder(letters);
+  }, [letters]);
+
+  const reorderMut = useMutation({
+    mutationFn: async (rows: Row[]) => {
+      // Rewrite sort_order to match the current visual order.
+      const payload = rows.map((r, i) => ({
+        id: r.id,
+        missionary_id: r.missionary_id,
+        title: r.title,
+        sort_order: i,
+      }));
+      const { error } = await supabase.from("thank_you_letters").upsert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", selectedId] });
       qc.invalidateQueries({ queryKey: ["thank_you_letters", selectedId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      if (letters) setOrder(letters);
+    },
   });
 
   const del = useMutation({
@@ -86,18 +115,20 @@ export function ThankYouLettersAdmin() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function move(idx: number, dir: -1 | 1) {
-    if (!letters) return;
-    const j = idx + dir;
-    if (j < 0 || j >= letters.length) return;
-    const a = letters[idx];
-    const b = letters[j];
-    // Ensure distinct sort_order values before swapping.
-    if (a.sort_order === b.sort_order) {
-      a.sort_order = idx;
-      b.sort_order = j;
-    }
-    swap.mutate({ a, b });
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = order.findIndex((r) => r.id === active.id);
+    const newIndex = order.findIndex((r) => r.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = arrayMove(order, oldIndex, newIndex);
+    setOrder(next);
+    reorderMut.mutate(next);
   }
 
   return (
@@ -107,7 +138,7 @@ export function ThankYouLettersAdmin() {
         <h2 className="font-display text-xl font-semibold">Thank You Letters</h2>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Upload, reorder, edit, and delete thank-you letters for each missionary.
+        Upload (single or bulk), drag to reorder, edit, and delete thank-you letters for each missionary.
       </p>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,320px)_1fr] sm:items-end">
@@ -123,7 +154,8 @@ export function ThankYouLettersAdmin() {
           </Select>
         </div>
         <p className="text-xs text-muted-foreground">
-          {letters?.length ?? 0} letter{(letters?.length ?? 0) === 1 ? "" : "s"} on file.
+          {order.length} letter{order.length === 1 ? "" : "s"} on file.
+          {reorderMut.isPending ? " Saving order…" : ""}
         </p>
       </div>
 
@@ -134,53 +166,57 @@ export function ThankYouLettersAdmin() {
       ) : null}
 
       <div className="mt-6">
-        <h3 className="font-display text-base font-semibold">Reorder & edit</h3>
+        <h3 className="font-display text-base font-semibold">Drag to reorder</h3>
         {isLoading ? (
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading letters…
           </div>
-        ) : !letters || letters.length === 0 ? (
+        ) : order.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">No letters to reorder yet.</p>
         ) : (
-          <ul className="mt-3 space-y-2">
-            {letters.map((l, idx) => (
-              <LetterAdminRow
-                key={l.id}
-                letter={l}
-                canMoveUp={idx > 0}
-                canMoveDown={idx < letters.length - 1}
-                onMove={(dir) => move(idx, dir)}
-                onDelete={() => {
-                  if (confirm("Delete this letter?")) del.mutate(l.id);
-                }}
-                onSaved={() => {
-                  qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", selectedId] });
-                  qc.invalidateQueries({ queryKey: ["thank_you_letters", selectedId] });
-                }}
-              />
-            ))}
-          </ul>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={order.map((o) => o.id)} strategy={verticalListSortingStrategy}>
+              <ul className="mt-3 space-y-2">
+                {order.map((l) => (
+                  <SortableLetterRow
+                    key={l.id}
+                    letter={l}
+                    onDelete={() => {
+                      if (confirm("Delete this letter?")) del.mutate(l.id);
+                    }}
+                    onSaved={() => {
+                      qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", selectedId] });
+                      qc.invalidateQueries({ queryKey: ["thank_you_letters", selectedId] });
+                    }}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </Card>
   );
 }
 
-function LetterAdminRow({
+function SortableLetterRow({
   letter,
-  canMoveUp,
-  canMoveDown,
-  onMove,
   onDelete,
   onSaved,
 }: {
   letter: Row;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
   onSaved: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: letter.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
@@ -206,16 +242,17 @@ function LetterAdminRow({
   }
 
   return (
-    <li className="rounded-2xl border border-border/60 bg-card p-3">
+    <li ref={setNodeRef} style={style} className="rounded-2xl border border-border/60 bg-card p-3">
       <div className="flex items-start gap-2">
-        <div className="flex flex-col gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canMoveUp} onClick={() => onMove(-1)} aria-label="Move up">
-            <ArrowUp className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canMoveDown} onClick={() => onMove(1)} aria-label="Move down">
-            <ArrowDown className="h-4 w-4" />
-          </Button>
-        </div>
+        <button
+          type="button"
+          className="flex h-8 w-6 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing"
+          aria-label={`Drag to reorder ${letter.title}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
         <div className="min-w-0 flex-1">
           {editing ? (
             <div className="space-y-2">

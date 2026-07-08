@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download } from "lucide-react";
+import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -141,6 +141,7 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
 
 function LetterAttachment({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  const isPdf = /\.pdf(\?|$)/i.test(path);
   if (isLoading) {
     return (
       <div className="mt-3 flex h-32 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
@@ -149,27 +150,43 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     );
   }
   if (!url) return null;
-  const isPdf = /\.pdf(\?|$)/i.test(path);
-  if (isPdf) {
-    return (
+  return (
+    <div className="mt-3 flex flex-wrap items-start gap-3">
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+        className="group block overflow-hidden rounded-xl border border-border bg-muted"
+        aria-label={`Open thank you letter: ${title}`}
       >
-        <Download className="h-4 w-4" /> Open thank you letter (PDF)
+        {isPdf ? (
+          <div className="flex h-32 w-40 flex-col items-center justify-center gap-1 text-muted-foreground group-hover:bg-muted/70">
+            <FileText className="h-8 w-8" />
+            <span className="text-[11px] font-medium uppercase tracking-wide">PDF letter</span>
+          </div>
+        ) : (
+          <img
+            src={url}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="h-32 w-40 object-cover transition-transform group-hover:scale-105"
+          />
+        )}
       </a>
-    );
-  }
-  return (
-    <img
-      src={url}
-      alt={title}
-      className="mt-3 max-h-96 w-full rounded-xl object-contain bg-muted"
-      loading="lazy"
-      decoding="async"
-    />
+      <div className="flex flex-col gap-2">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+        >
+          {isPdf ? <Download className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+          {isPdf ? "Open PDF letter" : "View full letter"}
+        </a>
+        <span className="text-[11px] text-muted-foreground">Signed link expires after a while.</span>
+      </div>
+    </div>
   );
 }
 
@@ -248,9 +265,12 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} className="rounded-full" size="sm">
-        <Plus className="h-4 w-4" /> Upload thank you letter
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => setOpen(true)} className="rounded-full" size="sm">
+          <Plus className="h-4 w-4" /> Upload thank you letter
+        </Button>
+        <BulkLetterUpload missionaryId={missionaryId} />
+      </div>
     );
   }
 
@@ -319,5 +339,106 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Bulk upload — accepts multiple images/PDFs and creates one thank-you-letter
+ * row per file. Each file's name becomes the initial letter title so admins
+ * can rename later from the admin console.
+ */
+function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
+  const qc = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  async function upload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const valid: File[] = [];
+    for (const f of Array.from(files)) {
+      const okType = f.type.startsWith("image/") || f.type === "application/pdf";
+      if (!okType) {
+        toast.error(`Skipped ${f.name}: only images or PDFs are allowed.`);
+        continue;
+      }
+      if (f.size > MAX_MB * 1024 * 1024) {
+        toast.error(`Skipped ${f.name}: exceeds ${MAX_MB} MB limit.`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
+    setBusy(true);
+    setProgress({ done: 0, total: valid.length });
+    let successes = 0;
+    let failures = 0;
+    try {
+      for (let i = 0; i < valid.length; i++) {
+        const f = valid[i];
+        try {
+          const ext = (f.name.split(".").pop() || "pdf").toLowerCase();
+          const path = `${missionaryId}/${Date.now()}-${i}.${ext}`;
+          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: f.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const title = f.name.replace(/\.[^.]+$/, "");
+          const { error: dbErr } = await supabase.from("thank_you_letters").insert({
+            missionary_id: missionaryId,
+            title: title || "Thank you letter",
+            letter_url: path,
+          });
+          if (dbErr) throw dbErr;
+          successes++;
+        } catch (err) {
+          failures++;
+          console.error("bulk upload failed for", f.name, err);
+        } finally {
+          setProgress({ done: i + 1, total: valid.length });
+        }
+      }
+      if (successes > 0) {
+        toast.success(`Uploaded ${successes} letter${successes === 1 ? "" : "s"}.`);
+        qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
+        qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
+      }
+      if (failures > 0) toast.error(`${failures} file${failures === 1 ? "" : "s"} failed to upload.`);
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED}
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = e.target.files;
+          e.target.value = "";
+          void upload(files);
+        }}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        aria-label="Bulk upload thank-you letters"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Files className="h-4 w-4" />}
+        {busy && progress
+          ? `Uploading ${progress.done}/${progress.total}…`
+          : "Bulk upload files"}
+      </Button>
+    </>
   );
 }
