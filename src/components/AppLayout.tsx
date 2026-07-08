@@ -281,6 +281,8 @@ function AuthButton() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  // Real-time cross-device sync: broadcast admin edits to every viewer.
+  useMissionarySync();
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to content — visible on focus for keyboard users */}
@@ -292,9 +294,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-sidebar-border bg-sidebar lg:block" aria-label="Sidebar">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-sidebar-border bg-sidebar lg:flex" aria-label="Sidebar">
         <Brand />
-        <NavItems />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <NavItems />
+        </div>
       </aside>
 
       {/* Top bar */}
@@ -335,7 +339,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <MobileBottomNav />
+      <MobileBottomNav onMore={() => setOpen(true)} />
       <Toaster position="top-center" />
     </div>
   );
