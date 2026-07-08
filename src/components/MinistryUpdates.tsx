@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ImagePlus, Trash2, Calendar, X } from "lucide-react";
+import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
+import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
 
 interface Props {
   missionaryId: string;
