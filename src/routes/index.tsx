@@ -26,7 +26,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mission Dashboard — Cross-Cultural Mission" },
+      { title: "Cross-Cultural Mission— The Great Commission" },
       {
         name: "description",
         content:

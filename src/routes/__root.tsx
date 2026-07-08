@@ -87,21 +87,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Cross-Cultural Mission (CCM) — Mission Management" },
+      { title: "Cross-Cultural Mission— The Great Commission" },
       {
         name: "description",
         content:
-          "Monitor, pray for, and support Filipino church planter pastors serving across the nations.",
+          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports.",
       },
       { name: "author", content: "Cross-Cultural Mission" },
-      { property: "og:title", content: "Cross-Cultural Mission — Mission Management" },
+      { property: "og:title", content: "Cross-Cultural Mission— The Great Commission" },
       {
         property: "og:description",
         content:
-          "A Christ-centered platform to organize, pray for, and support church planters in every mission field.",
+          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Cross-Cultural Mission— The Great Commission" },
+      { name: "twitter:description", content: "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
