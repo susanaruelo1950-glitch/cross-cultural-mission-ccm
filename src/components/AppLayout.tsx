@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Menu,
   Search,
-  Cross,
+  
   Layers,
   UserPlus,
   Upload,
