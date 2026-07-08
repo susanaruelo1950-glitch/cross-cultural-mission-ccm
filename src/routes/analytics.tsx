@@ -70,6 +70,8 @@ function Analytics() {
   const missionaries = allMissionaries();
   const phases = allPhases();
   const areas = allAreas();
+  const chartsRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const byPhase = useMemo(
     () =>
