@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PrayerRouteImport } from './routes/prayer'
 import { Route as MissionariesRouteImport } from './routes/missionaries'
@@ -24,6 +25,11 @@ import { Route as MissionariesIdRouteImport } from './routes/missionaries.$id'
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/missionaries': typeof MissionariesRouteWithChildren
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/map': typeof MapRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries': typeof MissionariesIndexRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/missionaries': typeof MissionariesRouteWithChildren
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/missionaries'
     | '/prayer'
     | '/reports'
+    | '/sitemap.xml'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/prayer'
     | '/reports'
+    | '/sitemap.xml'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/missionaries'
     | '/prayer'
     | '/reports'
+    | '/sitemap.xml'
     | '/support'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   MissionariesRoute: typeof MissionariesRouteWithChildren
   PrayerRoute: typeof PrayerRoute
   ReportsRoute: typeof ReportsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
 }
 
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -274,6 +294,7 @@ const rootRouteChildren: RootRouteChildren = {
   MissionariesRoute: MissionariesRouteWithChildren,
   PrayerRoute: PrayerRoute,
   ReportsRoute: ReportsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
