@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { CoordinatorAssignments } from "@/components/CoordinatorAssignments";
 import { ScriptureManager } from "@/components/ScriptureManager";
+import { ThankYouLettersAdmin } from "@/components/ThankYouLettersAdmin";
 import { PermissionError } from "@/components/PermissionError";
 
 export const Route = createFileRoute("/admin")({
