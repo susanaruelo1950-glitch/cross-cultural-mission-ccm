@@ -68,6 +68,8 @@ function initials(name: string) {
 function Profile() {
   const { m: initial } = Route.useLoaderData() as { m: Missionary };
   const [m, setM] = useState<Missionary>(initial);
+  const { data: photoOverride } = useMissionaryPhoto(m.id);
+  const photo = photoOverride ?? m.photo;
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
   const myReports = reportsByMissionary(m.id);
