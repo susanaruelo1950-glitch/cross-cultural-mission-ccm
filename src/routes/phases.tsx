@@ -3,12 +3,8 @@ import { Layers, Users, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import {
-  areasByPhase,
-  getMissionary,
-  missionariesByArea,
-  phases,
-} from "@/lib/mission-data";
+import { getMissionary } from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/phases")({
   head: () => ({

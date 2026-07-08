@@ -53,7 +53,7 @@ function Directory() {
       }
       return true;
     });
-  }, [q, phaseId, areaId]);
+  }, [q, phaseId, areaId, missionaries]);
 
   return (
     <div className="space-y-6">
