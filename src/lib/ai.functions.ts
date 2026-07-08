@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const SummarizeInput = z.object({
   missionaryName: z.string().min(1),
@@ -17,9 +16,15 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
  * server-side.
  */
 export const summarizeReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SummarizeInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { requireSupabaseAuth } = await import("@/integrations/supabase/auth-middleware");
+    await requireSupabaseAuth.options.server({
+      context,
+      data,
+      next: async () => undefined,
+    } as never);
+
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY is not configured on the server.");
 
