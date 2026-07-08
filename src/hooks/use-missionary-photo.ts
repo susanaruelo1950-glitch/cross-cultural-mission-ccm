@@ -22,6 +22,10 @@ export function useMissionaryPhoto(missionaryId: string) {
       if (!data?.photo_url) return null;
       return createDisplayUrl(BUCKET, data.photo_url);
     },
-    staleTime: 5 * 60 * 1000,
+    // Aggressive caching for low-bandwidth: keep photo URLs fresh for
+    // 30 minutes and hold them in memory for 24 hours between visits.
+    staleTime: 30 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }

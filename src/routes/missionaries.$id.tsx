@@ -25,18 +25,15 @@ import {
   getPhase,
   prayerByMissionary,
   reportsByMissionary,
-  upsertMissionary,
-  type JourneyStage,
   type Missionary,
 } from "@/lib/mission-data";
-import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
+import { ThankYouLetters } from "@/components/ThankYouLetters";
 import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
 import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useState } from "react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
@@ -103,8 +100,7 @@ function initials(name: string) {
 }
 
 function Profile() {
-  const { m: initial } = Route.useLoaderData() as { m: Missionary };
-  const [m, setM] = useState<Missionary>(initial);
+  const { m } = Route.useLoaderData() as { m: Missionary };
   const { data: photoOverride } = useMissionaryPhoto(m.id);
   const photo = photoOverride ?? m.photo;
   const area = getArea(m.areaId);
@@ -120,12 +116,6 @@ function Profile() {
   const gallery: NonNullable<Missionary["gallery"]> = m.gallery ?? [];
   const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
 
-  function updateStage(stage: JourneyStage) {
-    const updated = { ...m, journeyStage: stage };
-    setM(updated);
-    upsertMissionary(updated);
-    toast.success(`Milestone updated to “${stage}”.`);
-  }
 
   return (
     <div className="space-y-6">
@@ -181,20 +171,8 @@ function Profile() {
       {/* Prayer counter — DB-backed "I prayed for this pastor" */}
       <PrayerCounter missionaryId={m.id} />
 
-      {/* Mission journey timeline — commissioning through multiplication */}
-      <Card className="card-soft p-6">
-        <div className="mb-4 flex items-baseline justify-between gap-2">
-          <h2 className="font-display text-lg font-semibold">Support Status Timeline</h2>
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Mission Journey
-          </span>
-        </div>
-        <JourneyTimeline
-          current={m.journeyStage ?? "Church Planting"}
-          editable
-          onChange={updateStage}
-        />
-      </Card>
+      {/* Thank You Letters — replaces the old Support Status Timeline */}
+      <ThankYouLetters missionaryId={m.id} missionaryName={m.fullName} />
 
       {/* Ministry updates (DB-backed, admin can add with photo) */}
       <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />

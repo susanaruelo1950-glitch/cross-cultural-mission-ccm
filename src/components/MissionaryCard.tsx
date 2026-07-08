@@ -31,15 +31,23 @@ export function MissionaryCard({ m }: { m: Missionary }) {
       <Card className="card-soft flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-lift">
         <div className="relative h-24 w-full gradient-mission">
           {m.cover ? (
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-90"
-              style={{ backgroundImage: `url(${m.cover})` }}
+            <img
+              src={m.cover}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover opacity-90"
             />
           ) : null}
         </div>
         <div className="-mt-8 flex flex-1 flex-col px-5 pb-5">
           <Avatar className="h-16 w-16 border-4 border-card shadow-soft">
-            <AvatarImage src={photo} alt={m.fullName} loading="lazy" />
+            <AvatarImage
+              src={photo}
+              alt={m.fullName}
+              loading="lazy"
+              decoding="async"
+            />
             <AvatarFallback className="bg-primary/10 text-primary">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="mt-3">
