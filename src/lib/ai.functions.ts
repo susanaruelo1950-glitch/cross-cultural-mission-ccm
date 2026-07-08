@@ -17,6 +17,7 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
  * server-side.
  */
 export const summarizeReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SummarizeInput.parse(input))
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
