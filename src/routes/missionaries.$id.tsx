@@ -31,8 +31,10 @@ import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
 import { ThankYouLetters } from "@/components/ThankYouLetters";
 import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
+import { MissionaryCoverUpload } from "@/components/MissionaryCoverUpload";
 import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
+import { useMissionaryCover } from "@/hooks/use-missionary-cover";
 import { useState } from "react";
 
 export const Route = createFileRoute("/missionaries/$id")({
