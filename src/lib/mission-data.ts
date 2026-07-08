@@ -217,7 +217,7 @@ export const seedAreas: Area[] = [
   {
     id: "area-maitum",
     phaseId: "phase-2",
-    name: "Maitum Area",
+    name: "Sarangani Area",
     region: "SOCCSKSARGEN (Region XII)",
     province: "Sarangani",
     coordinatorName: "Johnnely A. Delos Reyes",
