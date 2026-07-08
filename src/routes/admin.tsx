@@ -106,6 +106,8 @@ function AdminPage() {
 
       <ScriptureManager />
 
+      <ThankYouLettersAdmin />
+
       <CoordinatorAssignments />
 
       <Card className="card-soft p-6">
