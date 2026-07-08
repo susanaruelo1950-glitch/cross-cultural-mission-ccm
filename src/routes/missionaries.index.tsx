@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { getArea } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
 
 export const Route = createFileRoute("/missionaries/")({
   head: () => ({
@@ -35,7 +36,10 @@ const ALL = "__all__";
 function Directory() {
   const { q: qFromUrl } = Route.useSearch();
   const [q, setQ] = useState(qFromUrl ?? "");
-  const { phases, areas, missionaries } = useDataStore();
+  const { missionaries } = useDataStore();
+  // Filters come from the database (regions/provinces/phases/areas seeded there);
+  // falls back to in-memory seed data while queries load or if the DB is empty.
+  const { phases, areas } = useDirectory();
   const [phaseId, setPhaseId] = useState<string>(ALL);
   const [areaId, setAreaId] = useState<string>(ALL);
 

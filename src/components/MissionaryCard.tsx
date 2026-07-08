@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Church, MapPin } from "lucide-react";
 import type { Missionary } from "@/lib/mission-data";
 import { getArea, getPhase } from "@/lib/mission-data";
+import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 
 function initials(name: string) {
   return name
@@ -18,6 +19,8 @@ function initials(name: string) {
 export function MissionaryCard({ m }: { m: Missionary }) {
   const area = getArea(m.areaId);
   const phase = area ? getPhase(area.phaseId) : undefined;
+  const { data: photoOverride } = useMissionaryPhoto(m.id);
+  const photo = photoOverride ?? m.photo;
 
   return (
     <Link
@@ -36,7 +39,7 @@ export function MissionaryCard({ m }: { m: Missionary }) {
         </div>
         <div className="-mt-8 flex flex-1 flex-col px-5 pb-5">
           <Avatar className="h-16 w-16 border-4 border-card shadow-soft">
-            <AvatarImage src={m.photo} alt={m.fullName} loading="lazy" />
+            <AvatarImage src={photo} alt={m.fullName} loading="lazy" />
             <AvatarFallback className="bg-primary/10 text-primary">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="mt-3">

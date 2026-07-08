@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      areas: {
+        Row: {
+          coordinator_name: string | null
+          created_at: string
+          description: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          name: string
+          phase_id: string
+          province_id: string | null
+          region_id: string | null
+        }
+        Insert: {
+          coordinator_name?: string | null
+          created_at?: string
+          description?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id: string
+          name: string
+          phase_id: string
+          province_id?: string | null
+          region_id?: string | null
+        }
+        Update: {
+          coordinator_name?: string | null
+          created_at?: string
+          description?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          name?: string
+          phase_id?: string
+          province_id?: string | null
+          region_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coordinator_assignments: {
+        Row: {
+          area_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coordinator_assignments_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ministry_updates: {
         Row: {
           body: string | null
@@ -50,6 +140,80 @@ export type Database = {
           summary?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      missionary_area_map: {
+        Row: {
+          area_id: string
+          created_at: string
+          full_name: string | null
+          missionary_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          full_name?: string | null
+          missionary_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          full_name?: string | null
+          missionary_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missionary_area_map_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missionary_photos: {
+        Row: {
+          missionary_id: string
+          photo_url: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          missionary_id: string
+          photo_url: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          missionary_id?: string
+          photo_url?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      phases: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id: string
+          name: string
+          order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          order?: number
         }
         Relationships: []
       }
@@ -134,6 +298,53 @@ export type Database = {
         }
         Relationships: []
       }
+      provinces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          region_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          region_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provinces_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -171,6 +382,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_coordinator_of_missionary: {
+        Args: { _mid: string; _uid: string }
         Returns: boolean
       }
     }
