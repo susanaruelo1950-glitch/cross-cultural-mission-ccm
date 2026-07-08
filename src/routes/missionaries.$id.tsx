@@ -162,6 +162,9 @@ function Profile() {
       {/* Ministry updates (DB-backed, admin can add with photo) */}
       <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />
 
+      {/* DB-backed prayer requests (admin + scoped coordinator can post/edit) */}
+      <PrayerRequestsPanel missionaryId={m.id} missionaryName={m.fullName} />
+
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto rounded-full bg-muted p-1">
           <TabsTrigger value="overview" className="rounded-full">Overview</TabsTrigger>
