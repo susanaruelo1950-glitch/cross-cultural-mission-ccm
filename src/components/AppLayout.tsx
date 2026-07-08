@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Menu,
   Search,
-  Bell,
   Cross,
   Layers,
   UserPlus,
@@ -19,6 +18,9 @@ import {
   Heart,
   BarChart3,
   Wand2,
+  LogIn,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import { useState, type ReactNode, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
@@ -26,8 +28,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
+import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 
-const nav = [
+type Role = "public" | "any-auth" | "admin";
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  role?: Role;
+};
+
+const nav: readonly NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/missionaries", label: "Missionaries", icon: Users },
   { to: "/phases", label: "Phases & Areas", icon: Layers },
@@ -35,15 +55,15 @@ const nav = [
   { to: "/pray", label: "Prayer Mode", icon: Heart },
   { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
   { to: "/reports", label: "Ministry Reports", icon: FileText },
-  { to: "/summaries", label: "AI Summaries", icon: Wand2 },
+  { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
   { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
   { to: "/support", label: "Support Center", icon: Wallet },
   { to: "/documents", label: "Documents", icon: FolderOpen },
-  { to: "/manage", label: "Manage", icon: UserPlus },
-  { to: "/import", label: "Import / Export", icon: Upload },
+  { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
+  { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
   { to: "/assistant", label: "AI Assistant", icon: Sparkles },
-  { to: "/admin", label: "Admin", icon: ShieldCheck },
-] as const;
+  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
+];
 
 const mobileNav = [
   { to: "/", label: "Home", icon: LayoutDashboard },
