@@ -51,7 +51,7 @@ export function PdfPreviewDialog({ open, onOpenChange, url, title }: Props) {
       try {
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-        const loadingTask = pdfjs.getDocument(url);
+        const loadingTask = pdfjs.getDocument({ url });
         const d = (await loadingTask.promise) as unknown as PdfDoc;
         if (cancelled) return;
         setDoc(d);
