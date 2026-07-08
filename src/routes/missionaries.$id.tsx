@@ -30,6 +30,8 @@ import {
   type Missionary,
 } from "@/lib/mission-data";
 import { JourneyTimeline } from "@/components/JourneyTimeline";
+import { PrayerCounter } from "@/components/PrayerCounter";
+import { MinistryUpdates } from "@/components/MinistryUpdates";
 import { useState } from "react";
 import { toast } from "sonner";
 
