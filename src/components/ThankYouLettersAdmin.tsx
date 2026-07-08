@@ -227,26 +227,42 @@ function SortableLetterRow({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
+  const qc = useQueryClient();
+  const key = ["thank_you_letters_admin", letter.missionary_id] as const;
+  const publicKey = ["thank_you_letters", letter.missionary_id] as const;
   const [saving, setSaving] = useState(false);
 
   async function save() {
     if (!title.trim()) return toast.error("Title is required.");
     setSaving(true);
+    const prevAdmin = qc.getQueryData<Row[] | undefined>(key);
+    const prevPublic = qc.getQueryData<Row[] | undefined>(publicKey);
+    const patch = { title: title.trim(), message: message.trim() || null };
+    // Optimistic
+    await qc.cancelQueries({ queryKey: key });
+    await qc.cancelQueries({ queryKey: publicKey });
+    qc.setQueryData<Row[] | undefined>(key, (p) => p?.map((r) => (r.id === letter.id ? { ...r, ...patch } : r)));
+    qc.setQueryData<Row[] | undefined>(publicKey, (p) => p?.map((r) => (r.id === letter.id ? { ...r, ...patch } : r)));
     try {
       const { error } = await supabase
         .from("thank_you_letters")
-        .update({ title: title.trim(), message: message.trim() || null })
+        .update(patch)
         .eq("id", letter.id);
       if (error) throw error;
       toast.success("Letter updated.");
       setEditing(false);
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed.");
+      qc.setQueryData(key, prevAdmin);
+      qc.setQueryData(publicKey, prevPublic);
+      toast.error(e instanceof Error ? `${e.message}. Reverted.` : "Update failed. Reverted.");
     } finally {
       setSaving(false);
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: publicKey });
     }
   }
+
 
   return (
     <li ref={setNodeRef} style={style} className="rounded-2xl border border-border/60 bg-card p-3">
