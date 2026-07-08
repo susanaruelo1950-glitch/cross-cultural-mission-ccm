@@ -6,6 +6,7 @@ import { Church, MapPin } from "lucide-react";
 import type { Missionary } from "@/lib/mission-data";
 import { getArea, getPhase } from "@/lib/mission-data";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
+import { useInView, useLowData } from "@/hooks/use-low-data";
 
 function initials(name: string) {
   return name
