@@ -82,7 +82,6 @@ export function ThankYouLettersAdmin() {
 
   const reorderMut = useMutation({
     mutationFn: async (rows: Row[]) => {
-      // Rewrite sort_order to match the current visual order.
       const payload = rows.map((r, i) => ({
         id: r.id,
         missionary_id: r.missionary_id,
@@ -95,10 +94,6 @@ export function ThankYouLettersAdmin() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", selectedId] });
       qc.invalidateQueries({ queryKey: ["thank_you_letters", selectedId] });
-    },
-    onError: (e: Error) => {
-      toast.error(e.message);
-      if (letters) setOrder(letters);
     },
   });
 
@@ -120,15 +115,27 @@ export function ThankYouLettersAdmin() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  function onDragEnd(e: DragEndEvent) {
+  async function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const oldIndex = order.findIndex((r) => r.id === active.id);
     const newIndex = order.findIndex((r) => r.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
+    // Snapshot the previous order so we can restore it on failure and keep
+    // sort_order internally consistent.
+    const previous = order;
     const next = arrayMove(order, oldIndex, newIndex);
     setOrder(next);
-    reorderMut.mutate(next);
+    try {
+      await reorderMut.mutateAsync(next);
+    } catch (err) {
+      setOrder(previous);
+      toast.error(
+        err instanceof Error
+          ? `Reorder failed: ${err.message}. Restored previous order.`
+          : "Reorder failed. Restored previous order.",
+      );
+    }
   }
 
   return (
