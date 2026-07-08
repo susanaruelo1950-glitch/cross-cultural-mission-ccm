@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
+import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
 type Role = "public" | "any-auth" | "admin";
 type NavItem = {
