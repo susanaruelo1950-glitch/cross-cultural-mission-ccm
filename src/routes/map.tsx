@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { MapIcon } from "lucide-react";
 import { missionaries } from "@/lib/mission-data";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/EmptyState";
 
 export const Route = createFileRoute("/map")({
   ssr: false,
@@ -30,16 +31,25 @@ function MissionMap() {
       setLeaflet(rl);
       setL(l);
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
+
+  const pinned = missionaries.filter((m): m is typeof m & { gps: [number, number] } => Array.isArray(m.gps));
+
+  const header = (
+    <header>
+      <h1 className="font-display text-3xl font-semibold sm:text-4xl">Mission Map</h1>
+      <p className="mt-1 max-w-2xl text-muted-foreground">
+        Every pin represents a church planter serving the Great Commission.
+      </p>
+    </header>
+  );
 
   if (!Leaflet || !L) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Mission Map</h1>
-        <Card className="card-soft grid h-[70vh] place-items-center text-muted-foreground">
+        {header}
+        <Card className="card-soft grid h-[60vh] place-items-center text-muted-foreground">
           Loading map...
         </Card>
       </div>
@@ -57,46 +67,41 @@ function MissionMap() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Mission Map</h1>
-        <p className="mt-1 max-w-2xl text-muted-foreground">
-          Every pin represents a church planter serving the Great Commission. Click one to see their story.
-        </p>
-      </header>
-      <Card className="card-soft overflow-hidden p-0">
-        <div className="h-[70vh] w-full">
-          <MapContainer center={[12.8797, 121.774]} zoom={6} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {missionaries.map((m) => (
-              <Marker key={m.id} position={m.gps} icon={icon}>
-                <Popup>
-                  <div style={{ width: 220 }}>
-                    <img src={m.photo} alt={m.fullName} style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 8 }} />
-                    <div style={{ marginTop: 8, fontWeight: 600 }}>{m.fullName}</div>
-                    <div style={{ fontSize: 12, color: "#666" }}>{m.missionField}</div>
-                    <div style={{ marginTop: 6, fontSize: 12 }}>
-                      <strong>Prayer:</strong> {m.prayerRequests[0] ?? "—"}
+      {header}
+      {pinned.length === 0 ? (
+        <EmptyState
+          icon={MapIcon}
+          title="No mapped locations yet"
+          description="Add a gps: [latitude, longitude] value to any missionary to see them appear on the map."
+        />
+      ) : (
+        <Card className="card-soft overflow-hidden p-0">
+          <div className="h-[60vh] w-full sm:h-[70vh]">
+            <MapContainer center={[12.8797, 121.774]} zoom={6} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {pinned.map((m) => (
+                <Marker key={m.id} position={m.gps} icon={icon}>
+                  <Popup>
+                    <div style={{ width: 220 }}>
+                      {m.photo ? (
+                        <img src={m.photo} alt={m.fullName} style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 8 }} />
+                      ) : null}
+                      <div style={{ marginTop: 8, fontWeight: 600 }}>{m.fullName}</div>
+                      <div style={{ fontSize: 12, color: "#666" }}>{m.church}</div>
+                      <Link to="/missionaries/$id" params={{ id: m.id }} style={{ display: "inline-block", marginTop: 8, color: "oklch(0.45 0.14 245)", fontWeight: 500 }}>
+                        View profile →
+                      </Link>
                     </div>
-                    <Link to="/missionaries/$id" params={{ id: m.id }} style={{ display: "inline-block", marginTop: 8, color: "oklch(0.45 0.14 245)", fontWeight: 500 }}>
-                      View profile →
-                    </Link>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        </div>
-      </Card>
-      <div className="flex flex-wrap gap-2">
-        {missionaries.map((m) => (
-          <Badge key={m.id} variant="outline" className="rounded-full">
-            📍 {m.municipality} — {m.fullName}
-          </Badge>
-        ))}
-      </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

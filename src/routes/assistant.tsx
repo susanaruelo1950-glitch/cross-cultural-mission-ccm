@@ -4,7 +4,7 @@ import { Send, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { missionaries, reports, prayerRequests } from "@/lib/mission-data";
+import { missionaries, prayerRequests, reports } from "@/lib/mission-data";
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({ meta: [{ title: "AI Mission Assistant — Great Commission" }] }),
@@ -18,10 +18,10 @@ interface Message {
 }
 
 const prompts = [
-  "Summarize this month's ministry reports",
-  "Which missionaries need urgent prayer?",
-  "Show me missionaries reaching the Ifugao",
-  "Draft a supporter update for Ptr. Elias Santos",
+  "How many missionaries do we have?",
+  "Show urgent prayer requests",
+  "Summarize recent reports",
+  "List missionaries by phase",
 ];
 
 function Assistant() {
@@ -37,45 +37,45 @@ function Assistant() {
     const lower = q.toLowerCase();
     if (lower.includes("urgent") || lower.includes("prayer")) {
       const urgent = prayerRequests.filter((p) => p.urgent && !p.answered);
+      if (urgent.length === 0) return { role: "assistant", text: "No urgent prayer requests right now." };
       return {
         role: "assistant",
         text: `There are ${urgent.length} urgent prayer requests:\n\n${urgent
           .map((p) => {
-            const m = missionaries.find((x) => x.id === p.missionaryId)!;
-            return `• ${m.fullName} — ${p.title}: ${p.detail}`;
+            const m = missionaries.find((x) => x.id === p.missionaryId);
+            return `• ${m?.fullName ?? "Unknown"} — ${p.title}: ${p.detail}`;
           })
           .join("\n")}`,
         citations: urgent.map((p) => `Prayer #${p.id}`),
       };
     }
-    if (lower.includes("summar")) {
+    if (lower.includes("summar") || lower.includes("report")) {
+      if (reports.length === 0) return { role: "assistant", text: "No reports have been submitted yet." };
+      const totals = reports.reduce(
+        (acc, r) => ({
+          salvations: acc.salvations + (r.salvations ?? 0),
+          baptisms: acc.baptisms + (r.baptisms ?? 0),
+          attendance: acc.attendance + (r.attendance ?? 0),
+          bibleStudies: acc.bibleStudies + (r.bibleStudies ?? 0),
+        }),
+        { salvations: 0, baptisms: 0, attendance: 0, bibleStudies: 0 },
+      );
       return {
         role: "assistant",
-        text: `Across ${reports.length} recent reports:\n\n• Total salvations: ${reports.reduce((s, r) => s + r.salvations, 0)}\n• Baptisms: ${reports.reduce((s, r) => s + r.baptisms, 0)}\n• Weekly attendance: ${reports.reduce((s, r) => s + r.attendance, 0)}\n• Bible studies running: ${reports.reduce((s, r) => s + r.bibleStudies, 0)}\n\nMost active field: Mindanao (regional coordinator report).`,
+        text: `Across ${reports.length} report(s):\n\n• Salvations: ${totals.salvations}\n• Baptisms: ${totals.baptisms}\n• Attendance: ${totals.attendance}\n• Bible studies: ${totals.bibleStudies}`,
         citations: reports.map((r) => r.title),
       };
     }
-    if (lower.includes("ifugao")) {
-      const list = missionaries.filter((m) => m.ethnicGroup === "Ifugao" || m.peopleGroup.includes("Ifugao"));
+    if (lower.includes("how many") || lower.includes("missionaries")) {
       return {
         role: "assistant",
-        text: list.length
-          ? `${list.length} missionary(s) serving the Ifugao:\n\n${list.map((m) => `• ${m.fullName} — ${m.churchName} (${m.municipality})`).join("\n")}`
-          : "No missionaries are currently reaching the Ifugao in the database.",
-        citations: list.map((m) => `Profile: ${m.fullName}`),
-      };
-    }
-    if (lower.includes("elias") || lower.includes("santos") || lower.includes("supporter update")) {
-      const m = missionaries[0];
-      return {
-        role: "assistant",
-        text: `Draft supporter update for ${m.fullName}:\n\n"Praise God! This past quarter, Ptr. Elias and Maribel welcomed 2 new families to Grace Bible Church of Banaue, completed the outreach chapel roof before typhoon season, and continued discipling potential elders. Please pray for Barangay Captain Domingo's salvation and for safe travel during rainy season. Their monthly support is at ${Math.round((m.supportReceived / m.monthlySupportNeeded) * 100)}%."\n\nFeel free to edit and share.`,
-        citations: [`Profile: ${m.fullName}`, `Report: October 2025 — Batad Church Update`],
+        text: `There are ${missionaries.length} missionaries currently in the directory.`,
+        citations: ["Missionary directory"],
       };
     }
     return {
       role: "assistant",
-      text: `I can help you summarize reports, find missionaries by people group, surface prayer needs, or draft supporter updates. Try one of the suggested prompts, or ask me about a specific missionary or region. I only answer from data in this platform.`,
+      text: "I can help you summarize reports, surface prayer needs, and answer questions about your missionaries. Try one of the suggested prompts, or ask about a specific person or area. I only answer from data in this platform.",
     };
   };
 
@@ -100,7 +100,7 @@ function Assistant() {
       <Card className="card-soft p-4">
         <div className="flex items-start gap-2 rounded-xl bg-accent p-3 text-sm text-accent-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Prototype demo — answers are generated from local seed data. Wiring to the Lovable AI Gateway is the next step.</p>
+          <p>Prototype demo — answers are generated locally. Connect Lovable AI Gateway to enable full LLM responses.</p>
         </div>
       </Card>
 
@@ -133,11 +133,11 @@ function Assistant() {
       </div>
 
       <form
-        className="sticky bottom-4 flex gap-2 rounded-full border border-border bg-card p-2 shadow-lift"
+        className="sticky bottom-20 flex gap-2 rounded-full border border-border bg-card p-2 shadow-lift lg:bottom-4"
         onSubmit={(e) => { e.preventDefault(); send(input); }}
       >
         <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask about missionaries, reports, prayer..." className="border-0 bg-transparent shadow-none focus-visible:ring-0" />
-        <Button type="submit" size="icon" className="rounded-full"><Send className="h-4 w-4" /></Button>
+        <Button type="submit" size="icon" className="rounded-full" aria-label="Send"><Send className="h-4 w-4" /></Button>
       </form>
     </div>
   );
