@@ -171,18 +171,21 @@ export type Database = {
       }
       missionary_photos: {
         Row: {
+          cover_url: string | null
           missionary_id: string
           photo_url: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          cover_url?: string | null
           missionary_id: string
           photo_url: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          cover_url?: string | null
           missionary_id?: string
           photo_url?: string
           updated_at?: string
@@ -381,6 +384,7 @@ export type Database = {
           letter_url: string | null
           message: string | null
           missionary_id: string
+          sort_order: number
           title: string
           updated_at: string
         }
@@ -392,6 +396,7 @@ export type Database = {
           letter_url?: string | null
           message?: string | null
           missionary_id: string
+          sort_order?: number
           title: string
           updated_at?: string
         }
@@ -403,6 +408,7 @@ export type Database = {
           letter_url?: string | null
           message?: string | null
           missionary_id?: string
+          sort_order?: number
           title?: string
           updated_at?: string
         }
