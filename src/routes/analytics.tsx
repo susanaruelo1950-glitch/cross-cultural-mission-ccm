@@ -344,10 +344,10 @@ function Analytics() {
           <Button onClick={exportReport} variant="outline" className="rounded-full">
             <Download className="h-4 w-4" /> CSV
           </Button>
-          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full">
+          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full" aria-live="polite">
             {pdfBusy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Building PDF…
+                <Loader2 className="h-4 w-4 animate-spin" /> {pdfStage || "Building PDF…"}
               </>
             ) : (
               <>
