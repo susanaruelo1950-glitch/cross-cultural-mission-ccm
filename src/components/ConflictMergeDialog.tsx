@@ -82,11 +82,11 @@ export function ConflictMergeDialog<T extends object>({
   }, [preview]);
 
   function finish() {
-    const out = { ...preview.autoMerged } as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...(preview.autoMerged as unknown as Record<string, unknown>) };
     for (const c of preview.conflicts) {
       out[c.field] = choices[c.field] === "theirs" ? c.theirs : c.mine;
     }
-    onResolve(out as T);
+    onResolve(out as unknown as T);
   }
 
   return (
