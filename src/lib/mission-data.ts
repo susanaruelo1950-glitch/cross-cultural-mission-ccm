@@ -1294,7 +1294,13 @@ export function upsertMissionary(m: Missionary) {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === m.id) ?? null;
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
+  // Clear any tombstone so re-adding a previously deleted missionary reappears.
+  s.deletedIds = (s.deletedIds ?? []).filter((x) => x !== m.id);
+  s.deletedNames = (s.deletedNames ?? []).filter((n) => normalizeName(n) !== normalizeName(m.fullName));
   writeStore(s);
+  cloudDeletedIds = cloudDeletedIds.filter((x) => x !== m.id);
+  cloudDeletedNames = cloudDeletedNames.filter((n) => normalizeName(n) !== normalizeName(m.fullName));
+
   // Best-effort cloud sync so other users/devices see the change in realtime.
   void syncMissionaryToCloud(m);
   // Activity log (fire-and-forget)
