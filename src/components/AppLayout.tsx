@@ -181,6 +181,9 @@ function HeaderSearch() {
         placeholder="Search missionaries, churches, areas..."
         className="h-10 rounded-full bg-muted/50 pl-9"
         type="search"
+        dir="ltr"
+        autoComplete="off"
+        spellCheck={false}
         enterKeyHint="search"
       />
     </form>
