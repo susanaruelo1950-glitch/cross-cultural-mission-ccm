@@ -25,7 +25,7 @@ import { useDirectory } from "@/hooks/use-directory";
 import { askAssistant } from "@/lib/ask.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-const ALL = "__all__";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 interface Filters { regionId: string; provinceId: string; phaseId: string }
 
 
