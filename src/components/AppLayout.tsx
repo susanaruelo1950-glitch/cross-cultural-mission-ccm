@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
+import { useGlobalRealtime } from "@/hooks/use-global-realtime";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -244,6 +245,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [deskOpen, setDeskOpen] = useState(true);
   useMissionaryRealtime();
+  useGlobalRealtime();
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to content — visible on focus for keyboard users */}
