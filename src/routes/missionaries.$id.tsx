@@ -35,6 +35,7 @@ import { MissionaryCoverUpload } from "@/components/MissionaryCoverUpload";
 import { PrayerRequestsPanel } from "@/components/PrayerRequestsPanel";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useMissionaryCover } from "@/hooks/use-missionary-cover";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { useState } from "react";
 
 export const Route = createFileRoute("/missionaries/$id")({
@@ -120,6 +121,7 @@ function Profile() {
   const gallery: NonNullable<Missionary["gallery"]> = m.gallery ?? [];
   const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
 
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
   return (
     <div className="space-y-6">
@@ -127,20 +129,35 @@ function Profile() {
         <Link to="/missionaries"><ChevronLeft className="h-4 w-4" /> Back to directory</Link>
       </Button>
 
-      {/* Cover + identity */}
+      {/* Cover + identity — Facebook-style tall cover with click-to-zoom */}
       <div className="card-soft overflow-hidden">
         <div className="relative">
-          <div
-            className="h-48 w-full gradient-mission bg-cover bg-center sm:h-60"
-            style={cover ? { backgroundImage: `url(${cover})` } : undefined}
-          />
+          {cover ? (
+            <button
+              type="button"
+              onClick={() => setLightbox({ src: cover, alt: `${m.fullName} cover photo` })}
+              className="block h-40 w-full cursor-zoom-in overflow-hidden bg-cover bg-center transition-opacity hover:opacity-95 sm:h-64 lg:h-80"
+              style={{ backgroundImage: `url(${cover})` }}
+              aria-label="View cover photo"
+            />
+          ) : (
+            <div className="h-40 w-full gradient-mission sm:h-64 lg:h-80" />
+          )}
           <MissionaryCoverUpload missionaryId={m.id} missionaryName={m.fullName} />
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">
-          <Avatar className="-mt-14 h-24 w-24 border-4 border-card shadow-lift sm:-mt-16 sm:h-32 sm:w-32">
-            <AvatarImage src={photo} alt={m.fullName} />
-            <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
-          </Avatar>
+          <button
+            type="button"
+            onClick={() => photo && setLightbox({ src: photo, alt: `${m.fullName} profile photo` })}
+            className={`-mt-14 rounded-full ring-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:-mt-20 ${photo ? "cursor-zoom-in" : "cursor-default"}`}
+            aria-label={photo ? "View profile photo" : m.fullName}
+            disabled={!photo}
+          >
+            <Avatar className="h-24 w-24 border-4 border-card shadow-lift sm:h-36 sm:w-36">
+              <AvatarImage src={photo} alt={m.fullName} />
+              <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
+            </Avatar>
+          </button>
           <div className="min-w-0 self-end">
             <h1 className="font-display text-2xl font-semibold sm:text-3xl">{m.fullName}</h1>
             {m.church ? (
@@ -174,6 +191,13 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      <PhotoLightbox
+        src={lightbox?.src ?? ""}
+        alt={lightbox?.alt ?? ""}
+        open={!!lightbox}
+        onClose={() => setLightbox(null)}
+      />
 
       {/* Prayer counter — DB-backed "I prayed for this pastor" */}
       <PrayerCounter missionaryId={m.id} />

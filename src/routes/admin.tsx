@@ -81,7 +81,12 @@ function AdminPage() {
             missionary profile page.
           </p>
         </div>
-        <AdminHistoryDrawer />
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/admin/roles"><Users className="h-4 w-4" /> Manage roles</Link>
+          </Button>
+          <AdminHistoryDrawer />
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-4">

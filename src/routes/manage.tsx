@@ -27,7 +27,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PermissionError } from "@/components/PermissionError";
 import {
+  deleteArea,
   deleteMissionary,
+  deletePhase,
   findSimilarMissionaries,
   normalizeName,
   upsertArea,
@@ -578,17 +580,34 @@ function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
         <h2 className="mb-3 font-display text-xl font-semibold">Existing areas</h2>
         <ul className="divide-y divide-border">
           {store.areas.map((a) => (
-            <li key={a.id} className="flex items-center justify-between py-3 text-sm">
-              <div>
-                <div className="font-medium">{a.name}</div>
-                <div className="text-xs text-muted-foreground">
+            <li key={a.id} className="flex items-center justify-between gap-2 py-3 text-sm">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{a.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
                   {store.phases.find((p) => p.id === a.phaseId)?.name ?? "—"}
                   {a.province ? ` · ${a.province}` : ""}
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setForm(a)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setForm(a)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  aria-label={`Delete ${a.name}`}
+                  onClick={() => {
+                    if (!confirm(`Delete area "${a.name}"?`)) return;
+                    const res = deleteArea(a.id);
+                    if (!res.ok) { toast.error(res.reason); return; }
+                    if (form.id === a.id) setForm({ phaseId: form.phaseId });
+                    toast.success("Area deleted");
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </li>
           ))}
           {store.areas.length === 0 ? (
@@ -653,14 +672,31 @@ function PhaseSection({ store }: { store: ReturnType<typeof useDataStore> }) {
         <h2 className="mb-3 font-display text-xl font-semibold">Existing phases</h2>
         <ul className="divide-y divide-border">
           {store.phases.sort((a, b) => a.order - b.order).map((p) => (
-            <li key={p.id} className="flex items-center justify-between py-3">
-              <div>
-                <div className="font-medium">{p.name}</div>
-                {p.description ? <div className="text-xs text-muted-foreground">{p.description}</div> : null}
+            <li key={p.id} className="flex items-center justify-between gap-2 py-3">
+              <div className="min-w-0">
+                <div className="truncate font-medium">{p.name}</div>
+                {p.description ? <div className="truncate text-xs text-muted-foreground">{p.description}</div> : null}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setForm(p)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setForm(p)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  aria-label={`Delete ${p.name}`}
+                  onClick={() => {
+                    if (!confirm(`Delete phase "${p.name}"?`)) return;
+                    const res = deletePhase(p.id);
+                    if (!res.ok) { toast.error(res.reason); return; }
+                    if (form.id === p.id) setForm({ order: store.phases.length });
+                    toast.success("Phase deleted");
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
