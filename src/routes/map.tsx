@@ -82,12 +82,24 @@ function MissionMap() {
     [phaseId, areas],
   );
 
+  const { filters } = useSharedFilters();
+
   const filteredMissionaries = useMemo(
     () =>
       missionaries
         .filter((m) => (phaseId === "all" ? true : getArea(m.areaId)?.phaseId === phaseId))
-        .filter((m) => (areaId === "all" ? true : m.areaId === areaId)),
-    [missionaries, phaseId, areaId],
+        .filter((m) => (areaId === "all" ? true : m.areaId === areaId))
+        .filter((m) => {
+          if (filters.regionId === ALL) return true;
+          const area = getArea(m.areaId);
+          return (m.region ?? area?.region) === filters.regionId;
+        })
+        .filter((m) => {
+          if (filters.provinceId === ALL) return true;
+          const area = getArea(m.areaId);
+          return (m.province ?? area?.province) === filters.provinceId;
+        }),
+    [missionaries, phaseId, areaId, filters.regionId, filters.provinceId],
   );
 
   const pinned = useMemo(
@@ -102,6 +114,23 @@ function MissionMap() {
   );
   // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
   const deferredPinned = useDeferredValue(pinned);
+
+  function locateMyPastors() {
+    if (filters.phaseId !== ALL) setPhaseId(filters.phaseId);
+    setAreaId("all");
+    const scope = [
+      filters.phaseId !== ALL ? phases.find((p) => p.id === filters.phaseId)?.name : null,
+      filters.regionId !== ALL ? filters.regionId : null,
+      filters.provinceId !== ALL ? filters.provinceId : null,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+    toast.success(
+      scope
+        ? `Located ${pinned.length} pastor(s) in ${scope}.`
+        : `Showing all ${pinned.length} pastor(s) — set a region/phase in the dashboard to narrow.`,
+    );
+  }
 
   const header = (
     <header className="flex flex-col gap-3">
@@ -145,6 +174,15 @@ function MissionMap() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          className="rounded-full"
+          onClick={locateMyPastors}
+        >
+          <Locate className="h-4 w-4" /> Locate my supported pastors
+        </Button>
         <Badge variant="secondary" className="rounded-full">
           {pinned.length} {pinned.length === 1 ? "pin" : "pins"}
         </Badge>
