@@ -308,8 +308,8 @@ function UpdateImageThumb({
 }
 
 /**
- * Resolves signed URLs for every ministry-update image on-demand and shows
- * them in a gallery-style lightbox with prev/next navigation.
+ * Signs every ministry-update image in parallel and shows them in a gallery
+ * lightbox with prev/next navigation.
  */
 function UpdatesLightbox({
   items,
@@ -320,28 +320,32 @@ function UpdatesLightbox({
   index: number;
   onClose: () => void;
 }) {
-  const [cursor, setCursor] = useState(index);
-  const current = items[Math.min(cursor, items.length - 1)];
-  const { data: url } = useSignedUrl(BUCKET, current?.path ?? "");
-  // Only pass the current photo — signing every URL up front would be wasteful.
-  // Next/prev is driven locally so keyboard/on-screen controls stay responsive.
+  const results = useQueries({
+    queries: items.map((it) => ({
+      queryKey: ["signed-url", BUCKET, it.path],
+      queryFn: async () => {
+        const url = await createDisplayUrl(BUCKET, it.path);
+        if (!url) throw new Error("Failed to sign URL");
+        return url;
+      },
+      staleTime: 30 * 60 * 1000,
+    })),
+  });
+  const lightboxItems = items
+    .map((it, i) => ({ src: (results[i]?.data as string | undefined) ?? "", alt: it.title }))
+    .filter((it) => it.src);
+  if (lightboxItems.length === 0) return null;
+  const clamped = Math.min(index, lightboxItems.length - 1);
   return (
     <PhotoLightbox
-      open={!!current}
+      open
       onClose={onClose}
-      items={url ? [{ src: url, alt: current?.title ?? "" }] : []}
-      index={0}
-      // Custom prev/next isn't supported by the base component's items array
-      // when we only have one signed URL at a time; drive it via key handler
-      // below so we still get true gallery behavior.
-      key={cursor}
-    >
-      {/* PhotoLightbox does not render children — the wrapper below handles keyboard */}
-    </PhotoLightbox>
+      items={lightboxItems}
+      index={clamped}
+    />
   );
-  // NOTE: unreachable — kept above to preserve JSX shape; controls handled below.
-  void setCursor;
 }
+
 
 
 function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
