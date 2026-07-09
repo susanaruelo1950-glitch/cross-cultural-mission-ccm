@@ -53,6 +53,9 @@ function MissionMap() {
   const [Cluster, setCluster] = useState<null | typeof import("leaflet.markercluster")>(null);
   const [phaseId, setPhaseId] = useState<string>("all");
   const [areaId, setAreaId] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [markersReady, setMarkersReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
