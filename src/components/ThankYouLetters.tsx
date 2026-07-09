@@ -1,5 +1,8 @@
-import { useState, useRef, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState, useRef, type FormEvent } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createDisplayUrl } from "@/lib/storage-signed";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+
 import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
