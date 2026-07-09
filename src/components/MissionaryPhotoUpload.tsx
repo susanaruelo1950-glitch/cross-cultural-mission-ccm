@@ -85,6 +85,36 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
     setPreview(URL.createObjectURL(f));
   }
 
+  async function importFromUrl() {
+    const raw = url.trim();
+    if (!/^https?:\/\//i.test(raw)) {
+      toast.error("Please paste a valid image URL (starting with http:// or https://).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(raw);
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("URL does not point to an image.");
+      if (blob.size > MAX_MB * 1024 * 1024) throw new Error(`Image is too large. Max ${MAX_MB} MB.`);
+      const ext = (blob.type.split("/")[1] || "jpg").split("+")[0];
+      const filename = `from-url.${ext}`;
+      const file = new File([blob], filename, { type: blob.type });
+      setShowUrl(false);
+      setUrl("");
+      mut.mutate(file);
+    } catch (e) {
+      setBusy(false);
+      const msg = e instanceof Error ? e.message : "Could not import that URL.";
+      toast.error(
+        /CORS|Failed to fetch|NetworkError/i.test(msg)
+          ? "That host blocks direct downloads. Save the image and upload the file instead."
+          : msg,
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <input
