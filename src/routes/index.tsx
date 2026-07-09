@@ -22,6 +22,7 @@ import {
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
