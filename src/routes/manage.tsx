@@ -174,6 +174,8 @@ function MissionarySection({
   editingId?: string;
 }) {
   const [q, setQ] = useState("");
+  const { isAdmin } = useAuth();
+  const [pendingDelete, setPendingDelete] = useState<Missionary | null>(null);
   const editing = editingId ? store.missionaries.find((m) => m.id === editingId) : undefined;
   const [showForm, setShowForm] = useState(Boolean(editing));
 
