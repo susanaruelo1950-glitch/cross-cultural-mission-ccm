@@ -195,5 +195,26 @@ input[type="search"]::-webkit-search-results-decoration {
   appearance: none;
   display: none;
 }
-input[type="search"] { direction: ltr; text-align: left; }
+/* Force LTR + left alignment for every text-like input so typing never mirrors,
+ * regardless of the surrounding document direction or browser locale. */
+input[type="search"],
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="tel"],
+input[type="password"],
+input[type="datetime-local"],
+textarea {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+/* Dashboard headline polish */
+.font-hero {
+  font-family: var(--font-display, ui-sans-serif, system-ui);
+  letter-spacing: -0.02em;
+  font-feature-settings: "ss01", "cv11";
+}
+
 
