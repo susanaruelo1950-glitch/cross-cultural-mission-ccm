@@ -1237,9 +1237,17 @@ export function allAreas(): Area[] {
   return merge(seedAreas, readStore().areas);
 }
 export function allMissionaries(): Missionary[] {
-  // Cloud extras win over local extras, which win over seed. Then dedup by name.
-  return dedupByName(merge(seedMissionaries, readStore().missionaries, cloudMissionaries));
+  const s = readStore();
+  const tombstoneIds = new Set<string>([...(s.deletedIds ?? []), ...cloudDeletedIds]);
+  const tombstoneNames = new Set<string>(
+    [...(s.deletedNames ?? []), ...cloudDeletedNames].map((n) => normalizeName(n)),
+  );
+  const merged = merge(seedMissionaries, s.missionaries, cloudMissionaries).filter(
+    (m) => !tombstoneIds.has(m.id) && !tombstoneNames.has(normalizeName(m.fullName)),
+  );
+  return dedupByName(merged);
 }
+
 
 export const phases: Phase[] = allPhases();
 export const areas: Area[] = allAreas();
