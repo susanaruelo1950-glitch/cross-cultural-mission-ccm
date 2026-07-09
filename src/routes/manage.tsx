@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createDisplayUrl } from "@/lib/storage-signed";
 import { z } from "zod";
 import {
   Pencil,
@@ -10,6 +11,8 @@ import {
   Search as SearchIcon,
   Save,
   X,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
