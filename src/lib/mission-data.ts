@@ -1210,9 +1210,6 @@ export function findSimilarMissionaries(
   const threshold = opts.threshold ?? 0.82;
   const target = normalizeName(name);
   if (!target) return [];
-  // Lazy import to avoid a circular dep at module init.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { nameSimilarity } = require("./fuzzy-match") as typeof import("./fuzzy-match");
   const out: Array<{ missionary: Missionary; score: number }> = [];
   for (const m of allMissionaries()) {
     if (opts.excludeId && m.id === opts.excludeId) continue;
