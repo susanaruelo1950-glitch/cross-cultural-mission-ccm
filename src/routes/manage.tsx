@@ -242,33 +242,61 @@ function MissionarySection({
                 {m.church} · {m.address}
               </div>
             </div>
-            <Button variant="ghost" size="icon" aria-label={`Edit ${m.fullName}`} asChild>
-              <Link to="/manage" search={{ tab: "missionaries", edit: m.id }}>
-                <Pencil className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${m.fullName}`}
-              onClick={() => {
-                if (confirm(`Delete ${m.fullName}?`)) {
-                  deleteMissionary(m.id);
-                  toast.success("Missionary deleted");
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {isAdmin ? (
+              <>
+                <Button variant="ghost" size="icon" aria-label={`Edit ${m.fullName}`} asChild>
+                  <Link to="/manage" search={{ tab: "missionaries", edit: m.id }}>
+                    <Pencil className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Delete ${m.fullName}`}
+                  onClick={() => setPendingDelete(m)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            ) : null}
           </li>
         ))}
         {filtered.length === 0 ? (
           <li className="p-8 text-center text-sm text-muted-foreground">No missionaries found.</li>
         ) : null}
       </ul>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this missionary?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `${pendingDelete.fullName} will be removed from the directory, the mission map, and every guest, supporter, and coordinator view. This cannot be undone from here.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (!pendingDelete) return;
+                const name = pendingDelete.fullName;
+                deleteMissionary(pendingDelete.id);
+                setPendingDelete(null);
+                toast.success(`${name} deleted`);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 function MissionaryForm({
   initial,
