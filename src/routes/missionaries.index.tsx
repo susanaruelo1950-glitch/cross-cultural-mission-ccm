@@ -43,7 +43,7 @@ export const Route = createFileRoute("/missionaries/")({
   component: Directory,
 });
 
-const ALL = "__all__";
+
 const PAGE_SIZE = 12;
 
 function Directory() {
