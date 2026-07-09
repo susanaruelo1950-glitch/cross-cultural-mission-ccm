@@ -125,6 +125,13 @@ function Dashboard() {
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />
 
+      {/* Cross-surface filter bar (region · province · phase) — syncs with the
+          Missionary Directory and AI Assistant scope. */}
+      <SharedFilterBar
+        label="Dashboard filters"
+        hint="Region · Province · Phase — filters follow you to the Missionary Directory and AI Assistant."
+      />
+
 
       {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
       <section
