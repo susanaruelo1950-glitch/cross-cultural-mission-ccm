@@ -184,6 +184,11 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           <Sparkles className="h-3 w-3" /> Answered
                         </Badge>
                       ) : null}
+                      {!p.visible ? (
+                        <Badge variant="outline" className="rounded-full border-amber-500/50 text-amber-600 dark:text-amber-400">
+                          <EyeOff className="h-3 w-3" /> Hidden
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                   {p.detail ? (
