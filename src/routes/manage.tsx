@@ -447,13 +447,21 @@ function MissionaryForm({
     finalizeSave(draft);
   }
 
-  function finalizeSave(draft: Missionary) {
-    upsertMissionary(draft);
+  async function finalizeSave(draft: Missionary) {
+    const result = await upsertMissionary(draft);
     loadedUpdatedAt.current = new Date().toISOString();
     baseSnapshot.current = draft;
     setRemoteChanged(false);
     setMergePreview(null);
-    toast.success(initial ? "Missionary updated" : "Missionary added");
+    if (result.ok) {
+      toast.success(
+        initial
+          ? `${draft.fullName} updated — synced live to every device`
+          : `${draft.fullName} added — synced live to every device`,
+      );
+    } else {
+      toast.error(`Saved locally, but cloud sync failed: ${result.reason}`);
+    }
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
   }
