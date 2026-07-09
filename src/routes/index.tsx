@@ -70,6 +70,8 @@ const DASHBOARD_VERSES: { ref: string; text: string }[] = [
 
 function Dashboard() {
   const { phases, areas, missionaries } = useDataStore();
+  const prayerLive = usePrayerCount();
+  const updatesLive = useMinistryUpdateCount();
   const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
   const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
   const byPhase = missionariesByPhaseCount();
