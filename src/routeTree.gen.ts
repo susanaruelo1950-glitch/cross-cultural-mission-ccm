@@ -28,6 +28,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MissionariesIndexRouteImport } from './routes/missionaries.index'
 import { Route as MissionariesIdRouteImport } from './routes/missionaries.$id'
+import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -124,10 +125,15 @@ const MissionariesIdRoute = MissionariesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => MissionariesRoute,
 } as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -143,12 +149,13 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -163,13 +170,14 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries': typeof MissionariesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
 }
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries/'
   fileRoutesByTo: FileRoutesByTo
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries'
   id:
@@ -249,13 +260,14 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
@@ -408,8 +420,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MissionariesIdRouteImport
       parentRoute: typeof MissionariesRoute
     }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminRolesRoute: typeof AdminRolesRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminRolesRoute: AdminRolesRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface MissionariesRouteChildren {
   MissionariesIdRoute: typeof MissionariesIdRoute
@@ -427,7 +456,7 @@ const MissionariesRouteWithChildren = MissionariesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
