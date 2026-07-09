@@ -1,6 +1,6 @@
 # Realtime E2E — automated smoke
 
-`node tests/e2e/realtime-smoke.mjs`
+`python3 tests/e2e/realtime_smoke.py`
 
 Verifies the public dashboard mounts the realtime bridge and that the
 `<LiveUpdatesIndicator />` badge reaches **Live**, and that a simulated remote
