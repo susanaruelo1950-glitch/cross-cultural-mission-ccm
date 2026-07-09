@@ -103,7 +103,12 @@ function initials(name: string) {
 }
 
 function Profile() {
-  const { m } = Route.useLoaderData() as { m: Missionary };
+  const { m: seedM } = Route.useLoaderData() as { m: Missionary };
+  // Prefer the live store version so admin edits (phone, email, church, …)
+  // reflect in realtime for guest, supporter, and coordinator viewers.
+  const { missionaries } = useDataStore();
+  const live = missionaries.find((x) => x.id === seedM.id);
+  const m: Missionary = live ?? seedM;
   const { data: photoOverride } = useMissionaryPhoto(m.id);
   const { data: coverOverride } = useMissionaryCover(m.id);
   const photo = photoOverride ?? m.photo;
