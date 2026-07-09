@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2, Sparkles, AlertTriangle, Check, Pencil, Save, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Sparkles, AlertTriangle, Check, Pencil, Save, X, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,6 +19,7 @@ export interface DbPrayer {
   detail: string | null;
   urgent: boolean;
   answered: boolean;
+  visible: boolean;
   created_at: string;
 }
 
@@ -43,13 +44,13 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     queryFn: async (): Promise<DbPrayer[]> => {
       let q = supabase
         .from("prayer_requests_db")
-        .select("id, missionary_id, title, detail, urgent, answered, created_at")
+        .select("id, missionary_id, title, detail, urgent, answered, visible, created_at")
         .order("urgent", { ascending: false })
         .order("created_at", { ascending: false });
       if (missionaryId) q = q.eq("missionary_id", missionaryId);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as DbPrayer[];
     },
   });
 
@@ -62,6 +63,21 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggleVisible = useMutation({
+    mutationFn: async ({ id, visible }: { id: string; visible: boolean }) => {
+      const { error } = await supabase
+        .from("prayer_requests_db")
+        .update({ visible })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_r, v) => {
+      toast.success(v.visible ? "Prayer request is now visible to everyone." : "Prayer request hidden from non-admins.");
       qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -168,6 +184,11 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           <Sparkles className="h-3 w-3" /> Answered
                         </Badge>
                       ) : null}
+                      {!p.visible ? (
+                        <Badge variant="outline" className="rounded-full border-amber-500/50 text-amber-600 dark:text-amber-400">
+                          <EyeOff className="h-3 w-3" /> Hidden
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                   {p.detail ? (
@@ -195,6 +216,19 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                         >
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Button>
+                        {isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 rounded-full text-xs"
+                            onClick={() => toggleVisible.mutate({ id: p.id, visible: !p.visible })}
+                            aria-label={p.visible ? "Hide from non-admins" : "Show to everyone"}
+                            title={p.visible ? "Hide from guests, supporters, and coordinators" : "Show to everyone again"}
+                          >
+                            {p.visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            {p.visible ? "Hide" : "Show"}
+                          </Button>
+                        ) : null}
                         {isAdmin ? (
                           <Button
                             size="sm"

@@ -25,7 +25,7 @@ import { useDirectory } from "@/hooks/use-directory";
 import { askAssistant } from "@/lib/ask.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-const ALL = "__all__";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 interface Filters { regionId: string; provinceId: string; phaseId: string }
 
 
@@ -244,17 +244,11 @@ function Assistant() {
   const [busy, setBusy] = useState(false);
   const ask = useServerFn(askAssistant);
   const { regions, provinces, phases } = useDirectory();
-  const [filters, setFilters] = useState<Filters>(() => {
-    if (typeof window === "undefined") return { regionId: ALL, provinceId: ALL, phaseId: ALL };
-    try {
-      const raw = window.sessionStorage.getItem("assistant.filters");
-      if (raw) return { regionId: ALL, provinceId: ALL, phaseId: ALL, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
-    return { regionId: ALL, provinceId: ALL, phaseId: ALL };
-  });
-  useEffect(() => {
-    try { window.sessionStorage.setItem("assistant.filters", JSON.stringify(filters)); } catch { /* ignore */ }
-  }, [filters]);
+  const { filters, setFilters: setSharedFilters } = useSharedFilters();
+  const setFilters = (updater: Filters | ((prev: Filters) => Filters)) => {
+    const next = typeof updater === "function" ? (updater as (p: Filters) => Filters)(filters) : updater;
+    setSharedFilters(next);
+  };
   const regionName = regions.find((r) => r.id === filters.regionId)?.name;
   const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
   const filteredProvinces = useMemo(

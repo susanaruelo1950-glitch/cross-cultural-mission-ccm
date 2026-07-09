@@ -20,6 +20,7 @@ export interface Announcement {
   published: boolean;
   publish_at: string;
   expires_at: string | null;
+  layer: string;
   created_at: string;
 }
 
@@ -126,6 +127,7 @@ export function AnnouncementsManager() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h4 className="font-display text-base font-semibold">{a.title}</h4>
                       <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="rounded-full capitalize">{a.layer || "primary"}</Badge>
                         {live ? (
                           <Badge className="rounded-full bg-secondary text-secondary-foreground">Live</Badge>
                         ) : scheduled ? (
@@ -197,6 +199,7 @@ function AnnouncementForm({
   const [title, setTitle] = useState(announcement?.title ?? "");
   const [body, setBody] = useState(announcement?.body ?? "");
   const [linkUrl, setLinkUrl] = useState(announcement?.link_url ?? "");
+  const [layer, setLayer] = useState(announcement?.layer ?? "primary");
   const [published, setPublished] = useState(announcement?.published ?? true);
   const [publishAt, setPublishAt] = useState(
     announcement ? announcement.publish_at.slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -209,6 +212,7 @@ function AnnouncementForm({
         title: title.trim(),
         body: body.trim() || null,
         link_url: linkUrl.trim() || null,
+        layer: (layer.trim() || "primary").toLowerCase(),
         published,
         publish_at: new Date(publishAt).toISOString(),
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
@@ -248,6 +252,27 @@ function AnnouncementForm({
       <div className="grid gap-1.5">
         <Label htmlFor="ann-link">Link (optional)</Label>
         <Input id="ann-link" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" dir="ltr" />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="ann-layer">News layer / tier</Label>
+        <Input
+          id="ann-layer"
+          value={layer}
+          onChange={(e) => setLayer(e.target.value)}
+          placeholder="e.g. primary, events, prayer"
+          list="ann-layer-suggest"
+          maxLength={40}
+          dir="ltr"
+        />
+        <datalist id="ann-layer-suggest">
+          <option value="primary" />
+          <option value="events" />
+          <option value="prayer" />
+          <option value="urgent" />
+        </datalist>
+        <p className="text-[11px] text-muted-foreground">
+          Group headlines into tiers. Each layer scrolls as its own row on the dashboard, and viewers can hide layers individually.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">

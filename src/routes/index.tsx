@@ -15,15 +15,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { NewsTicker } from "@/components/NewsTicker";
+import { SharedFilterBar } from "@/components/SharedFilterBar";
 
 import {
-  missionariesByPhaseCount,
   missionStats,
   prayerRequests,
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
+import { useMemo } from "react";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
@@ -70,18 +73,49 @@ const DASHBOARD_VERSES: { ref: string; text: string }[] = [
 ];
 
 function Dashboard() {
-  const { phases, areas, missionaries } = useDataStore();
+  const { phases: seedPhasesData, areas: seedAreasData, missionaries } = useDataStore();
+  const dir = useDirectory();
+  // Prefer DB-backed directory so filter ids match the shared filter bar.
+  const phases = dir.phases.length ? dir.phases : seedPhasesData;
+  const areas = dir.areas.length ? dir.areas : seedAreasData;
+  const { regions, provinces } = dir;
+  const { filters } = useSharedFilters();
+  const regionName = regions.find((r) => r.id === filters.regionId)?.name;
+  const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
+
   const prayerLive = usePrayerCount();
   const updatesLive = useMinistryUpdateCount();
-  const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
-  const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
-  const byPhase = missionariesByPhaseCount();
+
+  const areaMatches = (a: { region?: string; province?: string; phaseId: string }) => {
+    if (filters.phaseId !== ALL && a.phaseId !== filters.phaseId) return false;
+    if (filters.regionId !== ALL && a.region !== filters.regionId && a.region !== regionName) return false;
+    if (filters.provinceId !== ALL && a.province !== filters.provinceId && a.province !== provinceName) return false;
+    return true;
+  };
+
+  const filteredAreas = useMemo(() => areas.filter(areaMatches), [areas, filters, regionName, provinceName]);
+  const areaIdSet = useMemo(() => new Set(filteredAreas.map((a) => a.id)), [filteredAreas]);
+  const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
+  const filteredMissionaries = useMemo(
+    () => missionaries.filter((m) => areaIdSet.has(m.areaId)),
+    [missionaries, areaIdSet],
+  );
+
+  const areasByPhase = (id: string) => filteredAreas.filter((a) => a.phaseId === id);
+  const missionariesByArea = (id: string) => filteredMissionaries.filter((m) => m.areaId === id);
+  const byPhase = phases.map((p) => ({
+    name: p.name,
+    value: filteredMissionaries.filter((m) => areaById.get(m.areaId)?.phaseId === p.id).length,
+  }));
   const maxPhase = Math.max(1, ...byPhase.map((b) => b.value));
+
+  const filterActive = filters.regionId !== ALL || filters.provinceId !== ALL || filters.phaseId !== ALL;
   const urgentPrayer = prayerRequests.filter((p) => p.urgent && !p.answered);
   const recentReports = [...reports]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 4);
   const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
+
 
 
   return (
@@ -90,6 +124,13 @@ function Dashboard() {
 
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />
+
+      {/* Cross-surface filter bar (region · province · phase) — syncs with the
+          Missionary Directory and AI Assistant scope. */}
+      <SharedFilterBar
+        label="Dashboard filters"
+        hint="Region · Province · Phase — filters follow you to the Missionary Directory and AI Assistant."
+      />
 
 
       {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
@@ -124,11 +165,11 @@ function Dashboard() {
 
 
 
-      {/* Stat grid */}
+      {/* Stat grid — reflects the shared filter when active. */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Missionaries" value={missionStats.totalMissionaries} icon={Users} tone="primary" />
+        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" />
         <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" />
-        <StatCard label="Areas" value={missionStats.totalAreas} icon={MapPin} tone="warm" />
+        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" />
         <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" />
         <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" />

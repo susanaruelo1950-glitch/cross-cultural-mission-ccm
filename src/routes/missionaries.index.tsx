@@ -18,6 +18,7 @@ import {
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { useLowData } from "@/hooks/use-low-data";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { supabase } from "@/integrations/supabase/client";
 import { createDisplayUrl } from "@/lib/storage-signed";
 
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/missionaries/")({
   component: Directory,
 });
 
-const ALL = "__all__";
+
 const PAGE_SIZE = 12;
 
 function Directory() {
@@ -52,9 +53,10 @@ function Directory() {
   // Filters come from the database (regions/provinces/phases/areas seeded there);
   // falls back to in-memory seed data while queries load or if the DB is empty.
   const { phases, areas, regions, provinces, loading } = useDirectory();
-  const [regionId, setRegionId] = useState<string>(ALL);
-  const [provinceId, setProvinceId] = useState<string>(ALL);
-  const [phaseId, setPhaseId] = useState<string>(ALL);
+  const { filters, setFilters } = useSharedFilters();
+  const regionId = filters.regionId;
+  const provinceId = filters.provinceId;
+  const phaseId = filters.phaseId;
   const [areaId, setAreaId] = useState<string>(ALL);
   const [page, setPage] = useState(1);
   const { lowData, setLowData } = useLowData();
@@ -180,9 +182,9 @@ function Directory() {
         <Select
           value={regionId}
           onValueChange={(v) => {
-            setRegionId(v);
-            resetFilter(setProvinceId, ALL);
-            resetFilter(setAreaId, ALL);
+            setFilters({ regionId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Region" /></SelectTrigger>
@@ -194,8 +196,9 @@ function Directory() {
         <Select
           value={provinceId}
           onValueChange={(v) => {
-            setProvinceId(v);
-            resetFilter(setAreaId, ALL);
+            setFilters({ provinceId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Province" /></SelectTrigger>
@@ -207,8 +210,9 @@ function Directory() {
         <Select
           value={phaseId}
           onValueChange={(v) => {
-            setPhaseId(v);
-            resetFilter(setAreaId, ALL);
+            setFilters({ phaseId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Phase" /></SelectTrigger>
