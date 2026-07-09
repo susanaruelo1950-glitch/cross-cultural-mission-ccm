@@ -120,6 +120,9 @@ function AdminPage() {
 
       <ScriptureManager />
 
+      <AnnouncementsManager />
+
+
       <ThankYouLettersAdmin />
 
       <CoordinatorAssignments />
