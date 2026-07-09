@@ -1228,12 +1228,40 @@ export function upsertMissionary(m: Missionary) {
   const s = readStore();
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
   writeStore(s);
+  // Best-effort cloud sync so other users/devices see the change in realtime.
+  void syncMissionaryToCloud(m);
 }
 export function deleteMissionary(id: string) {
   const s = readStore();
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
   writeStore(s);
+  void deleteMissionaryFromCloud(id);
 }
+
+async function syncMissionaryToCloud(m: Missionary) {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return; // silent — non-admins or signed-out just skip
+    await supabase
+      .from("missionary_extras")
+      .upsert({ id: m.id, data: m as unknown as Record<string, unknown>, created_by: userData.user.id }, { onConflict: "id" });
+  } catch (err) {
+    console.warn("[missionary sync] cloud upsert failed:", err);
+  }
+}
+
+async function deleteMissionaryFromCloud(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await supabase.from("missionary_extras").delete().eq("id", id);
+  } catch (err) {
+    console.warn("[missionary sync] cloud delete failed:", err);
+  }
+}
+
 export function resetRuntimeStore() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
