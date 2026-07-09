@@ -99,12 +99,19 @@ function ActivityPage() {
     () => Array.from(new Set(rows.map((r) => r.action))).sort(),
     [rows],
   );
+  const actorOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.actor_email).filter((e): e is string => Boolean(e))))
+        .sort(),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((r) => {
+    const list = rows.filter((r) => {
       if (entity !== "all" && r.entity_type !== entity) return false;
       if (action !== "all" && r.action !== action) return false;
+      if (actor !== "all" && r.actor_email !== actor) return false;
       if (!needle) return true;
       return (
         (r.summary ?? "").toLowerCase().includes(needle) ||
@@ -112,7 +119,9 @@ function ActivityPage() {
         r.entity_id.toLowerCase().includes(needle)
       );
     });
-  }, [rows, q, entity, action]);
+    // Rows arrive newest-first; reverse when the user picks ascending.
+    return sortDir === "asc" ? [...list].reverse() : list;
+  }, [rows, q, entity, action, actor, sortDir]);
 
   function exportCsv() {
     const header = "when,entity,action,actor,summary,changes\n";
