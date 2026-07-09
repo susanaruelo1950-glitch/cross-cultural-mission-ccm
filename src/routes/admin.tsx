@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { CoordinatorAssignments } from "@/components/CoordinatorAssignments";
 import { ScriptureManager } from "@/components/ScriptureManager";
 import { ThankYouLettersAdmin } from "@/components/ThankYouLettersAdmin";
+import { AdminHistoryDrawer } from "@/components/AdminHistoryDrawer";
+import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { PermissionError } from "@/components/PermissionError";
 
 export const Route = createFileRoute("/admin")({
@@ -71,12 +73,15 @@ function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Admin Panel</h1>
-        <p className="mt-1 text-muted-foreground">
-          Signed in as <strong>{user.email}</strong>. Post ministry updates and photos from any
-          missionary profile page.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold sm:text-4xl">Admin Panel</h1>
+          <p className="mt-1 text-muted-foreground">
+            Signed in as <strong>{user.email}</strong>. Post ministry updates and photos from any
+            missionary profile page.
+          </p>
+        </div>
+        <AdminHistoryDrawer />
       </header>
 
       <div className="grid gap-4 md:grid-cols-4">
