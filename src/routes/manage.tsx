@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import {
   deleteMissionary,
+  findSimilarMissionaries,
   normalizeName,
   upsertArea,
   upsertMissionary,
@@ -252,13 +253,31 @@ function MissionaryForm({
   const set = <K extends keyof Missionary>(k: K, v: Missionary[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  // Live duplicate-name warning (case/title-insensitive)
+  // Live duplicate-name warning (case/title-insensitive) — exact + fuzzy
   const dupe = useMemo(() => {
     const name = (form.fullName ?? "").trim();
     if (!name) return null;
     const norm = normalizeName(name);
     return existing.find((m) => m.id !== (initial?.id ?? form.id) && normalizeName(m.fullName) === norm) ?? null;
   }, [form.fullName, form.id, initial?.id, existing]);
+
+  const fuzzyMatches = useMemo(() => {
+    const name = (form.fullName ?? "").trim();
+    if (name.length < 3) return [];
+    return findSimilarMissionaries(name, {
+      excludeId: initial?.id ?? form.id,
+      threshold: 0.82,
+    }).filter((m) => m.missionary.id !== dupe?.id).slice(0, 3);
+  }, [form.fullName, form.id, initial?.id, dupe?.id]);
+
+  // Area ↔ Province mismatch warning
+  const selectedArea = areas.find((a) => a.id === form.areaId);
+  const provinceMismatch = useMemo(() => {
+    if (!selectedArea?.province || !form.province) return null;
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+    if (norm(selectedArea.province) === norm(form.province)) return null;
+    return { areaProvince: selectedArea.province, entered: form.province };
+  }, [selectedArea?.province, form.province]);
 
   function save() {
     const draft: Missionary = {
@@ -278,7 +297,22 @@ function MissionaryForm({
         `A missionary named "${dupe.fullName}" already exists in ${areas.find((a) => a.id === dupe.areaId)?.name ?? "another area"}. Save anyway?`,
       );
       if (!ok) return;
+    } else if (fuzzyMatches.length && !initial) {
+      const top = fuzzyMatches[0];
+      const ok = confirm(
+        `"${top.missionary.fullName}" looks very similar (${Math.round(top.score * 100)}% match). Save this as a new missionary anyway?`,
+      );
+      if (!ok) return;
     }
+    if (provinceMismatch) {
+      const ok = confirm(
+        `Area "${selectedArea?.name}" is in ${provinceMismatch.areaProvince}, but you entered "${provinceMismatch.entered}". Save anyway?`,
+      );
+      if (!ok) return;
+    }
+    // Auto-fill province from the area when empty — prevents Kidapawan-style mismatches.
+    if (!draft.province && selectedArea?.province) draft.province = selectedArea.province;
+    if (!draft.region && selectedArea?.region) draft.region = selectedArea.region;
     upsertMissionary(draft);
     toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
@@ -311,7 +345,28 @@ function MissionaryForm({
           {areas.find((a) => a.id === dupe.areaId)?.name ? ` in ${areas.find((a) => a.id === dupe.areaId)?.name}` : ""}.
           Consider editing that record instead of creating a duplicate.
         </div>
+      ) : fuzzyMatches.length && !initial ? (
+        <div role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          Possible duplicate(s):{" "}
+          {fuzzyMatches.map((f, i) => (
+            <span key={f.missionary.id}>
+              {i > 0 ? ", " : ""}
+              <strong>{f.missionary.fullName}</strong> ({Math.round(f.score * 100)}%)
+            </span>
+          ))}
+          . Please double-check the spelling before saving.
+        </div>
       ) : null}
+
+      {provinceMismatch ? (
+        <div role="alert" className="mb-4 rounded-lg border border-red-500/40 bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-100">
+          Location mismatch: area <strong>{selectedArea?.name}</strong> is in{" "}
+          <strong>{provinceMismatch.areaProvince}</strong>, but you entered{" "}
+          <strong>{provinceMismatch.entered}</strong>. Fix the province or pick a different area.
+        </div>
+      ) : null}
+
+
 
 
       <div className="grid gap-4 sm:grid-cols-2">
