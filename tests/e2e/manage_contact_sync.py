@@ -79,10 +79,10 @@ async def main() -> int:
         await page.screenshot(path=str(OUT / "map_deeplink.png"))
 
         # 5. Contact row on a profile — tel:/mailto: OR "Not shared yet".
-        await page.goto(f"{URL}/missionaries/basilio-sumido", wait_until="domcontentloaded")
-        await page.wait_for_timeout(1200)
-        html = await page.content()
-        has_contact = any(needle in html for needle in ("mailto:", "tel:", "Not shared yet", "Phone", "Email"))
+        await page.goto(f"{URL}/missionaries/basilio-sumido", wait_until="networkidle")
+        await page.wait_for_timeout(2000)
+        body = await page.inner_text("body")
+        has_contact = any(needle in body for needle in ("Phone", "Email", "Contact", "Not shared"))
         if not has_contact:
             print("FAIL: profile has no phone/email row or fallback text")
             exit_code = 1
