@@ -77,6 +77,12 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const withImages = useMemo(
+    () => (updates ?? []).filter((u) => !!u.image_url),
+    [updates],
+  );
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -162,7 +168,16 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                 />
               ) : (
                 <>
-                  {u.image_url ? <UpdateImage path={u.image_url} title={u.title} /> : null}
+                  {u.image_url ? (
+                    <UpdateImageThumb
+                      path={u.image_url}
+                      title={u.title}
+                      onOpen={() => {
+                        const idx = withImages.findIndex((x) => x.id === u.id);
+                        setLightboxIndex(idx >= 0 ? idx : 0);
+                      }}
+                    />
+                  ) : null}
                   {u.summary ? (
                     <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
                   ) : null}
@@ -177,9 +192,18 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
           ))
         )}
       </div>
+
+      {lightboxIndex !== null && withImages.length > 0 ? (
+        <UpdatesLightbox
+          items={withImages.map((u) => ({ path: u.image_url as string, title: u.title }))}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </Card>
   );
 }
+
 
 function UpdateEditForm({
   update,
