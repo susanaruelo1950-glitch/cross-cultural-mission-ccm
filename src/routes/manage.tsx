@@ -828,18 +828,21 @@ function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
 function PhaseSection({ store }: { store: ReturnType<typeof useDataStore> }) {
   const [form, setForm] = useState<Partial<Phase>>({ order: store.phases.length + 1 });
 
-  function save() {
+  async function save() {
     if (!form.name) {
       toast.error("Phase name required");
       return;
     }
-    upsertPhase({
+    const phase: Phase = {
       id: form.id || `phase-${slug(form.name)}-${Date.now().toString(36)}`,
       name: form.name,
       order: form.order ?? store.phases.length + 1,
       description: form.description,
-    });
-    toast.success("Phase saved");
+    };
+    upsertPhase(phase);
+    const res = await syncPhaseToCloud(phase);
+    if (res.ok) toast.success("Phase saved — synced live to every device");
+    else toast.error(`Saved locally, cloud sync failed: ${res.reason}`);
     setForm({ order: (store.phases.length + 1) + 1 });
   }
 
