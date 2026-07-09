@@ -170,3 +170,30 @@
     oklch(0.5 0.14 200) 50%,
     oklch(0.62 0.13 155) 100%);
 }
+
+/* News-ticker marquee — right-to-left, pauses on hover, respects reduced motion. */
+@keyframes gc-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@utility marquee-track {
+  animation: gc-marquee 40s linear infinite;
+  will-change: transform;
+}
+.marquee-track:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+
+/* Normalize <input type="search"> — remove webkit's cancel/decoration
+ * "mirror" artifacts that make the placeholder look duplicated on desktop. */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type="search"] { direction: ltr; text-align: left; }
+
