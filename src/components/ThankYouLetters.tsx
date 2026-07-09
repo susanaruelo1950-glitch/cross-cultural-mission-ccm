@@ -280,7 +280,15 @@ function LetterEditForm({
 }
 
 
-function LetterAttachment({ path, title }: { path: string; title: string }) {
+function LetterAttachment({
+  path,
+  title,
+  onOpenImage,
+}: {
+  path: string;
+  title: string;
+  onOpenImage?: () => void;
+}) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
   const isPdf = /\.pdf(\?|$)/i.test(path);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -296,7 +304,11 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     <div className="mt-3 flex flex-wrap items-start gap-3">
       <button
         type="button"
-        onClick={() => (isPdf ? setPreviewOpen(true) : window.open(url, "_blank", "noopener,noreferrer"))}
+        onClick={() => {
+          if (isPdf) setPreviewOpen(true);
+          else if (onOpenImage) onOpenImage();
+          else window.open(url, "_blank", "noopener,noreferrer");
+        }}
         className="group block overflow-hidden rounded-xl border border-border bg-muted text-left"
         aria-label={`Preview thank you letter: ${title}`}
       >
@@ -343,6 +355,46 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     </div>
   );
 }
+
+/**
+ * Signs every image thank-you letter in parallel and shows them in a gallery
+ * lightbox with prev/next navigation.
+ */
+function LettersLightbox({
+  items,
+  index,
+  onClose,
+}: {
+  items: { path: string; title: string }[];
+  index: number;
+  onClose: () => void;
+}) {
+  const results = useQueries({
+    queries: items.map((it) => ({
+      queryKey: ["signed-url", BUCKET, it.path],
+      queryFn: async () => {
+        const url = await createDisplayUrl(BUCKET, it.path);
+        if (!url) throw new Error("Failed to sign URL");
+        return url;
+      },
+      staleTime: 30 * 60 * 1000,
+    })),
+  });
+  const lightboxItems = items
+    .map((it, i) => ({ src: (results[i]?.data as string | undefined) ?? "", alt: it.title }))
+    .filter((it) => it.src);
+  if (lightboxItems.length === 0) return null;
+  return (
+    <PhotoLightbox
+      open
+      onClose={onClose}
+      items={lightboxItems}
+      index={Math.min(index, lightboxItems.length - 1)}
+    />
+  );
+}
+
+
 
 
 function LetterForm({ missionaryId }: { missionaryId: string }) {
