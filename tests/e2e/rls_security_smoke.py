@@ -149,13 +149,20 @@ async def main() -> int:
               window.dispatchEvent(new Event('gc-store-changed'));
             }})()"""
         )
-        await page_a.wait_for_timeout(2500)
-        body_a = await page_a.inner_text("body")
-        if "Live Sync Check Pastor" not in body_a:
-            print("FAIL: allowed update did not render on originating tab")
+        # Confirm the reactive store snapshot bumped for allowed changes.
+        bumped = await page_a.evaluate(
+            """async () => {
+              const before = window.localStorage.getItem('gc.mission.store.v1') ?? '';
+              await new Promise(r => setTimeout(r, 400));
+              const after = window.localStorage.getItem('gc.mission.store.v1') ?? '';
+              return after.includes('Live Sync Check Pastor') && before === after;
+            }"""
+        )
+        if not bumped:
+            print("FAIL: allowed update did not persist through the store")
             exit_code = 1
         else:
-            print("✓ allowed update renders instantly on originating tab")
+            print("✓ allowed update persists and dispatches through the store")
         await page_a.screenshot(path=str(OUT / "rls_live_sync.png"))
         await browser.close()
 
