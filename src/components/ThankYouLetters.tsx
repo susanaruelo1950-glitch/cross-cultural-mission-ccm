@@ -179,16 +179,33 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
                       {l.message}
                     </p>
                   ) : null}
-                  {l.letter_url ? <LetterAttachment path={l.letter_url} title={l.title} /> : null}
+                  {l.letter_url ? (
+                    <LetterAttachment
+                      path={l.letter_url}
+                      title={l.title}
+                      onOpenImage={() => {
+                        const idx = imageLetters.findIndex((x) => x.id === l.id);
+                        setLightboxIndex(idx >= 0 ? idx : 0);
+                      }}
+                    />
+                  ) : null}
                 </>
               )}
             </article>
           ))
         )}
       </div>
+      {lightboxIndex !== null && imageLetters.length > 0 ? (
+        <LettersLightbox
+          items={imageLetters.map((l) => ({ path: l.letter_url as string, title: l.title }))}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </Card>
   );
 }
+
 
 function LetterEditForm({
   letter,
