@@ -82,6 +82,14 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Only images can be shown in the lightbox; PDFs still get the PDF preview.
+  const imageLetters = useMemo(
+    () => (letters ?? []).filter((l) => l.letter_url && !/\.pdf(\?|$)/i.test(l.letter_url)),
+    [letters],
+  );
+
 
   return (
     <Card className="card-soft p-5 sm:p-6">
