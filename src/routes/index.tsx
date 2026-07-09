@@ -73,18 +73,49 @@ const DASHBOARD_VERSES: { ref: string; text: string }[] = [
 ];
 
 function Dashboard() {
-  const { phases, areas, missionaries } = useDataStore();
+  const { phases: seedPhasesData, areas: seedAreasData, missionaries } = useDataStore();
+  const dir = useDirectory();
+  // Prefer DB-backed directory so filter ids match the shared filter bar.
+  const phases = dir.phases.length ? dir.phases : seedPhasesData;
+  const areas = dir.areas.length ? dir.areas : seedAreasData;
+  const { regions, provinces } = dir;
+  const { filters } = useSharedFilters();
+  const regionName = regions.find((r) => r.id === filters.regionId)?.name;
+  const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
+
   const prayerLive = usePrayerCount();
   const updatesLive = useMinistryUpdateCount();
-  const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
-  const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
-  const byPhase = missionariesByPhaseCount();
+
+  const areaMatches = (a: { region?: string; province?: string; phaseId: string }) => {
+    if (filters.phaseId !== ALL && a.phaseId !== filters.phaseId) return false;
+    if (filters.regionId !== ALL && a.region !== filters.regionId && a.region !== regionName) return false;
+    if (filters.provinceId !== ALL && a.province !== filters.provinceId && a.province !== provinceName) return false;
+    return true;
+  };
+
+  const filteredAreas = useMemo(() => areas.filter(areaMatches), [areas, filters, regionName, provinceName]);
+  const areaIdSet = useMemo(() => new Set(filteredAreas.map((a) => a.id)), [filteredAreas]);
+  const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
+  const filteredMissionaries = useMemo(
+    () => missionaries.filter((m) => areaIdSet.has(m.areaId)),
+    [missionaries, areaIdSet],
+  );
+
+  const areasByPhase = (id: string) => filteredAreas.filter((a) => a.phaseId === id);
+  const missionariesByArea = (id: string) => filteredMissionaries.filter((m) => m.areaId === id);
+  const byPhase = phases.map((p) => ({
+    name: p.name,
+    value: filteredMissionaries.filter((m) => areaById.get(m.areaId)?.phaseId === p.id).length,
+  }));
   const maxPhase = Math.max(1, ...byPhase.map((b) => b.value));
+
+  const filterActive = filters.regionId !== ALL || filters.provinceId !== ALL || filters.phaseId !== ALL;
   const urgentPrayer = prayerRequests.filter((p) => p.urgent && !p.answered);
   const recentReports = [...reports]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 4);
   const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
+
 
 
   return (
