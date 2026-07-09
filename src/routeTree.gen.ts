@@ -29,6 +29,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MissionariesIndexRouteImport } from './routes/missionaries.index'
 import { Route as MissionariesIdRouteImport } from './routes/missionaries.$id'
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
+import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -130,6 +131,11 @@ const AdminRolesRoute = AdminRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries': typeof MissionariesIndexRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
   '/missionaries/': typeof MissionariesIndexRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/activity'
     | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/activity'
     | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/summaries'
     | '/support'
+    | '/admin/activity'
     | '/admin/roles'
     | '/missionaries/$id'
     | '/missionaries/'
@@ -427,14 +439,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminRolesRoute: typeof AdminRolesRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
   AdminRolesRoute: AdminRolesRoute,
 }
 

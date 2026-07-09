@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -18,10 +19,27 @@ const tones = {
 };
 
 export function StatCard({ label, value, icon: Icon, hint, tone = "primary" }: StatCardProps) {
+  const prev = useRef(value);
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (prev.current !== value) {
+      prev.current = value;
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [value]);
+
   return (
-    <Card className="card-soft flex items-start gap-4 p-5">
+    <Card
+      className={cn(
+        "card-soft flex items-start gap-4 p-5 transition-shadow duration-500",
+        flash && "ring-2 ring-primary/60 shadow-lift",
+      )}
+      aria-live="polite"
+    >
       <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", tones[tone])}>
-        <Icon className="h-5 w-5" />
+        <Icon className={cn("h-5 w-5", flash && "animate-pulse")} />
       </div>
       <div className="min-w-0">
         <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

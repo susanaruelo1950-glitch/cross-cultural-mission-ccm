@@ -22,6 +22,7 @@ import {
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
@@ -69,6 +70,8 @@ const DASHBOARD_VERSES: { ref: string; text: string }[] = [
 
 function Dashboard() {
   const { phases, areas, missionaries } = useDataStore();
+  const prayerLive = usePrayerCount();
+  const updatesLive = useMinistryUpdateCount();
   const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
   const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
   const byPhase = missionariesByPhaseCount();
@@ -121,8 +124,8 @@ function Dashboard() {
         <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" />
         <StatCard label="Areas" value={missionStats.totalAreas} icon={MapPin} tone="warm" />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" />
-        <StatCard label="Prayer Requests" value={missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" />
-        <StatCard label="Reports" value={missionStats.totalReports} icon={FileText} tone="warm" />
+        <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" />
+        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" />
       </section>
 
       {/* Empty state when nothing entered */}

@@ -81,9 +81,12 @@ function AdminPage() {
             missionary profile page.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" className="rounded-full">
             <Link to="/admin/roles"><Users className="h-4 w-4" /> Manage roles</Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/admin/activity"><History className="h-4 w-4" /> Activity log</Link>
           </Button>
           <AdminHistoryDrawer />
         </div>

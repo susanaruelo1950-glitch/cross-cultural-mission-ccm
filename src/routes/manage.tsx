@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PermissionError } from "@/components/PermissionError";
+import { ConflictMergeDialog, computeMerge, type MergePreview } from "@/components/ConflictMergeDialog";
 import {
   deleteArea,
   deleteMissionary,
@@ -280,7 +281,9 @@ function MissionaryForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Snapshot loaded from the cloud row for optimistic-concurrency conflict detection.
   const loadedUpdatedAt = useRef<string | null>(null);
+  const baseSnapshot = useRef<Missionary | null>(initial ?? null);
   const [remoteChanged, setRemoteChanged] = useState(false);
+  const [mergePreview, setMergePreview] = useState<MergePreview<Missionary> | null>(null);
 
   // Load current cloud updated_at when editing an existing missionary.
   useEffect(() => {
@@ -294,6 +297,9 @@ function MissionaryForm({
       .then(({ data }) => {
         if (cancelled || !data) return;
         loadedUpdatedAt.current = data.updated_at;
+        if (data.data && typeof data.data === "object") {
+          baseSnapshot.current = { ...(data.data as unknown as Missionary), id: initial.id };
+        }
       });
     // Listen for remote updates to THIS row while editing.
     function onChange(e: Event) {
@@ -369,30 +375,41 @@ function MissionaryForm({
       );
       if (!ok) return;
     }
-    // Optimistic-concurrency check: has this row been updated by someone else since we loaded it?
-    if (initial?.id && loadedUpdatedAt.current) {
-      const { data: current } = await supabase
-        .from("missionary_extras")
-        .select("updated_at")
-        .eq("id", initial.id)
-        .maybeSingle();
-      if (current && current.updated_at !== loadedUpdatedAt.current) {
-        const ok = confirm(
-          "This missionary was updated by another admin while you were editing. Overwrite their changes with yours?",
-        );
-        if (!ok) {
-          toast.info("Save cancelled — reload the record to see the latest version.");
-          return;
-        }
-      }
-    }
     // Auto-fill province from the area when empty — prevents Kidapawan-style mismatches.
     if (!draft.province && selectedArea?.province) draft.province = selectedArea.province;
     if (!draft.region && selectedArea?.region) draft.region = selectedArea.region;
+
+    // Field-level 3-way merge if the remote row changed while we were editing.
+    if (initial?.id && loadedUpdatedAt.current) {
+      const { data: current } = await supabase
+        .from("missionary_extras")
+        .select("updated_at, data")
+        .eq("id", initial.id)
+        .maybeSingle();
+      if (current && current.updated_at !== loadedUpdatedAt.current) {
+        const theirs = { ...(current.data as unknown as Missionary), id: initial.id };
+        const base = baseSnapshot.current ?? initial;
+        const preview = computeMerge<Missionary>(base, draft, theirs);
+        if (preview.conflicts.length === 0) {
+          // Non-overlapping edits — merge silently.
+          finalizeSave(preview.autoMerged);
+          toast.success("Merged your edits with a teammate's changes");
+          return;
+        }
+        // Real conflicts — hand off to the merge dialog.
+        setMergePreview(preview);
+        return;
+      }
+    }
+    finalizeSave(draft);
+  }
+
+  function finalizeSave(draft: Missionary) {
     upsertMissionary(draft);
-    // Advance our snapshot so subsequent saves don't false-positive.
     loadedUpdatedAt.current = new Date().toISOString();
+    baseSnapshot.current = draft;
     setRemoteChanged(false);
+    setMergePreview(null);
     toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
@@ -400,6 +417,14 @@ function MissionaryForm({
 
 
   return (
+    <>
+      {mergePreview ? (
+        <ConflictMergeDialog<Missionary>
+          preview={mergePreview}
+          onCancel={() => setMergePreview(null)}
+          onResolve={(resolved) => finalizeSave(resolved)}
+        />
+      ) : null}
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold">
@@ -526,6 +551,7 @@ function MissionaryForm({
         </Button>
       </div>
     </Card>
+    </>
   );
 }
 
