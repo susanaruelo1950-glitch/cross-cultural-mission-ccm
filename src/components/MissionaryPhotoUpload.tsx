@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Loader2, ImagePlus, X } from "lucide-react";
+import { Camera, Loader2, ImagePlus, X, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const BUCKET = "missionary-photos";
 const MAX_MB = 5;
@@ -28,6 +29,8 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [selected, setSelected] = useState<File | null>(null);
+  const [showUrl, setShowUrl] = useState(false);
+  const [url, setUrl] = useState("");
 
   const mut = useMutation({
     mutationFn: async (file: File): Promise<string> => {
@@ -80,6 +83,36 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
     }
     setSelected(f);
     setPreview(URL.createObjectURL(f));
+  }
+
+  async function importFromUrl() {
+    const raw = url.trim();
+    if (!/^https?:\/\//i.test(raw)) {
+      toast.error("Please paste a valid image URL (starting with http:// or https://).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(raw);
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("URL does not point to an image.");
+      if (blob.size > MAX_MB * 1024 * 1024) throw new Error(`Image is too large. Max ${MAX_MB} MB.`);
+      const ext = (blob.type.split("/")[1] || "jpg").split("+")[0];
+      const filename = `from-url.${ext}`;
+      const file = new File([blob], filename, { type: blob.type });
+      setShowUrl(false);
+      setUrl("");
+      mut.mutate(file);
+    } catch (e) {
+      setBusy(false);
+      const msg = e instanceof Error ? e.message : "Could not import that URL.";
+      toast.error(
+        /CORS|Failed to fetch|NetworkError/i.test(msg)
+          ? "That host blocks direct downloads. Save the image and upload the file instead."
+          : msg,
+      );
+    }
   }
 
   return (
@@ -140,19 +173,55 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
           </Button>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            disabled={busy}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Camera className="h-4 w-4" /> Update photo
-          </Button>
-          <span className="hidden text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-1">
-            <ImagePlus className="h-3 w-3" /> JPG/PNG/WebP, up to {MAX_MB} MB
-          </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4" /> Update photo
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => setShowUrl((v) => !v)}
+              aria-expanded={showUrl}
+            >
+              <Link2 className="h-4 w-4" /> {showUrl ? "Cancel URL" : "Paste image URL"}
+            </Button>
+            <span className="hidden text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-1">
+              <ImagePlus className="h-3 w-3" /> JPG/PNG/WebP, up to {MAX_MB} MB
+            </span>
+          </div>
+          {showUrl ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://example.com/latest-photo.jpg"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={busy}
+                className="h-9 flex-1 min-w-[220px]"
+                aria-label="Image URL"
+              />
+              <Button
+                size="sm"
+                className="rounded-full"
+                disabled={busy || !url.trim()}
+                onClick={importFromUrl}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                {busy ? "Importing…" : "Import & save"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
