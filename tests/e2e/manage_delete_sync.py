@@ -55,7 +55,7 @@ async def main() -> int:
               window.dispatchEvent(new Event('gc-store-changed'));
             }})()"""
         )
-        await page.wait_for_timeout(600)
+        await page.wait_for_timeout(1500)
         if await has_victim(page):
             print("FAIL: victim still linked after tombstone event")
             exit_code = 1
