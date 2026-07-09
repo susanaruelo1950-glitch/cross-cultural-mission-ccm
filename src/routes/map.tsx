@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { MapIcon, List, ExternalLink } from "lucide-react";
+import { MapIcon, List, ExternalLink, Locate } from "lucide-react";
 import {
   allAreas,
   allMissionaries,
@@ -20,6 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/map")({
   ssr: false,
