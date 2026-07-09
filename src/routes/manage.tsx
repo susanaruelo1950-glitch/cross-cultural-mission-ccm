@@ -46,6 +46,8 @@ import {
   deletePhase,
   findSimilarMissionaries,
   normalizeName,
+  syncAreaToCloud,
+  syncPhaseToCloud,
   upsertArea,
   upsertMissionary,
   upsertPhase,
@@ -729,20 +731,23 @@ function Field({
 function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
   const [form, setForm] = useState<Partial<Area>>({ phaseId: store.phases[0]?.id ?? "" });
 
-  function save() {
+  async function save() {
     if (!form.name || !form.phaseId) {
       toast.error("Name and Phase are required");
       return;
     }
-    upsertArea({
+    const area: Area = {
       id: form.id || `area-${slug(form.name)}-${Date.now().toString(36)}`,
       phaseId: form.phaseId,
       name: form.name,
       region: form.region,
       province: form.province,
       description: form.description,
-    });
-    toast.success("Area saved");
+    };
+    upsertArea(area);
+    const res = await syncAreaToCloud(area);
+    if (res.ok) toast.success("Area saved — synced live to every device");
+    else toast.error(`Saved locally, cloud sync failed: ${res.reason}`);
     setForm({ phaseId: form.phaseId });
   }
 
@@ -823,18 +828,21 @@ function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
 function PhaseSection({ store }: { store: ReturnType<typeof useDataStore> }) {
   const [form, setForm] = useState<Partial<Phase>>({ order: store.phases.length + 1 });
 
-  function save() {
+  async function save() {
     if (!form.name) {
       toast.error("Phase name required");
       return;
     }
-    upsertPhase({
+    const phase: Phase = {
       id: form.id || `phase-${slug(form.name)}-${Date.now().toString(36)}`,
       name: form.name,
       order: form.order ?? store.phases.length + 1,
       description: form.description,
-    });
-    toast.success("Phase saved");
+    };
+    upsertPhase(phase);
+    const res = await syncPhaseToCloud(phase);
+    if (res.ok) toast.success("Phase saved — synced live to every device");
+    else toast.error(`Saved locally, cloud sync failed: ${res.reason}`);
     setForm({ order: (store.phases.length + 1) + 1 });
   }
 

@@ -1360,49 +1360,122 @@ export function deleteMissionary(id: string) {
   })();
 }
 
-async function syncMissionaryToCloud(m: Missionary): Promise<{ ok: true } | { ok: false; reason: string }> {
-  if (typeof window === "undefined") return { ok: false, reason: "SSR" };
-  try {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return { ok: false, reason: "Not signed in — sign in as an admin to sync to every device." };
-    }
-    const { error } = await supabase
-      .from("missionary_extras")
-      .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
-    if (error) {
-      console.warn("[missionary sync] cloud upsert failed:", error.message);
-      return { ok: false, reason: error.message };
-    }
-    return { ok: true };
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    console.warn("[missionary sync] cloud upsert failed:", reason);
-    return { ok: false, reason };
+// ---------- Realtime debug log (surfaced in Admin > Realtime debug) --------
+export interface SyncLogEntry {
+  at: number;
+  kind: "missionary-upsert" | "missionary-delete" | "area-upsert" | "phase-upsert";
+  id: string;
+  status: "ok" | "retry" | "error";
+  attempt?: number;
+  reason?: string;
+}
+const SYNC_LOG_MAX = 100;
+const syncLog: SyncLogEntry[] = [];
+const syncLogListeners = new Set<() => void>();
+function pushSyncLog(e: SyncLogEntry) {
+  syncLog.unshift(e);
+  if (syncLog.length > SYNC_LOG_MAX) syncLog.length = SYNC_LOG_MAX;
+  for (const l of syncLogListeners) l();
+}
+export function getSyncLog(): SyncLogEntry[] { return syncLog.slice(); }
+export function subscribeSyncLog(cb: () => void) { syncLogListeners.add(cb); return () => { syncLogListeners.delete(cb); }; }
+
+type SyncResult = { ok: true } | { ok: false; reason: string };
+async function withRetry(
+  op: () => Promise<SyncResult>,
+  onAttempt: (attempt: number, status: "retry" | "error" | "ok", reason?: string) => void,
+  attempts = 3,
+): Promise<SyncResult> {
+  let last: SyncResult = { ok: false, reason: "no attempts" };
+  for (let i = 1; i <= attempts; i++) {
+    const res = await op();
+    if (res.ok) { onAttempt(i, "ok"); return res; }
+    last = res;
+    onAttempt(i, i < attempts ? "retry" : "error", res.reason);
+    if (i < attempts) await new Promise((r) => setTimeout(r, 400 * i));
   }
+  return last;
+}
+
+async function syncMissionaryToCloud(m: Missionary): Promise<SyncResult> {
+  if (typeof window === "undefined") return { ok: false, reason: "SSR" };
+  return withRetry(async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return { ok: false, reason: "Not signed in — sign in as an admin to sync to every device." };
+      const { error } = await supabase
+        .from("missionary_extras")
+        .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
+      if (error) return { ok: false, reason: error.message };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }, (attempt, status, reason) => pushSyncLog({ at: Date.now(), kind: "missionary-upsert", id: m.id, status, attempt, reason }));
 }
 
 async function deleteMissionaryFromCloud(id: string, fullName: string | null) {
   if (typeof window === "undefined") return;
-  try {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data: userData } = await supabase.auth.getUser();
-    // Write a tombstone marker so every device/user (incl. seed rows) hides this pastor.
-    if (userData.user) {
-      await supabase.from("missionary_extras").upsert(
-        {
-          id,
-          data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() },
-          created_by: userData.user.id,
-        },
+  await withRetry(async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return { ok: false, reason: "not signed in" };
+      const { error } = await supabase.from("missionary_extras").upsert(
+        { id, data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() }, created_by: userData.user.id },
         { onConflict: "id" },
       );
+      if (error) return { ok: false, reason: error.message };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
     }
-  } catch (err) {
+  }, (attempt, status, reason) => pushSyncLog({ at: Date.now(), kind: "missionary-delete", id, status, attempt, reason }));
+}
 
-    console.warn("[missionary sync] cloud delete failed:", err);
-  }
+/** Push an Area to the cloud so it appears everywhere in realtime. Admin-only via RLS. */
+export async function syncAreaToCloud(a: Area): Promise<SyncResult> {
+  if (typeof window === "undefined") return { ok: false, reason: "SSR" };
+  return withRetry(async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase.from("areas").upsert({
+        id: a.id,
+        phase_id: a.phaseId,
+        name: a.name,
+        region_id: a.region ?? null,
+        province_id: a.province ?? null,
+        description: a.description ?? null,
+        gps_lat: a.gps?.[0] ?? null,
+        gps_lng: a.gps?.[1] ?? null,
+      }, { onConflict: "id" });
+      if (error) return { ok: false, reason: error.message };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }, (attempt, status, reason) => pushSyncLog({ at: Date.now(), kind: "area-upsert", id: a.id, status, attempt, reason }));
+}
+
+/** Push a Phase to the cloud so it appears everywhere in realtime. Admin-only via RLS. */
+export async function syncPhaseToCloud(p: Phase): Promise<SyncResult> {
+  if (typeof window === "undefined") return { ok: false, reason: "SSR" };
+  return withRetry(async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase.from("phases").upsert({
+        id: p.id,
+        name: p.name,
+        order: p.order,
+        description: p.description ?? null,
+      }, { onConflict: "id" });
+      if (error) return { ok: false, reason: error.message };
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }, (attempt, status, reason) => pushSyncLog({ at: Date.now(), kind: "phase-upsert", id: p.id, status, attempt, reason }));
 }
 
 /**
