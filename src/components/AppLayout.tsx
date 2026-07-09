@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
