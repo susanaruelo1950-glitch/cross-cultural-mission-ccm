@@ -198,8 +198,43 @@ function MissionMap() {
           <Locate className="h-4 w-4" /> Locate my supported pastors
         </Button>
         <Badge variant="secondary" className="rounded-full">
-          {pinned.length} {pinned.length === 1 ? "pin" : "pins"}
+          {visiblePinned.length} {visiblePinned.length === 1 ? "pin" : "pins"}
         </Badge>
+      </div>
+
+      <div className="relative w-full sm:max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search a pastor by name, church, or address…"
+          className="rounded-full pl-9"
+          aria-label="Search pastors on the map"
+        />
+        {searchSuggestions.length > 0 ? (
+          <div className="absolute z-[500] mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-border/60 bg-popover shadow-lg">
+            {searchSuggestions.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => {
+                  setFocusId(m.id);
+                  setSearch(m.fullName);
+                }}
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarImage src={m.photo} alt="" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{initials(m.fullName)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{m.fullName}</div>
+                  <div className="truncate text-xs text-muted-foreground">{m.church}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </header>
   );
