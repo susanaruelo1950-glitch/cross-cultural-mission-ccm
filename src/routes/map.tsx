@@ -346,31 +346,45 @@ function MissionMap() {
 function ClusteredMarkers({
   L,
   pinned,
+  focusId,
+  onReady,
+  onStart,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
+  focusId: string | null;
+  onReady: () => void;
+  onStart: () => void;
 }) {
   const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
   useEffect(() => {
     import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
   }, []);
   if (!useMapHook) return null;
-  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} />;
+  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} />;
 }
 
 function ClusteredInner({
   L,
   pinned,
   useMap,
+  focusId,
+  onReady,
+  onStart,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
   useMap: typeof import("react-leaflet").useMap;
+  focusId: string | null;
+  onReady: () => void;
+  onStart: () => void;
 }) {
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const markerMapRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
 
   useEffect(() => {
+    onStart();
     const icon = L.divIcon({
       className: "",
       html: `<div style="background:oklch(0.45 0.14 245);border:3px solid white;border-radius:50%;width:22px;height:22px;box-shadow:0 4px 12px rgba(0,0,0,0.25)"></div>`,
@@ -378,33 +392,38 @@ function ClusteredInner({
       iconAnchor: [11, 11],
     });
 
+    const large = pinned.length > 300;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cluster = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
-      maxClusterRadius: 60,
+      // Wider cluster radius on large sets = fewer clusters to render = faster paint
+      maxClusterRadius: large ? 90 : 60,
       chunkedLoading: true,
-      chunkInterval: 100,
-      chunkDelay: 30,
+      chunkInterval: large ? 60 : 100,
+      chunkDelay: large ? 15 : 30,
       removeOutsideVisibleBounds: true,
       disableClusteringAtZoom: 14,
+      animate: !large,
     });
 
-    // Build markers off the main thread using requestIdleCallback so the map
-    // paints tiles first on low-end mobile, then fills pins progressively.
     let cancelled = false;
     const batch: import("leaflet").Marker[] = [];
+    const localMap = new Map<string, import("leaflet").Marker>();
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
-      const html = `
-        <div style="width:220px">
-          ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
-          <div style="margin-top:8px;font-weight:600">${m.fullName}</div>
-          <div style="font-size:12px;color:#666">${m.church ?? ""}</div>
-          <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
-        </div>`;
-      marker.bindPopup(html);
+      // Lazy-build popup HTML only when opened — avoids stringifying every profile up front.
+      marker.bindPopup(() => {
+        return `
+          <div style="width:220px">
+            ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
+            <div style="margin-top:8px;font-weight:600">${escapeHtml(m.fullName)}</div>
+            <div style="font-size:12px;color:#666">${escapeHtml(m.church ?? "")}</div>
+            <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
+          </div>`;
+      });
       batch.push(marker);
+      localMap.set(m.id, marker);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -414,18 +433,42 @@ function ClusteredInner({
       cluster.addLayers(batch);
       map.addLayer(cluster);
       groupRef.current = cluster;
+      markerMapRef.current = localMap;
       if (pinned.length > 0) {
         const bounds = L.latLngBounds(pinned.map((p) => p.gps));
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: true });
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: !large });
       }
+      onReady();
     });
 
     return () => {
       cancelled = true;
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
+      markerMapRef.current = new Map();
     };
-  }, [L, map, pinned]);
+  }, [L, map, pinned, onReady, onStart]);
+
+  // Fly + open popup when a pastor is picked from the search or list.
+  useEffect(() => {
+    if (!focusId) return;
+    const marker = markerMapRef.current.get(focusId);
+    const group = groupRef.current;
+    if (!marker || !group) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cluster = group as any;
+    const latlng = marker.getLatLng();
+    map.flyTo(latlng, Math.max(map.getZoom(), 13), { duration: 0.8 });
+    if (typeof cluster.zoomToShowLayer === "function") {
+      cluster.zoomToShowLayer(marker, () => marker.openPopup());
+    } else {
+      marker.openPopup();
+    }
+  }, [focusId, map]);
 
   return null;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
