@@ -518,8 +518,12 @@ function MissionaryForm({
         <Field label="Mission statement*" error={errors.missionStatement} className="sm:col-span-2">
           <Textarea rows={3} value={form.missionStatement ?? ""} onChange={(e) => set("missionStatement", e.target.value)} />
         </Field>
-        <Field label="Photo URL">
-          <Input value={form.photo ?? ""} onChange={(e) => set("photo", e.target.value)} placeholder="https://…" />
+        <Field label="Photo URL" className="sm:col-span-2">
+          <PhotoUrlUpload
+            value={form.photo ?? ""}
+            onChange={(v) => set("photo", v)}
+            missionaryId={form.id || "new"}
+          />
         </Field>
         <Field label="Ministry focus">
           <Select value={form.ministryFocus ?? ""} onValueChange={(v) => set("ministryFocus", v as Missionary["ministryFocus"])}>
