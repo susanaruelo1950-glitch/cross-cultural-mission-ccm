@@ -46,8 +46,15 @@ export function AnnouncementsManager() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("announcements").delete().eq("id", id);
+      const { data, error } = await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Nothing was deleted. You may not have permission, or the item was already removed.");
+      }
     },
     onSuccess: () => {
       toast.success("Announcement deleted.");
