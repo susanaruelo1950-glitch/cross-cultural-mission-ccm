@@ -253,6 +253,27 @@ function AnnouncementForm({
         <Label htmlFor="ann-link">Link (optional)</Label>
         <Input id="ann-link" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" dir="ltr" />
       </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="ann-layer">News layer / tier</Label>
+        <Input
+          id="ann-layer"
+          value={layer}
+          onChange={(e) => setLayer(e.target.value)}
+          placeholder="e.g. primary, events, prayer"
+          list="ann-layer-suggest"
+          maxLength={40}
+          dir="ltr"
+        />
+        <datalist id="ann-layer-suggest">
+          <option value="primary" />
+          <option value="events" />
+          <option value="prayer" />
+          <option value="urgent" />
+        </datalist>
+        <p className="text-[11px] text-muted-foreground">
+          Group headlines into tiers. Each layer scrolls as its own row on the dashboard, and viewers can hide layers individually.
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="ann-pub">Publish at</Label>
