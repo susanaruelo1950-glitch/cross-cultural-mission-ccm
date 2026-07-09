@@ -73,13 +73,13 @@ async def main() -> int:
             exit_code = 1
 
         # 4. Deep-link URL preserves filters and opens on reload.
-        deep = f"{URL}/map?focus=basilio-sumido&phase=phase-1"
+        deep = f"{URL}/map?focus=m-basilio-sumido&phase=phase-1"
         await page.goto(deep, wait_until="domcontentloaded")
         await page.wait_for_timeout(1500)
         await page.screenshot(path=str(OUT / "map_deeplink.png"))
 
         # 5. Contact row on a profile — tel:/mailto: OR "Not shared yet".
-        await page.goto(f"{URL}/missionaries/basilio-sumido", wait_until="networkidle")
+        await page.goto(f"{URL}/missionaries/m-basilio-sumido", wait_until="networkidle")
         await page.wait_for_timeout(2000)
         body = await page.inner_text("body")
         has_contact = any(needle in body for needle in ("Phone", "Email", "Contact", "Not shared"))
