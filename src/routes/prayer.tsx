@@ -41,11 +41,11 @@ function PrayerCenter() {
     queryFn: async (): Promise<DbPrayer[]> => {
       const { data, error } = await supabase
         .from("prayer_requests_db")
-        .select("id, missionary_id, title, detail, urgent, answered, created_at")
+        .select("id, missionary_id, title, detail, urgent, answered, visible, created_at")
         .order("urgent", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as DbPrayer[];
     },
   });
 
