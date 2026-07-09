@@ -417,6 +417,14 @@ function MissionaryForm({
 
 
   return (
+    <>
+      {mergePreview ? (
+        <ConflictMergeDialog<Missionary>
+          preview={mergePreview}
+          onCancel={() => setMergePreview(null)}
+          onResolve={(resolved) => finalizeSave(resolved)}
+        />
+      ) : null}
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold">
