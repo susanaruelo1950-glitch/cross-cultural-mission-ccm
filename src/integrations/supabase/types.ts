@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      announcements: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          link_url: string | null
+          publish_at: string
+          published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          link_url?: string | null
+          publish_at?: string
+          published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          link_url?: string | null
+          publish_at?: string
+          published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       areas: {
         Row: {
           created_at: string

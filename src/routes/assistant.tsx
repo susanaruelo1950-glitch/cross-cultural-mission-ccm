@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Send, Sparkles, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
@@ -12,11 +11,11 @@ import {
   allMissionaries,
   allPhases,
   missionStats,
-  prayerRequests,
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
 import { askAssistant } from "@/lib/ask.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
@@ -38,12 +37,27 @@ interface Message {
 const PROMPTS = [
   "How many missionaries do we have and how are they distributed by phase?",
   "Which areas are in Sarangani or Kidapawan?",
-  "Summarize the recent ministry reports.",
+  "Summarize the recent ministry updates.",
   "List open prayer requests and who they're for.",
-  "When is the next upcoming event?",
+  "What are the current announcements or upcoming events?",
 ];
 
-function buildContext() {
+interface LiveContext {
+  generatedAt: string;
+  counts: Record<string, number>;
+  phases: Array<{ id: string; name: string; order: number }>;
+  areas: Array<{ id: string; name: string; phaseId: string; region?: string; province?: string }>;
+  missionaries: Array<{ id: string; name: string; church: string; areaId: string; status?: string; ministryFocus?: string; province?: string; municipality?: string }>;
+  recentReports: Array<{ title: string; date?: string; salvations?: number; baptisms?: number; attendance?: number }>;
+  openPrayerRequests: Array<{ title: string; detail: string | null; urgent: boolean; missionaryId: string; missionaryName?: string; created_at: string }>;
+  recentUpdates: Array<{ title: string; summary: string | null; report_date: string; missionaryId: string; missionaryName?: string }>;
+  recentLetters: Array<{ title: string; excerpt: string | null; letter_date: string | null; missionaryId: string; missionaryName?: string }>;
+  announcements: Array<{ title: string; body: string | null; publish_at: string; expires_at: string | null }>;
+  sources: string[];
+}
+
+
+function baseContext(): LiveContext {
   const phases = allPhases().map((p) => ({ id: p.id, name: p.name, order: p.order }));
   const areas = allAreas().map((a) => ({
     id: a.id,
@@ -69,8 +83,6 @@ function buildContext() {
       phases: missionStats.totalPhases,
       areas: missionStats.totalAreas,
       churches: missionStats.totalChurches,
-      openPrayerRequests: missionStats.totalPrayerRequests,
-      reports: missionStats.totalReports,
     },
     phases,
     areas,
@@ -82,20 +94,95 @@ function buildContext() {
       baptisms: r.baptisms,
       attendance: r.attendance,
     })),
-    openPrayerRequests: prayerRequests
-      .filter((p) => !p.answered)
-      .slice(0, 20)
-      .map((p) => ({
-        title: p.title,
-        detail: p.detail,
-        urgent: p.urgent,
-        missionaryId: p.missionaryId,
-      })),
-    announcements: [
-      "Upcoming graduation for Phase 2 — FCL Batch 2 this coming November.",
-    ],
+    openPrayerRequests: [],
+    recentUpdates: [],
+    recentLetters: [],
+    announcements: [],
+    sources: ["directory (in-app)", "reports (in-app)"],
   };
 }
+
+async function fetchLive(): Promise<LiveContext> {
+  const ctx = baseContext();
+  const nameById = new Map(ctx.missionaries.map((m) => [m.id, m.name]));
+
+  const [prayers, updates, letters, anns] = await Promise.all([
+    supabase
+      .from("prayer_requests_db")
+      .select("missionary_id, title, detail, urgent, answered, created_at")
+      .eq("answered", false)
+      .order("urgent", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("ministry_updates")
+      .select("missionary_id, title, summary, report_date")
+      .order("report_date", { ascending: false })
+      .limit(20),
+    supabase
+      .from("thank_you_letters")
+      .select("missionary_id, title, message, letter_date")
+      .order("letter_date", { ascending: false, nullsFirst: false })
+      .limit(15),
+
+    supabase
+      .from("announcements")
+      .select("title, body, publish_at, expires_at, published")
+      .eq("published", true)
+      .order("publish_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  if (prayers.data) {
+    ctx.openPrayerRequests = prayers.data.map((p) => ({
+      title: p.title,
+      detail: p.detail,
+      urgent: p.urgent,
+      missionaryId: p.missionary_id,
+      missionaryName: nameById.get(p.missionary_id),
+      created_at: p.created_at,
+    }));
+    ctx.sources.push("prayer_requests (live)");
+  }
+  if (updates.data) {
+    ctx.recentUpdates = updates.data.map((u) => ({
+      title: u.title,
+      summary: u.summary,
+      report_date: u.report_date,
+      missionaryId: u.missionary_id,
+      missionaryName: nameById.get(u.missionary_id),
+    }));
+    ctx.sources.push("ministry_updates (live)");
+  }
+  if (letters.data) {
+    ctx.recentLetters = letters.data.map((l) => ({
+      title: l.title,
+      excerpt: l.message ? l.message.slice(0, 240) : null,
+      letter_date: l.letter_date,
+      missionaryId: l.missionary_id,
+      missionaryName: nameById.get(l.missionary_id),
+    }));
+
+    ctx.sources.push("thank_you_letters (live)");
+  }
+  if (anns.data) {
+    ctx.announcements = anns.data.map((a) => ({
+      title: a.title,
+      body: a.body,
+      publish_at: a.publish_at,
+      expires_at: a.expires_at,
+    }));
+    ctx.sources.push("announcements (live)");
+  }
+
+  ctx.counts.openPrayerRequests = ctx.openPrayerRequests.length;
+  ctx.counts.recentUpdates = ctx.recentUpdates.length;
+  ctx.counts.recentLetters = ctx.recentLetters.length;
+  ctx.counts.announcements = ctx.announcements.length;
+  ctx.generatedAt = new Date().toISOString();
+  return ctx;
+}
+
 
 function Assistant() {
   useDataStore(); // subscribe so context reflects live data
@@ -109,7 +196,17 @@ function Assistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const ask = useServerFn(askAssistant);
-  const context = useMemo(() => buildContext(), []);
+  const [context, setContext] = useState<LiveContext>(() => baseContext());
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLive().then((c) => {
+      if (!cancelled) setContext(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function send(text: string) {
     const q = text.trim();
@@ -119,11 +216,13 @@ function Assistant() {
     setMessages(nextHistory);
     setBusy(true);
     try {
+      const fresh = await fetchLive();
+      setContext(fresh);
       const { reply } = await ask({
         data: {
           question: q,
           history: nextHistory.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
-          context: buildContext(),
+          context: fresh,
         },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
@@ -136,6 +235,7 @@ function Assistant() {
     }
   }
 
+
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <header className="text-center">
@@ -147,6 +247,12 @@ function Assistant() {
           Grounded in this platform's live data — {context.counts.missionaries} missionaries across{" "}
           {context.counts.areas} areas.
         </p>
+        {context.sources.length > 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            <span className="font-medium">Sources:</span> {context.sources.join(" · ")} · updated {new Date(context.generatedAt).toLocaleTimeString()}
+          </p>
+        ) : null}
+
       </header>
 
       <div className="space-y-3">
