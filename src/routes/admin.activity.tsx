@@ -177,7 +177,7 @@ function ActivityPage() {
       </header>
 
       <Card className="card-soft p-4">
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <div className="flex flex-wrap items-center gap-2 [&>*]:min-w-[140px] [&>*:first-child]:flex-1 [&>*:first-child]:min-w-[200px]">
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
