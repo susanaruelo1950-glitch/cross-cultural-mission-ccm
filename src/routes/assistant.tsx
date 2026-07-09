@@ -322,8 +322,37 @@ function Assistant() {
             <span className="font-medium">Sources:</span> {context.sources.join(" · ")} · updated {new Date(context.generatedAt).toLocaleTimeString()}
           </p>
         ) : null}
-
       </header>
+
+      <div className="rounded-2xl border border-border bg-card p-3 shadow-soft">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" /> Answer scope
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Select value={filters.regionId} onValueChange={(v) => setFilters((f) => ({ ...f, regionId: v, provinceId: ALL }))}>
+            <SelectTrigger><SelectValue placeholder="All regions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All regions</SelectItem>
+              {regions.map((r) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={filters.provinceId} onValueChange={(v) => setFilters((f) => ({ ...f, provinceId: v }))}>
+            <SelectTrigger><SelectValue placeholder="All provinces" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All provinces</SelectItem>
+              {filteredProvinces.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={filters.phaseId} onValueChange={(v) => setFilters((f) => ({ ...f, phaseId: v }))}>
+            <SelectTrigger><SelectValue placeholder="All phases" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All phases</SelectItem>
+              {phases.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
 
       <div className="space-y-3">
         {messages.map((m, i) => (
