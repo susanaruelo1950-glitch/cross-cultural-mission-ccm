@@ -261,6 +261,26 @@ function AnnouncementForm({
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={published} onCheckedChange={(v) => setPublished(Boolean(v))} /> Published
       </label>
+
+      {title.trim() ? (
+        <div className="rounded-xl border border-dashed border-primary/30 bg-background/60 p-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Live preview — exactly as it will appear
+          </div>
+          <NewsTicker
+            items={[{ id: "preview", text: title.trim(), href: linkUrl.trim() || undefined }]}
+          />
+          {body.trim() ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">{body.trim()}</p>
+          ) : null}
+          <div className="mt-2 text-xs text-muted-foreground">
+            Publishes {new Date(publishAt).toLocaleString()}
+            {expiresAt ? ` · Expires ${new Date(expiresAt).toLocaleString()}` : ""}
+            {!published ? " · Draft (not visible)" : ""}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending} className="rounded-full">
           {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
