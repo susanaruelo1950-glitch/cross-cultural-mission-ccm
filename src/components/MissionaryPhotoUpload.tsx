@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Loader2, ImagePlus, X } from "lucide-react";
+import { Camera, Loader2, ImagePlus, X, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const BUCKET = "missionary-photos";
 const MAX_MB = 5;
