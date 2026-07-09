@@ -146,8 +146,10 @@ function MissionarySection({
       <MissionaryForm
         initial={editing}
         areas={store.areas}
+        existing={store.missionaries}
         onDone={() => setShowForm(false)}
       />
+
     );
   }
 
