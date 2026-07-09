@@ -1246,7 +1246,7 @@ async function syncMissionaryToCloud(m: Missionary) {
     if (!userData.user) return; // silent — non-admins or signed-out just skip
     await supabase
       .from("missionary_extras")
-      .upsert({ id: m.id, data: m as unknown as Record<string, unknown>, created_by: userData.user.id }, { onConflict: "id" });
+      .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
   } catch (err) {
     console.warn("[missionary sync] cloud upsert failed:", err);
   }
