@@ -127,6 +127,7 @@ export function AnnouncementsManager() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h4 className="font-display text-base font-semibold">{a.title}</h4>
                       <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="rounded-full capitalize">{a.layer || "primary"}</Badge>
                         {live ? (
                           <Badge className="rounded-full bg-secondary text-secondary-foreground">Live</Badge>
                         ) : scheduled ? (
