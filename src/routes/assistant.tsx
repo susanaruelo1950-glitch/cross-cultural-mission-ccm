@@ -243,12 +243,34 @@ function Assistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const ask = useServerFn(askAssistant);
-  const [context, setContext] = useState<LiveContext>(() => baseContext());
+  const { regions, provinces, phases } = useDirectory();
+  const [filters, setFilters] = useState<Filters>(() => {
+    if (typeof window === "undefined") return { regionId: ALL, provinceId: ALL, phaseId: ALL };
+    try {
+      const raw = window.sessionStorage.getItem("assistant.filters");
+      if (raw) return { regionId: ALL, provinceId: ALL, phaseId: ALL, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { regionId: ALL, provinceId: ALL, phaseId: ALL };
+  });
+  useEffect(() => {
+    try { window.sessionStorage.setItem("assistant.filters", JSON.stringify(filters)); } catch { /* ignore */ }
+  }, [filters]);
+  const regionName = regions.find((r) => r.id === filters.regionId)?.name;
+  const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
+  const filteredProvinces = useMemo(
+    () => (filters.regionId === ALL ? provinces : provinces.filter((p) => p.region_id === filters.regionId)),
+    [provinces, filters.regionId],
+  );
+  const [rawContext, setRawContext] = useState<LiveContext>(() => baseContext());
+  const context = useMemo(
+    () => applyFilters(rawContext, filters, regionName, provinceName),
+    [rawContext, filters, regionName, provinceName],
+  );
 
   useEffect(() => {
     let cancelled = false;
     void fetchLive().then((c) => {
-      if (!cancelled) setContext(c);
+      if (!cancelled) setRawContext(c);
     });
     return () => {
       cancelled = true;
