@@ -10,6 +10,7 @@ import { ThankYouLettersAdmin } from "@/components/ThankYouLettersAdmin";
 import { AdminHistoryDrawer } from "@/components/AdminHistoryDrawer";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { AnnouncementsManager } from "@/components/AnnouncementsManager";
+import { RealtimeDebugPanel } from "@/components/RealtimeDebugPanel";
 import { PermissionError } from "@/components/PermissionError";
 
 export const Route = createFileRoute("/admin")({
