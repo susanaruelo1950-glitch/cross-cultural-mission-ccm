@@ -46,6 +46,8 @@ import {
   deletePhase,
   findSimilarMissionaries,
   normalizeName,
+  syncAreaToCloud,
+  syncPhaseToCloud,
   upsertArea,
   upsertMissionary,
   upsertPhase,
