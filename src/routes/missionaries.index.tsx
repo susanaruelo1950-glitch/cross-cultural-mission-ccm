@@ -53,9 +53,10 @@ function Directory() {
   // Filters come from the database (regions/provinces/phases/areas seeded there);
   // falls back to in-memory seed data while queries load or if the DB is empty.
   const { phases, areas, regions, provinces, loading } = useDirectory();
-  const [regionId, setRegionId] = useState<string>(ALL);
-  const [provinceId, setProvinceId] = useState<string>(ALL);
-  const [phaseId, setPhaseId] = useState<string>(ALL);
+  const { filters, setFilters } = useSharedFilters();
+  const regionId = filters.regionId;
+  const provinceId = filters.provinceId;
+  const phaseId = filters.phaseId;
   const [areaId, setAreaId] = useState<string>(ALL);
   const [page, setPage] = useState(1);
   const { lowData, setLowData } = useLowData();
