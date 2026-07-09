@@ -15,15 +15,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { NewsTicker } from "@/components/NewsTicker";
+import { SharedFilterBar } from "@/components/SharedFilterBar";
 
 import {
-  missionariesByPhaseCount,
   missionStats,
   prayerRequests,
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
+import { useMemo } from "react";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
