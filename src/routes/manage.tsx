@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PermissionError } from "@/components/PermissionError";
+import { ConflictMergeDialog, computeMerge, type MergePreview } from "@/components/ConflictMergeDialog";
 import {
   deleteArea,
   deleteMissionary,
