@@ -255,16 +255,16 @@ function MissionMap() {
   return (
     <div className="space-y-5">
       {header}
-      {pinned.length === 0 ? (
+      {visiblePinned.length === 0 ? (
         <EmptyState
           icon={MapIcon}
-          title="No mapped locations for this filter"
-          description="Try a different phase or area, or add a gps: [latitude, longitude] value to a missionary."
+          title={search ? `No pastors match "${search}"` : "No mapped locations for this filter"}
+          description={search ? "Try a different name, church, or clear the search." : "Try a different phase or area, or add GPS coordinates to a missionary."}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="card-soft overflow-hidden p-0">
-            <div className="h-[55vh] w-full sm:h-[70vh]">
+            <div className="relative h-[55vh] w-full sm:h-[70vh]">
               <MapContainer
                 center={[7.2, 124.9]}
                 zoom={7}
@@ -277,8 +277,22 @@ function MissionMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <ClusteredMarkers L={L} pinned={deferredPinned} />
+                <ClusteredMarkers
+                  L={L}
+                  pinned={deferredPinned}
+                  focusId={focusId}
+                  onReady={() => setMarkersReady(true)}
+                  onStart={() => setMarkersReady(false)}
+                />
               </MapContainer>
+              {!markersReady ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-[400] flex items-center justify-center bg-background/70 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+                    Loading {deferredPinned.length.toLocaleString()} pastor pin{deferredPinned.length === 1 ? "" : "s"}…
+                  </span>
+                </div>
+              ) : null}
             </div>
           </Card>
 
@@ -286,19 +300,18 @@ function MissionMap() {
             <div className="flex items-center gap-2 border-b border-border/60 p-4">
               <List className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-display text-sm font-semibold uppercase tracking-wide">
-                {areaId === "all" && phaseId === "all"
-                  ? "All missionaries"
-                  : "Selected list"}
+                {search ? `Matches (${visiblePinned.length})` : areaId === "all" && phaseId === "all" ? "All missionaries" : "Selected list"}
               </h2>
             </div>
             <ul className="max-h-[65vh] overflow-y-auto divide-y divide-border/60">
-              {pinned.map((m) => {
+              {visiblePinned.map((m) => {
                 const area = getArea(m.areaId);
                 return (
                   <li key={m.id} className="p-3">
-                    <a
-                      href={`/missionaries/${m.id}`}
-                      className="group flex items-center gap-3 rounded-lg p-1 hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    <button
+                      type="button"
+                      onClick={() => setFocusId(m.id)}
+                      className="group flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={m.photo} alt={m.fullName} />
@@ -318,7 +331,7 @@ function MissionMap() {
                         ) : null}
                       </div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </a>
+                    </button>
                   </li>
                 );
               })}
