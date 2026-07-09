@@ -46,8 +46,8 @@ interface LiveContext {
   generatedAt: string;
   counts: Record<string, number>;
   phases: Array<{ id: string; name: string; order: number }>;
-  areas: Array<{ id: string; name: string; phaseId: string; region: string; province: string }>;
-  missionaries: Array<{ id: string; name: string; church: string; areaId: string; status: string; ministryFocus: string; province: string; municipality: string }>;
+  areas: Array<{ id: string; name: string; phaseId: string; region?: string; province?: string }>;
+  missionaries: Array<{ id: string; name: string; church: string; areaId: string; status?: string; ministryFocus?: string; province?: string; municipality?: string }>;
   recentReports: Array<{ title: string; date?: string; salvations?: number; baptisms?: number; attendance?: number }>;
   openPrayerRequests: Array<{ title: string; detail: string | null; urgent: boolean; missionaryId: string; missionaryName?: string; created_at: string }>;
   recentUpdates: Array<{ title: string; summary: string | null; report_date: string; missionaryId: string; missionaryName?: string }>;
@@ -55,6 +55,7 @@ interface LiveContext {
   announcements: Array<{ title: string; body: string | null; publish_at: string; expires_at: string | null }>;
   sources: string[];
 }
+
 
 function baseContext(): LiveContext {
   const phases = allPhases().map((p) => ({ id: p.id, name: p.name, order: p.order }));
