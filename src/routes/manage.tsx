@@ -227,10 +227,12 @@ function MissionarySection({
 function MissionaryForm({
   initial,
   areas,
+  existing,
   onDone,
 }: {
   initial?: Missionary;
   areas: Area[];
+  existing: Missionary[];
   onDone: () => void;
 }) {
   const navigate = useNavigate();
@@ -250,6 +252,14 @@ function MissionaryForm({
   const set = <K extends keyof Missionary>(k: K, v: Missionary[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  // Live duplicate-name warning (case/title-insensitive)
+  const dupe = useMemo(() => {
+    const name = (form.fullName ?? "").trim();
+    if (!name) return null;
+    const norm = normalizeName(name);
+    return existing.find((m) => m.id !== (initial?.id ?? form.id) && normalizeName(m.fullName) === norm) ?? null;
+  }, [form.fullName, form.id, initial?.id, existing]);
+
   function save() {
     const draft: Missionary = {
       ...(form as Missionary),
@@ -263,11 +273,18 @@ function MissionaryForm({
       toast.error("Please fix the highlighted fields");
       return;
     }
+    if (dupe && !initial) {
+      const ok = confirm(
+        `A missionary named "${dupe.fullName}" already exists in ${areas.find((a) => a.id === dupe.areaId)?.name ?? "another area"}. Save anyway?`,
+      );
+      if (!ok) return;
+    }
     upsertMissionary(draft);
     toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
   }
+
 
   return (
     <Card className="card-soft p-5 sm:p-6">
