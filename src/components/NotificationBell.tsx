@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, HeartHandshake, FileText, Mail } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { RealtimeChangeDetail } from "@/hooks/use-global-realtime";
 
-const STORE_KEY = "gc.notifications.v1";
+const STORE_KEY = "gc.notifications.v2";
 const MAX = 30;
 
 interface Notif {
@@ -21,6 +22,7 @@ interface Notif {
   table: "prayer_requests_db" | "ministry_updates" | "thank_you_letters";
   event: "INSERT" | "UPDATE" | "DELETE";
   title: string;
+  href: string;
   at: string;
   read: boolean;
 }
@@ -30,6 +32,11 @@ const META: Record<Notif["table"], { label: string; Icon: typeof Bell; toneClass
   ministry_updates: { label: "Ministry update", Icon: FileText, toneClass: "text-emerald-600" },
   thank_you_letters: { label: "Thank-you letter", Icon: Mail, toneClass: "text-primary" },
 };
+
+function fallbackHref(table: Notif["table"]): string {
+  if (table === "prayer_requests_db") return "/pray";
+  return "/missionaries";
+}
 
 function loadStore(): Notif[] {
   if (typeof window === "undefined") return [];
@@ -48,12 +55,15 @@ function saveStore(list: Notif[]) {
 
 /**
  * In-app notification bell. Listens for realtime changes on prayer requests,
- * ministry updates, and thank-you letters and surfaces them as a dropdown
- * with an unread badge. Fires a toast on new inserts.
+ * ministry updates, and thank-you letters and surfaces them as a clickable
+ * dropdown with an unread badge. Clicking a notification navigates to the
+ * relevant page.
  */
 export function NotificationBell() {
   const [items, setItems] = useState<Notif[]>([]);
+  const [open, setOpen] = useState(false);
   const mountedAt = useRef<number>(Date.now());
+  const navigate = useNavigate();
 
   useEffect(() => {
     setItems(loadStore());
@@ -62,8 +72,6 @@ export function NotificationBell() {
       if (!detail) return;
       if (!(detail.table in META)) return;
       if (detail.event !== "INSERT") return;
-      // Ignore backlog / historical items that landed during the initial
-      // subscription burst — only real new inserts create notifications.
       if (Date.now() - mountedAt.current < 1500) return;
       const row = detail.new as Record<string, unknown> | null;
       const title =
@@ -71,11 +79,15 @@ export function NotificationBell() {
         (row?.subject as string) ??
         (row?.detail as string) ??
         "New item";
+      const missionaryId = (row?.missionary_id as string | undefined) ?? undefined;
+      const table = detail.table as Notif["table"];
+      const href = missionaryId ? `/missionaries/${missionaryId}` : fallbackHref(table);
       const notif: Notif = {
-        id: `${detail.table}-${(row?.id as string) ?? Date.now()}`,
-        table: detail.table as Notif["table"],
+        id: `${table}-${(row?.id as string) ?? Date.now()}`,
+        table,
         event: detail.event,
         title: String(title).slice(0, 120),
+        href,
         at: new Date().toISOString(),
         read: false,
       };
@@ -86,11 +98,18 @@ export function NotificationBell() {
         return next;
       });
       const meta = META[notif.table];
-      toast(`${meta.label} added`, { description: notif.title, duration: 4000 });
+      toast(`${meta.label} added`, {
+        description: notif.title,
+        duration: 4000,
+        action: {
+          label: "View",
+          onClick: () => navigate({ to: href }).catch(() => { window.location.href = href; }),
+        },
+      });
     }
     window.addEventListener("gc-realtime-change", onChange);
     return () => window.removeEventListener("gc-realtime-change", onChange);
-  }, []);
+  }, [navigate]);
 
   const unread = items.filter((i) => !i.read).length;
 
@@ -102,8 +121,18 @@ export function NotificationBell() {
     });
   }
 
+  function handleOpen(n: Notif) {
+    setOpen(false);
+    setItems((prev) => {
+      const next = prev.map((i) => (i.id === n.id ? { ...i, read: true } : i));
+      saveStore(next);
+      return next;
+    });
+    navigate({ to: n.href }).catch(() => { window.location.href = n.href; });
+  }
+
   return (
-    <DropdownMenu onOpenChange={(open) => { if (open) markAllRead(); }}>
+    <DropdownMenu open={open} onOpenChange={(o) => { setOpen(o); if (o) markAllRead(); }}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Notifications" className="relative rounded-full">
           <Bell className="h-4 w-4" />
@@ -136,7 +165,15 @@ export function NotificationBell() {
             items.map((n) => {
               const { label, Icon, toneClass } = META[n.table];
               return (
-                <div key={n.id} className={cn("flex items-start gap-2 px-3 py-2 text-sm", !n.read && "bg-primary/5")}>
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => handleOpen(n)}
+                  className={cn(
+                    "flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted/70 focus-visible:bg-muted focus-visible:outline-none",
+                    !n.read && "bg-primary/5",
+                  )}
+                >
                   <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", toneClass)} aria-hidden />
                   <div className="min-w-0 flex-1">
                     <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -147,7 +184,7 @@ export function NotificationBell() {
                       {formatDistanceToNow(new Date(n.at), { addSuffix: true })}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })
           )}
@@ -156,3 +193,4 @@ export function NotificationBell() {
     </DropdownMenu>
   );
 }
+
