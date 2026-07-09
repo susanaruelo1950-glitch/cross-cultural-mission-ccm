@@ -1134,23 +1134,27 @@ type Store = {
   phases: Phase[];
   areas: Area[];
   missionaries: Missionary[];
+  deletedIds?: string[];
+  deletedNames?: string[];
 };
 
 const STORAGE_KEY = "gc.mission.store.v1";
 
 function readStore(): Store {
-  if (typeof window === "undefined") return { phases: [], areas: [], missionaries: [] };
+  if (typeof window === "undefined") return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { phases: [], areas: [], missionaries: [] };
+    if (!raw) return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
     const parsed = JSON.parse(raw) as Partial<Store>;
     return {
       phases: parsed.phases ?? [],
       areas: parsed.areas ?? [],
       missionaries: parsed.missionaries ?? [],
+      deletedIds: parsed.deletedIds ?? [],
+      deletedNames: parsed.deletedNames ?? [],
     };
   } catch {
-    return { phases: [], areas: [], missionaries: [] };
+    return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
   }
 }
 
@@ -1166,8 +1170,14 @@ export function getRuntimeStore(): Store {
 
 // Cloud-synced extras (loaded via useMissionaryRealtime). Module-level cache.
 let cloudMissionaries: Missionary[] = [];
-export function setCloudMissionaries(list: Missionary[]) {
+let cloudDeletedIds: string[] = [];
+let cloudDeletedNames: string[] = [];
+export function setCloudMissionaries(list: Missionary[], tombstones?: { ids: string[]; names: string[] }) {
   cloudMissionaries = list;
+  if (tombstones) {
+    cloudDeletedIds = tombstones.ids;
+    cloudDeletedNames = tombstones.names;
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gc-store-changed"));
   }
@@ -1175,6 +1185,7 @@ export function setCloudMissionaries(list: Missionary[]) {
 export function getCloudMissionaries(): Missionary[] {
   return cloudMissionaries;
 }
+
 
 function merge<T extends { id: string }>(...groups: T[][]): T[] {
   const map = new Map<string, T>();
@@ -1226,9 +1237,17 @@ export function allAreas(): Area[] {
   return merge(seedAreas, readStore().areas);
 }
 export function allMissionaries(): Missionary[] {
-  // Cloud extras win over local extras, which win over seed. Then dedup by name.
-  return dedupByName(merge(seedMissionaries, readStore().missionaries, cloudMissionaries));
+  const s = readStore();
+  const tombstoneIds = new Set<string>([...(s.deletedIds ?? []), ...cloudDeletedIds]);
+  const tombstoneNames = new Set<string>(
+    [...(s.deletedNames ?? []), ...cloudDeletedNames].map((n) => normalizeName(n)),
+  );
+  const merged = merge(seedMissionaries, s.missionaries, cloudMissionaries).filter(
+    (m) => !tombstoneIds.has(m.id) && !tombstoneNames.has(normalizeName(m.fullName)),
+  );
+  return dedupByName(merged);
 }
+
 
 export const phases: Phase[] = allPhases();
 export const areas: Area[] = allAreas();
@@ -1275,7 +1294,13 @@ export function upsertMissionary(m: Missionary) {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === m.id) ?? null;
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
+  // Clear any tombstone so re-adding a previously deleted missionary reappears.
+  s.deletedIds = (s.deletedIds ?? []).filter((x) => x !== m.id);
+  s.deletedNames = (s.deletedNames ?? []).filter((n) => normalizeName(n) !== normalizeName(m.fullName));
   writeStore(s);
+  cloudDeletedIds = cloudDeletedIds.filter((x) => x !== m.id);
+  cloudDeletedNames = cloudDeletedNames.filter((n) => normalizeName(n) !== normalizeName(m.fullName));
+
   // Best-effort cloud sync so other users/devices see the change in realtime.
   void syncMissionaryToCloud(m);
   // Activity log (fire-and-forget)
@@ -1305,9 +1330,22 @@ export function upsertMissionary(m: Missionary) {
 export function deleteMissionary(id: string) {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === id) ?? null;
+  const name = previous?.fullName;
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
+  // Tombstone locally so seed-imported missionaries stay hidden after delete.
+  const ids = new Set(s.deletedIds ?? []);
+  ids.add(id);
+  s.deletedIds = Array.from(ids);
+  if (name) {
+    const names = new Set(s.deletedNames ?? []);
+    names.add(name);
+    s.deletedNames = Array.from(names);
+  }
   writeStore(s);
-  void deleteMissionaryFromCloud(id);
+  // Also remember locally so the current tab reflects immediately even before cloud roundtrip.
+  cloudDeletedIds = Array.from(new Set([...cloudDeletedIds, id]));
+  if (name) cloudDeletedNames = Array.from(new Set([...cloudDeletedNames, name]));
+  void deleteMissionaryFromCloud(id, name ?? null);
   void (async () => {
     const { logActivity } = await import("./activity-log");
     await logActivity({
@@ -1333,12 +1371,24 @@ async function syncMissionaryToCloud(m: Missionary) {
   }
 }
 
-async function deleteMissionaryFromCloud(id: string) {
+async function deleteMissionaryFromCloud(id: string, fullName: string | null) {
   if (typeof window === "undefined") return;
   try {
     const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("missionary_extras").delete().eq("id", id);
+    const { data: userData } = await supabase.auth.getUser();
+    // Write a tombstone marker so every device/user (incl. seed rows) hides this pastor.
+    if (userData.user) {
+      await supabase.from("missionary_extras").upsert(
+        {
+          id,
+          data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() },
+          created_by: userData.user.id,
+        },
+        { onConflict: "id" },
+      );
+    }
   } catch (err) {
+
     console.warn("[missionary sync] cloud delete failed:", err);
   }
 }
