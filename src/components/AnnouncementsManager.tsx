@@ -20,6 +20,7 @@ export interface Announcement {
   published: boolean;
   publish_at: string;
   expires_at: string | null;
+  layer: string;
   created_at: string;
 }
 
