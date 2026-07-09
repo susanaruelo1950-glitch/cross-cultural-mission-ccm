@@ -37,6 +37,7 @@ import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useMissionaryCover } from "@/hooks/use-missionary-cover";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { useState } from "react";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
@@ -103,7 +104,12 @@ function initials(name: string) {
 }
 
 function Profile() {
-  const { m } = Route.useLoaderData() as { m: Missionary };
+  const { m: seedM } = Route.useLoaderData() as { m: Missionary };
+  // Prefer the live store version so admin edits (phone, email, church, …)
+  // reflect in realtime for guest, supporter, and coordinator viewers.
+  const { missionaries } = useDataStore();
+  const live = missionaries.find((x: Missionary) => x.id === seedM.id);
+  const m: Missionary = live ?? seedM;
   const { data: photoOverride } = useMissionaryPhoto(m.id);
   const { data: coverOverride } = useMissionaryCover(m.id);
   const photo = photoOverride ?? m.photo;
