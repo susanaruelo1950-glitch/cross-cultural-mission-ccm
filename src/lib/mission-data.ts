@@ -1393,6 +1393,92 @@ async function deleteMissionaryFromCloud(id: string, fullName: string | null) {
   }
 }
 
+/**
+ * Restore a previously deleted missionary — clears the tombstone locally,
+ * removes the cloud tombstone row, and logs a `restore` activity entry.
+ * Seed missionaries reappear immediately; user-added rows only reappear if
+ * their original data still exists (they were tombstoned, not purged).
+ */
+export function restoreMissionary(id: string) {
+  const s = readStore();
+  s.deletedIds = (s.deletedIds ?? []).filter((x) => x !== id);
+  writeStore(s);
+  cloudDeletedIds = cloudDeletedIds.filter((x) => x !== id);
+  void (async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      // Look up the tombstone row so we can restore the original data if any.
+      const { data } = await supabase
+        .from("missionary_extras")
+        .select("id, data")
+        .eq("id", id)
+        .maybeSingle();
+      const raw = (data?.data ?? null) as { __deleted?: boolean; fullName?: string } | null;
+      if (raw?.__deleted) {
+        // Remove the tombstone entirely — seed rows re-emerge.
+        await supabase.from("missionary_extras").delete().eq("id", id);
+      }
+      const { logActivity } = await import("./activity-log");
+      await logActivity({
+        entityType: "missionary",
+        entityId: id,
+        action: "restore",
+        summary: `Restored ${raw?.fullName ?? id}`,
+      });
+    } catch (err) {
+      console.warn("[missionary restore] failed:", err);
+    }
+  })();
+}
+
+/**
+ * Permanently purge a missionary — hard-deletes any cloud row (data or
+ * tombstone) and adds a persistent local tombstone so seed rows never
+ * re-appear on this device or any device via realtime.
+ */
+export function purgeMissionary(id: string) {
+  const s = readStore();
+  const previous = allMissionaries().find((x) => x.id === id) ?? null;
+  s.missionaries = s.missionaries.filter((x) => x.id !== id);
+  const ids = new Set(s.deletedIds ?? []);
+  ids.add(id);
+  s.deletedIds = Array.from(ids);
+  writeStore(s);
+  cloudDeletedIds = Array.from(new Set([...cloudDeletedIds, id]));
+  void (async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      // Hard-delete any existing row, then write a fresh tombstone so
+      // every device hides this pastor via realtime.
+      await supabase.from("missionary_extras").delete().eq("id", id);
+      await supabase.from("missionary_extras").insert({
+        id,
+        data: {
+          __deleted: true,
+          id,
+          fullName: previous?.fullName ?? null,
+          deletedAt: new Date().toISOString(),
+          purged: true,
+        },
+        created_by: userData.user.id,
+      });
+      const { logActivity } = await import("./activity-log");
+      await logActivity({
+        entityType: "missionary",
+        entityId: id,
+        action: "delete",
+        summary: `Purged ${previous?.fullName ?? id} permanently`,
+      });
+    } catch (err) {
+      console.warn("[missionary purge] failed:", err);
+    }
+  })();
+}
+
 export function resetRuntimeStore() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
