@@ -199,6 +199,30 @@ export type Database = {
           },
         ]
       }
+      missionary_extras: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       missionary_photos: {
         Row: {
           cover_url: string | null
@@ -249,18 +273,21 @@ export type Database = {
       }
       prayer_events: {
         Row: {
+          coordinator_approved_public: boolean
           created_at: string
           id: string
           missionary_id: string
           user_id: string | null
         }
         Insert: {
+          coordinator_approved_public?: boolean
           created_at?: string
           id?: string
           missionary_id: string
           user_id?: string | null
         }
         Update: {
+          coordinator_approved_public?: boolean
           created_at?: string
           id?: string
           missionary_id?: string
@@ -271,6 +298,9 @@ export type Database = {
       prayer_requests_db: {
         Row: {
           answered: boolean
+          approved_at: string | null
+          approved_by: string | null
+          coordinator_approved_public: boolean
           created_at: string
           created_by: string | null
           detail: string | null
@@ -281,6 +311,9 @@ export type Database = {
         }
         Insert: {
           answered?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          coordinator_approved_public?: boolean
           created_at?: string
           created_by?: string | null
           detail?: string | null
@@ -291,6 +324,9 @@ export type Database = {
         }
         Update: {
           answered?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          coordinator_approved_public?: boolean
           created_at?: string
           created_by?: string | null
           detail?: string | null

@@ -1163,11 +1163,39 @@ export function getRuntimeStore(): Store {
   return readStore();
 }
 
-function merge<T extends { id: string }>(seed: T[], extras: T[]): T[] {
+// Cloud-synced extras (loaded via useMissionaryRealtime). Module-level cache.
+let cloudMissionaries: Missionary[] = [];
+export function setCloudMissionaries(list: Missionary[]) {
+  cloudMissionaries = list;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("gc-store-changed"));
+  }
+}
+export function getCloudMissionaries(): Missionary[] {
+  return cloudMissionaries;
+}
+
+function merge<T extends { id: string }>(...groups: T[][]): T[] {
   const map = new Map<string, T>();
-  for (const s of seed) map.set(s.id, s);
-  for (const e of extras) map.set(e.id, e);
+  for (const g of groups) for (const item of g) map.set(item.id, item);
   return Array.from(map.values());
+}
+
+/** Normalize a name for duplicate-detection: strip titles, punctuation, extra spaces, case. */
+export function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(ptr|pastor|rev|bro|sis|mr|mrs|ms|dr)\.?\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Dedup missionaries by normalized full name — keep the LAST occurrence (cloud/local overrides seed). */
+function dedupByName(list: Missionary[]): Missionary[] {
+  const byName = new Map<string, Missionary>();
+  for (const m of list) byName.set(normalizeName(m.fullName), m);
+  return Array.from(byName.values());
 }
 
 export function allPhases(): Phase[] {
@@ -1177,12 +1205,14 @@ export function allAreas(): Area[] {
   return merge(seedAreas, readStore().areas);
 }
 export function allMissionaries(): Missionary[] {
-  return merge(seedMissionaries, readStore().missionaries);
+  // Cloud extras win over local extras, which win over seed. Then dedup by name.
+  return dedupByName(merge(seedMissionaries, readStore().missionaries, cloudMissionaries));
 }
 
 export const phases: Phase[] = allPhases();
 export const areas: Area[] = allAreas();
 export const missionaries: Missionary[] = allMissionaries();
+
 
 export function upsertPhase(p: Phase) {
   const s = readStore();
@@ -1198,12 +1228,40 @@ export function upsertMissionary(m: Missionary) {
   const s = readStore();
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
   writeStore(s);
+  // Best-effort cloud sync so other users/devices see the change in realtime.
+  void syncMissionaryToCloud(m);
 }
 export function deleteMissionary(id: string) {
   const s = readStore();
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
   writeStore(s);
+  void deleteMissionaryFromCloud(id);
 }
+
+async function syncMissionaryToCloud(m: Missionary) {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return; // silent — non-admins or signed-out just skip
+    await supabase
+      .from("missionary_extras")
+      .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
+  } catch (err) {
+    console.warn("[missionary sync] cloud upsert failed:", err);
+  }
+}
+
+async function deleteMissionaryFromCloud(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await supabase.from("missionary_extras").delete().eq("id", id);
+  } catch (err) {
+    console.warn("[missionary sync] cloud delete failed:", err);
+  }
+}
+
 export function resetRuntimeStore() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);

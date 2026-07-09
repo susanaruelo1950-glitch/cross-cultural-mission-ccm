@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import {
   deleteMissionary,
+  normalizeName,
   upsertArea,
   upsertMissionary,
   upsertPhase,
@@ -145,8 +146,10 @@ function MissionarySection({
       <MissionaryForm
         initial={editing}
         areas={store.areas}
+        existing={store.missionaries}
         onDone={() => setShowForm(false)}
       />
+
     );
   }
 
@@ -224,10 +227,12 @@ function MissionarySection({
 function MissionaryForm({
   initial,
   areas,
+  existing,
   onDone,
 }: {
   initial?: Missionary;
   areas: Area[];
+  existing: Missionary[];
   onDone: () => void;
 }) {
   const navigate = useNavigate();
@@ -247,6 +252,14 @@ function MissionaryForm({
   const set = <K extends keyof Missionary>(k: K, v: Missionary[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  // Live duplicate-name warning (case/title-insensitive)
+  const dupe = useMemo(() => {
+    const name = (form.fullName ?? "").trim();
+    if (!name) return null;
+    const norm = normalizeName(name);
+    return existing.find((m) => m.id !== (initial?.id ?? form.id) && normalizeName(m.fullName) === norm) ?? null;
+  }, [form.fullName, form.id, initial?.id, existing]);
+
   function save() {
     const draft: Missionary = {
       ...(form as Missionary),
@@ -260,11 +273,18 @@ function MissionaryForm({
       toast.error("Please fix the highlighted fields");
       return;
     }
+    if (dupe && !initial) {
+      const ok = confirm(
+        `A missionary named "${dupe.fullName}" already exists in ${areas.find((a) => a.id === dupe.areaId)?.name ?? "another area"}. Save anyway?`,
+      );
+      if (!ok) return;
+    }
     upsertMissionary(draft);
     toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
   }
+
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -284,6 +304,15 @@ function MissionaryForm({
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      {dupe && !initial ? (
+        <div role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          A missionary named <strong>{dupe.fullName}</strong> already exists
+          {areas.find((a) => a.id === dupe.areaId)?.name ? ` in ${areas.find((a) => a.id === dupe.areaId)?.name}` : ""}.
+          Consider editing that record instead of creating a duplicate.
+        </div>
+      ) : null}
+
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name*" error={errors.fullName}>

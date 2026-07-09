@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -131,10 +132,10 @@ function MobileBottomNav() {
   const pathname = useActive();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
-      aria-label="Mobile primary"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      aria-label="Quick navigation"
     >
-      <ul className="grid grid-cols-5">
+      <ul className="mx-auto grid max-w-3xl grid-cols-5">
         {mobileNav.map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
@@ -158,6 +159,7 @@ function MobileBottomNav() {
     </nav>
   );
 }
+
 
 function HeaderSearch() {
   const navigate = useNavigate();
@@ -240,6 +242,8 @@ function AuthButton() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [deskOpen, setDeskOpen] = useState(true);
+  useMissionaryRealtime();
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to content — visible on focus for keyboard users */}
@@ -250,16 +254,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-sidebar-border bg-sidebar lg:block" aria-label="Sidebar">
+      {/* Desktop sidebar (collapsible) */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:block",
+          deskOpen ? "w-72" : "w-0 overflow-hidden",
+        )}
+        aria-label="Sidebar"
+        aria-hidden={!deskOpen}
+      >
         <Brand />
         <NavItems />
       </aside>
 
       {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md lg:ml-72">
+      <header
+        className={cn(
+          "sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md transition-[margin] duration-200",
+          deskOpen && "lg:ml-72",
+        )}
+      >
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
+            {/* Mobile menu (Sheet) */}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu">
@@ -271,6 +288,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <NavItems onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
+            {/* Desktop sidebar toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              onClick={() => setDeskOpen((v) => !v)}
+              aria-label={deskOpen ? "Hide sidebar" : "Show sidebar"}
+              aria-pressed={!deskOpen}
+            >
+              <Menu className="h-5 w-5" aria-hidden />
+            </Button>
             <Link to="/" className="flex items-center gap-2 lg:hidden">
               <img src={ccmLogo.url} alt="CCM logo" className="h-8 w-8 rounded-xl object-cover ring-1 ring-border" />
               <span className="font-display text-sm font-semibold">Cross-Cultural Mission</span>
@@ -288,8 +316,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
 
-      <main id="main-content" tabIndex={-1} className="lg:pl-72 focus:outline-none">
-        <div className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-10">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={cn("focus:outline-none transition-[padding] duration-200", deskOpen && "lg:pl-72")}
+      >
+        <div className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pt-10">
           {children}
         </div>
       </main>
@@ -299,3 +331,4 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
