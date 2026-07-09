@@ -114,6 +114,41 @@ function baseContext(): LiveContext {
   };
 }
 
+function applyFilters(ctx: LiveContext, f: Filters, regionName?: string, provinceName?: string): LiveContext {
+  const filterActive = f.regionId !== ALL || f.provinceId !== ALL || f.phaseId !== ALL;
+  if (!filterActive) return ctx;
+  const areaOk = (region?: string, province?: string, phaseId?: string) => {
+    if (f.phaseId !== ALL && phaseId !== f.phaseId) return false;
+    if (f.regionId !== ALL && region !== f.regionId && region !== regionName) return false;
+    if (f.provinceId !== ALL && province !== f.provinceId && province !== provinceName) return false;
+    return true;
+  };
+  const areas = ctx.areas.filter((a) => areaOk(a.region, a.province, a.phaseId));
+  const areaMap = new Map(ctx.areas.map((a) => [a.id, a] as const));
+  const missionaries = ctx.missionaries.filter((m) => {
+    const a = areaMap.get(m.areaId);
+    return a ? areaOk(a.region, a.province, a.phaseId) : false;
+  });
+  const mids = new Set(missionaries.map((m) => m.id));
+  const chips = [
+    f.regionId !== ALL ? `region=${regionName ?? f.regionId}` : null,
+    f.provinceId !== ALL ? `province=${provinceName ?? f.provinceId}` : null,
+    f.phaseId !== ALL ? `phase=${f.phaseId}` : null,
+  ].filter(Boolean).join(", ");
+  return {
+    ...ctx,
+    areas,
+    missionaries,
+    openPrayerRequests: ctx.openPrayerRequests.filter((p) => mids.has(p.missionaryId)),
+    recentUpdates: ctx.recentUpdates.filter((u) => mids.has(u.missionaryId)),
+    recentLetters: ctx.recentLetters.filter((l) => mids.has(l.missionaryId)),
+    counts: { ...ctx.counts, missionaries: missionaries.length, areas: areas.length },
+    sources: [...ctx.sources, `filters: ${chips}`],
+  };
+}
+
+
+
 async function fetchLive(): Promise<LiveContext> {
   const ctx = baseContext();
   const nameById = new Map(ctx.missionaries.map((m) => [m.id, m.name]));
