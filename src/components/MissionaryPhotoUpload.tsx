@@ -173,19 +173,55 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
           </Button>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            disabled={busy}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Camera className="h-4 w-4" /> Update photo
-          </Button>
-          <span className="hidden text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-1">
-            <ImagePlus className="h-3 w-3" /> JPG/PNG/WebP, up to {MAX_MB} MB
-          </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4" /> Update photo
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => setShowUrl((v) => !v)}
+              aria-expanded={showUrl}
+            >
+              <Link2 className="h-4 w-4" /> {showUrl ? "Cancel URL" : "Paste image URL"}
+            </Button>
+            <span className="hidden text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-1">
+              <ImagePlus className="h-3 w-3" /> JPG/PNG/WebP, up to {MAX_MB} MB
+            </span>
+          </div>
+          {showUrl ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://example.com/latest-photo.jpg"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={busy}
+                className="h-9 flex-1 min-w-[220px]"
+                aria-label="Image URL"
+              />
+              <Button
+                size="sm"
+                className="rounded-full"
+                disabled={busy || !url.trim()}
+                onClick={importFromUrl}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                {busy ? "Importing…" : "Import & save"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
