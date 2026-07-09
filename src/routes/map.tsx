@@ -156,14 +156,13 @@ function MissionMap() {
   // Keep the URL in sync so the current view is a shareable deep link.
   useEffect(() => {
     navigate({
-      search: (prev) => ({
-        ...prev,
+      search: {
         focus: focusId ?? undefined,
         phase: phaseId !== "all" ? phaseId : undefined,
         area: areaId !== "all" ? areaId : undefined,
         region: filters.regionId !== ALL ? filters.regionId : undefined,
         province: filters.provinceId !== ALL ? filters.provinceId : undefined,
-      }),
+      },
       replace: true,
     });
   }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, navigate]);
