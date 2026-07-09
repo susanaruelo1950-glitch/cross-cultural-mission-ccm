@@ -435,6 +435,15 @@ function MissionaryForm({
         </div>
       ) : null}
 
+      {remoteChanged ? (
+        <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+          <span>Another admin just updated this missionary. Save will overwrite unless you reload.</span>
+          <Button size="sm" variant="outline" className="ml-auto rounded-full" onClick={() => window.location.reload()}>
+            Reload
+          </Button>
+        </div>
+      ) : null}
+
       {provinceMismatch ? (
         <div role="alert" className="mb-4 rounded-lg border border-red-500/40 bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-100">
           Location mismatch: area <strong>{selectedArea?.name}</strong> is in{" "}
