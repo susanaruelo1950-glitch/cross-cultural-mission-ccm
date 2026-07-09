@@ -124,6 +124,7 @@ export function useGlobalRealtime() {
     return () => {
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
+      if (flushTimer) clearTimeout(flushTimer);
       if (channel) supabase.removeChannel(channel);
     };
   }, [qc]);
