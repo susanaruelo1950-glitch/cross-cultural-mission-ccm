@@ -56,6 +56,7 @@ import {
   type Phase,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
 
 export const Route = createFileRoute("/manage")({
   head: () => ({
@@ -100,10 +101,25 @@ function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 }
 
+function mergeById<T extends { id: string }>(...groups: T[][]): T[] {
+  const map = new Map<string, T>();
+  for (const group of groups) for (const item of group) map.set(item.id, item);
+  return Array.from(map.values());
+}
+
 function ManagePage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const store = useDataStore();
+  const localStore = useDataStore();
+  const directory = useDirectory();
+  const store = useMemo(
+    () => ({
+      phases: mergeById(localStore.phases, directory.phases),
+      areas: mergeById(localStore.areas, directory.areas),
+      missionaries: localStore.missionaries,
+    }),
+    [localStore.phases, localStore.areas, localStore.missionaries, directory.phases, directory.areas],
+  );
   const tab = search.tab ?? "missionaries";
   const { user, isAdmin, loading } = useAuth();
 
@@ -156,9 +172,9 @@ function ManagePage() {
       </div>
 
       {tab === "missionaries" ? (
-        <MissionarySection store={store} editingId={search.edit} />
+        <MissionarySection store={store} editingId={search.edit} directoryLoading={directory.loading} />
       ) : tab === "areas" ? (
-        <AreaSection store={store} />
+        <AreaSection store={store} phasesLoading={directory.loading} />
       ) : (
         <PhaseSection store={store} />
       )}
@@ -171,9 +187,11 @@ function ManagePage() {
 function MissionarySection({
   store,
   editingId,
+  directoryLoading,
 }: {
   store: ReturnType<typeof useDataStore>;
   editingId?: string;
+  directoryLoading: boolean;
 }) {
   const [q, setQ] = useState("");
   const { isAdmin } = useAuth();
@@ -193,8 +211,10 @@ function MissionarySection({
     return (
       <MissionaryForm
         initial={editing}
+        phases={store.phases}
         areas={store.areas}
         existing={store.missionaries}
+        areasLoading={directoryLoading}
         onDone={() => setShowForm(false)}
       />
 
@@ -302,13 +322,17 @@ function MissionarySection({
 
 function MissionaryForm({
   initial,
+  phases,
   areas,
   existing,
+  areasLoading,
   onDone,
 }: {
   initial?: Missionary;
+  phases: Phase[];
   areas: Area[];
   existing: Missionary[];
+  areasLoading: boolean;
   onDone: () => void;
 }) {
   const navigate = useNavigate();
@@ -329,6 +353,10 @@ function MissionaryForm({
   const baseSnapshot = useRef<Missionary | null>(initial ?? null);
   const [remoteChanged, setRemoteChanged] = useState(false);
   const [mergePreview, setMergePreview] = useState<MergePreview<Missionary> | null>(null);
+
+  useEffect(() => {
+    if (!form.areaId && areas[0]?.id) setForm((f) => ({ ...f, areaId: areas[0].id }));
+  }, [areas, form.areaId]);
 
   // Load current cloud updated_at when editing an existing missionary.
   useEffect(() => {
@@ -382,6 +410,11 @@ function MissionaryForm({
 
   // Area ↔ Province mismatch warning
   const selectedArea = areas.find((a) => a.id === form.areaId);
+  const selectedPhaseId = selectedArea?.phaseId ?? phases[0]?.id ?? "";
+  const phaseAreas = useMemo(
+    () => areas.filter((a) => !selectedPhaseId || a.phaseId === selectedPhaseId),
+    [areas, selectedPhaseId],
+  );
   const provinceMismatch = useMemo(() => {
     if (!selectedArea?.province || !form.province) return null;
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
@@ -542,15 +575,58 @@ function MissionaryForm({
         <Field label="Church*" error={errors.church}>
           <Input value={form.church ?? ""} onChange={(e) => set("church", e.target.value)} />
         </Field>
-        <Field label="Area*" error={errors.areaId}>
-          <Select value={form.areaId ?? ""} onValueChange={(v) => set("areaId", v)}>
-            <SelectTrigger><SelectValue placeholder="Choose area" /></SelectTrigger>
+        <Field label="Phase">
+          <Select
+            value={selectedPhaseId}
+            onValueChange={(v) => {
+              const nextArea = areas.find((a) => a.phaseId === v) ?? areas[0];
+              setForm((f) => ({
+                ...f,
+                areaId: nextArea?.id ?? "",
+                province: nextArea?.province ?? f.province,
+                region: nextArea?.region ?? f.region,
+              }));
+            }}
+            disabled={areasLoading && phases.length === 0}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={areasLoading ? "Loading live phases…" : "Choose phase"} />
+            </SelectTrigger>
             <SelectContent>
-              {areas.map((a) => (
+              {phases.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Area*" error={errors.areaId}>
+          <Select
+            value={form.areaId ?? ""}
+            onValueChange={(v) => {
+              const area = areas.find((a) => a.id === v);
+              setForm((f) => ({
+                ...f,
+                areaId: v,
+                province: area?.province ?? f.province,
+                region: area?.region ?? f.region,
+              }));
+            }}
+            disabled={areasLoading && areas.length === 0}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={areasLoading ? "Loading live areas…" : "Choose area"} />
+            </SelectTrigger>
+            <SelectContent>
+              {phaseAreas.map((a) => (
                 <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {areasLoading ? (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Refreshing live area and phase list…
+            </p>
+          ) : null}
         </Field>
         <Field label="Status">
           <Select value={form.status ?? "Active"} onValueChange={(v) => set("status", v as Missionary["status"])}>
@@ -728,7 +804,7 @@ function Field({
 
 // ---------- Areas ----------------------------------------------------------
 
-function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
+function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDataStore>; phasesLoading: boolean }) {
   const [form, setForm] = useState<Partial<Area>>({ phaseId: store.phases[0]?.id ?? "" });
 
   async function save() {
@@ -798,14 +874,19 @@ function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
         </h2>
         <div className="grid gap-3">
           <Field label="Phase">
-            <Select value={form.phaseId ?? ""} onValueChange={(v) => setForm({ ...form, phaseId: v })}>
-              <SelectTrigger><SelectValue placeholder="Choose phase" /></SelectTrigger>
+            <Select value={form.phaseId ?? ""} onValueChange={(v) => setForm({ ...form, phaseId: v })} disabled={phasesLoading && store.phases.length === 0}>
+              <SelectTrigger><SelectValue placeholder={phasesLoading ? "Loading live phases…" : "Choose phase"} /></SelectTrigger>
               <SelectContent>
                 {store.phases.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {phasesLoading ? (
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Refreshing live phase list…
+              </p>
+            ) : null}
           </Field>
           <Field label="Name"><Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Province"><Input value={form.province ?? ""} onChange={(e) => setForm({ ...form, province: e.target.value })} /></Field>

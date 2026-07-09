@@ -319,6 +319,7 @@ export type Database = {
           created_by: string | null
           data: Json
           id: string
+          idempotency_key: string | null
           updated_at: string
         }
         Insert: {
@@ -326,6 +327,7 @@ export type Database = {
           created_by?: string | null
           data: Json
           id: string
+          idempotency_key?: string | null
           updated_at?: string
         }
         Update: {
@@ -333,6 +335,7 @@ export type Database = {
           created_by?: string | null
           data?: Json
           id?: string
+          idempotency_key?: string | null
           updated_at?: string
         }
         Relationships: []

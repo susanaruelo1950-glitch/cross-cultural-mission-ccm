@@ -265,6 +265,16 @@ export const seedAreas: Area[] = [
     description: "Alliance and Evangelical church plants across Kidapawan City, Makilala, and President Roxas.",
     gps: [7.008, 125.089],
   },
+  {
+    id: "area-makilala",
+    phaseId: "phase-2",
+    name: "Makilala Area",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "North Cotabato",
+    coordinatorName: "Ptr. Glyn Michael G. Dolauta",
+    description: "Church plants across Makilala municipality — Rodero, Kisante, New Bulatukan, Sta. Felomina, and Sto. Niño.",
+    gps: [6.966, 125.082],
+  },
 ];
 
 
@@ -284,6 +294,7 @@ const bansalanGps = seedAreas.find((a) => a.id === "area-bansalan")!.gps!;
 const digosGps = seedAreas.find((a) => a.id === "area-digos")!.gps!;
 const arakanGps = seedAreas.find((a) => a.id === "area-arakan")!.gps!;
 const kidapawanGps = seedAreas.find((a) => a.id === "area-kidapawan")!.gps!;
+const makilalaGps = seedAreas.find((a) => a.id === "area-makilala")!.gps!;
 
 
 export const seedMissionaries: Missionary[] = [
@@ -614,7 +625,7 @@ export const seedMissionaries: Missionary[] = [
   },
   {
     id: "m-marcelo-tenebro",
-    areaId: "area-bansalan",
+    areaId: "area-makilala",
     fullName: "Marcelo G. Tenebro",
     church: "Buenavista Alliance Church",
     address: "Rodero, Makilala, North Cotabato",
@@ -624,9 +635,9 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Makilala",
-    gps: offset(bansalanGps, 2),
+    gps: offset(makilalaGps, 0),
   },
   {
     id: "m-alberto-badal-jr",
@@ -841,7 +852,7 @@ export const seedMissionaries: Missionary[] = [
   },
   {
     id: "m-marty-nellas",
-    areaId: "area-digos",
+    areaId: "area-makilala",
     fullName: "Marty B. Nellas",
     church: "SBC, Matanao, Davao del Sur",
     address: "Kisante, Makilala, Cotabato",
@@ -852,9 +863,9 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Makilala",
-    gps: offset(digosGps, 7),
+    gps: offset(makilalaGps, 1),
   },
 
   // ── Arakan Area ─────────────────────────────────────────────
@@ -997,7 +1008,7 @@ export const seedMissionaries: Missionary[] = [
   // ── Kidapawan Area ──────────────────────────────────────────
   {
     id: "m-glyn-michael-dolauta",
-    areaId: "area-kidapawan",
+    areaId: "area-makilala",
     fullName: "Glyn Michael G. Dolauta",
     church: "Grace Alliance Evangelical Church",
     address: "New Bulatukan, Makilala, North Cotabato",
@@ -1011,11 +1022,11 @@ export const seedMissionaries: Missionary[] = [
     province: "North Cotabato",
     municipality: "Makilala",
     barangay: "New Bulatukan",
-    gps: offset(kidapawanGps, 0),
+    gps: offset(makilalaGps, 2),
   },
   {
     id: "m-rogenio-david",
-    areaId: "area-kidapawan",
+    areaId: "area-makilala",
     fullName: "Ptr. Rogenio M. David",
     church: "Nuangan Bible Study Center",
     address: "Sta. Felomina, Makilala, North Cotabato",
@@ -1029,7 +1040,7 @@ export const seedMissionaries: Missionary[] = [
     province: "North Cotabato",
     municipality: "Makilala",
     barangay: "Sta. Felomina",
-    gps: offset(kidapawanGps, 1),
+    gps: offset(makilalaGps, 3),
   },
   {
     id: "m-rizaldo-barsubia",
@@ -1104,7 +1115,7 @@ export const seedMissionaries: Missionary[] = [
   },
   {
     id: "m-julius-ganas",
-    areaId: "area-kidapawan",
+    areaId: "area-makilala",
     fullName: "Ptr. Julius S. Ganas",
     church: "Church Planting Kalaisan Church",
     address: "Sto. Niño, Makilala, North Cotabato",
@@ -1118,7 +1129,7 @@ export const seedMissionaries: Missionary[] = [
     province: "North Cotabato",
     municipality: "Makilala",
     barangay: "Sto. Niño",
-    gps: offset(kidapawanGps, 7),
+    gps: offset(makilalaGps, 4),
   },
 ];
 
@@ -1363,7 +1374,7 @@ export function deleteMissionary(id: string) {
 // ---------- Realtime debug log (surfaced in Admin > Realtime debug) --------
 export interface SyncLogEntry {
   at: number;
-  kind: "missionary-upsert" | "missionary-delete" | "area-upsert" | "phase-upsert";
+  kind: "missionary-upsert" | "missionary-delete" | "area-upsert" | "phase-upsert" | "realtime-subscription";
   id: string;
   status: "ok" | "retry" | "error";
   attempt?: number;
@@ -1379,8 +1390,32 @@ function pushSyncLog(e: SyncLogEntry) {
 }
 export function getSyncLog(): SyncLogEntry[] { return syncLog.slice(); }
 export function subscribeSyncLog(cb: () => void) { syncLogListeners.add(cb); return () => { syncLogListeners.delete(cb); }; }
+export function recordRealtimeSyncError(id: string, reason: string) {
+  pushSyncLog({ at: Date.now(), kind: "realtime-subscription", id, status: "error", reason });
+}
 
 type SyncResult = { ok: true } | { ok: false; reason: string };
+function missionaryIdempotencyKey(m: Missionary): string {
+  return `missionary:${m.id}`;
+}
+function directoryRegionId(value?: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (normalized.includes("region xi") || normalized.includes("davao")) return "region-xi";
+  if (normalized.includes("region xii") || normalized.includes("soccsksargen")) return "region-xii";
+  if (normalized.includes("barmm")) return "barmm";
+  return value;
+}
+function directoryProvinceId(value?: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (normalized.includes("north cotabato") || normalized === "cotabato") return "north-cotabato";
+  if (normalized.includes("davao del sur")) return "davao-del-sur";
+  if (normalized.includes("maguindanao")) return "maguindanao-del-sur";
+  if (normalized.includes("sarangani")) return "sarangani";
+  if (normalized.includes("sultan kudarat")) return "sultan-kudarat";
+  return value;
+}
 async function withRetry(
   op: () => Promise<SyncResult>,
   onAttempt: (attempt: number, status: "retry" | "error" | "ok", reason?: string) => void,
@@ -1406,7 +1441,15 @@ async function syncMissionaryToCloud(m: Missionary): Promise<SyncResult> {
       if (!userData.user) return { ok: false, reason: "Not signed in — sign in as an admin to sync to every device." };
       const { error } = await supabase
         .from("missionary_extras")
-        .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
+        .upsert(
+          {
+            id: m.id,
+            data: JSON.parse(JSON.stringify(m)),
+            created_by: userData.user.id,
+            idempotency_key: missionaryIdempotencyKey(m),
+          },
+          { onConflict: "id" },
+        );
       if (error) return { ok: false, reason: error.message };
       return { ok: true };
     } catch (err) {
@@ -1423,7 +1466,12 @@ async function deleteMissionaryFromCloud(id: string, fullName: string | null) {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return { ok: false, reason: "not signed in" };
       const { error } = await supabase.from("missionary_extras").upsert(
-        { id, data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() }, created_by: userData.user.id },
+        {
+          id,
+          data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() },
+          created_by: userData.user.id,
+          idempotency_key: `deleted:${id}`,
+        },
         { onConflict: "id" },
       );
       if (error) return { ok: false, reason: error.message };
@@ -1444,8 +1492,8 @@ export async function syncAreaToCloud(a: Area): Promise<SyncResult> {
         id: a.id,
         phase_id: a.phaseId,
         name: a.name,
-        region_id: a.region ?? null,
-        province_id: a.province ?? null,
+        region_id: directoryRegionId(a.region),
+        province_id: directoryProvinceId(a.province),
         description: a.description ?? null,
         gps_lat: a.gps?.[0] ?? null,
         gps_lng: a.gps?.[1] ?? null,
