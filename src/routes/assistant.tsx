@@ -121,9 +121,10 @@ async function fetchLive(): Promise<LiveContext> {
       .limit(20),
     supabase
       .from("thank_you_letters")
-      .select("missionary_id, title, excerpt, letter_date")
+      .select("missionary_id, title, message, letter_date")
       .order("letter_date", { ascending: false, nullsFirst: false })
       .limit(15),
+
     supabase
       .from("announcements")
       .select("title, body, publish_at, expires_at, published")
