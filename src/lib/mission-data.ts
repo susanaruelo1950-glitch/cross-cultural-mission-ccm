@@ -1245,6 +1245,32 @@ export function upsertArea(a: Area) {
   s.areas = s.areas.filter((x) => x.id !== a.id).concat(a);
   writeStore(s);
 }
+export function deleteArea(id: string): { ok: true } | { ok: false; reason: string } {
+  const linked = allMissionaries().filter((m) => m.areaId === id);
+  if (linked.length) {
+    return {
+      ok: false,
+      reason: `Cannot delete: ${linked.length} missionary${linked.length === 1 ? "" : "ies"} still assigned to this area.`,
+    };
+  }
+  const s = readStore();
+  s.areas = s.areas.filter((x) => x.id !== id);
+  writeStore(s);
+  return { ok: true };
+}
+export function deletePhase(id: string): { ok: true } | { ok: false; reason: string } {
+  const linkedAreas = allAreas().filter((a) => a.phaseId === id);
+  if (linkedAreas.length) {
+    return {
+      ok: false,
+      reason: `Cannot delete: ${linkedAreas.length} area${linkedAreas.length === 1 ? "" : "s"} still belong${linkedAreas.length === 1 ? "s" : ""} to this phase.`,
+    };
+  }
+  const s = readStore();
+  s.phases = s.phases.filter((x) => x.id !== id);
+  writeStore(s);
+  return { ok: true };
+}
 export function upsertMissionary(m: Missionary) {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === m.id) ?? null;

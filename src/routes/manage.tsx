@@ -27,7 +27,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { PermissionError } from "@/components/PermissionError";
 import {
+  deleteArea,
   deleteMissionary,
+  deletePhase,
   findSimilarMissionaries,
   normalizeName,
   upsertArea,
