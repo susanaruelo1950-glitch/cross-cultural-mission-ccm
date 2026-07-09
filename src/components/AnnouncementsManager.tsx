@@ -199,6 +199,7 @@ function AnnouncementForm({
   const [title, setTitle] = useState(announcement?.title ?? "");
   const [body, setBody] = useState(announcement?.body ?? "");
   const [linkUrl, setLinkUrl] = useState(announcement?.link_url ?? "");
+  const [layer, setLayer] = useState(announcement?.layer ?? "primary");
   const [published, setPublished] = useState(announcement?.published ?? true);
   const [publishAt, setPublishAt] = useState(
     announcement ? announcement.publish_at.slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -211,6 +212,7 @@ function AnnouncementForm({
         title: title.trim(),
         body: body.trim() || null,
         link_url: linkUrl.trim() || null,
+        layer: (layer.trim() || "primary").toLowerCase(),
         published,
         publish_at: new Date(publishAt).toISOString(),
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
