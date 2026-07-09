@@ -165,11 +165,11 @@ function Dashboard() {
 
 
 
-      {/* Stat grid */}
+      {/* Stat grid — reflects the shared filter when active. */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Missionaries" value={missionStats.totalMissionaries} icon={Users} tone="primary" />
+        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" />
         <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" />
-        <StatCard label="Areas" value={missionStats.totalAreas} icon={MapPin} tone="warm" />
+        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" />
         <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" />
         <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" />
