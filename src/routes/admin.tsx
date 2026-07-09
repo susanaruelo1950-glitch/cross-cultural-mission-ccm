@@ -115,6 +115,8 @@ function AdminPage() {
 
       <CoordinatorAssignments />
 
+      <AdminActivityLog />
+
       <Card className="card-soft p-6">
         <h2 className="font-display text-xl font-semibold">Security</h2>
         <ul className="mt-3 space-y-2 text-sm">
