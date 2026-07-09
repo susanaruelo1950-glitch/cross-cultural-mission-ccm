@@ -18,6 +18,7 @@ import {
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { useLowData } from "@/hooks/use-low-data";
+import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { supabase } from "@/integrations/supabase/client";
 import { createDisplayUrl } from "@/lib/storage-signed";
 
