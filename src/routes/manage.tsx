@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
+import { PermissionError } from "@/components/PermissionError";
 import {
   deleteMissionary,
   findSimilarMissionaries,
