@@ -1,6 +1,10 @@
 # Realtime E2E — automated smoke
 
-`python3 tests/e2e/realtime_smoke.py`
+- `python3 tests/e2e/realtime_smoke.py` — live indicator + realtime pulse.
+- `bun run tests/unit/merge.test.ts` — 3-way merge / ConflictMergeDialog logic.
+
+Both scripts are self-contained and exit non-zero on failure.
+
 
 Verifies the public dashboard mounts the realtime bridge and that the
 `<LiveUpdatesIndicator />` badge reaches **Live**, and that a simulated remote
