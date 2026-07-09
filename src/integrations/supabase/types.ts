@@ -199,6 +199,30 @@ export type Database = {
           },
         ]
       }
+      missionary_extras: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       missionary_photos: {
         Row: {
           cover_url: string | null
