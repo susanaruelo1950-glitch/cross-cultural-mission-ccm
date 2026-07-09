@@ -116,8 +116,18 @@ function MissionMap() {
         .filter((m): m is Missionary & { gps: [number, number] } => !!m),
     [filteredMissionaries],
   );
+
+  const q = search.trim().toLowerCase();
+  const visiblePinned = useMemo(() => {
+    if (!q) return pinned;
+    return pinned.filter((m) =>
+      [m.fullName, m.church, m.address].filter(Boolean).some((v) => (v as string).toLowerCase().includes(q)),
+    );
+  }, [pinned, q]);
+  const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
+
   // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
-  const deferredPinned = useDeferredValue(pinned);
+  const deferredPinned = useDeferredValue(visiblePinned);
 
   function locateMyPastors() {
     if (filters.phaseId !== ALL) setPhaseId(filters.phaseId);
