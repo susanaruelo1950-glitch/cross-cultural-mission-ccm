@@ -256,8 +256,8 @@ function Profile() {
             <ul className="mt-4 space-y-3 text-sm">
               {m.church ? <ContactRow icon={Church} label={m.church} /> : null}
               {m.address ? <ContactRow icon={MapPin} label={m.address} /> : null}
-              {m.phone ? <ContactRow icon={Phone} label={m.phone} /> : null}
-              {m.email ? <ContactRow icon={Mail} label={m.email} /> : null}
+              {m.phone ? <ContactRow icon={Phone} label={m.phone} href={`tel:${m.phone.replace(/\s+/g, "")}`} /> : null}
+              {m.email ? <ContactRow icon={Mail} label={m.email} href={`mailto:${m.email}`} /> : null}
               {m.birthday ? <ContactRow icon={Cake} label={`Birthday ${m.birthday}`} /> : null}
               {m.anniversary ? <ContactRow icon={Heart} label={`Anniversary ${m.anniversary}`} /> : null}
               {m.spouse ? <ContactRow icon={Users} label={`Spouse: ${m.spouse}`} /> : null}
