@@ -29,6 +29,8 @@ export function MissionaryPhotoUpload({ missionaryId, missionaryName, onUploaded
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [selected, setSelected] = useState<File | null>(null);
+  const [showUrl, setShowUrl] = useState(false);
+  const [url, setUrl] = useState("");
 
   const mut = useMutation({
     mutationFn: async (file: File): Promise<string> => {
