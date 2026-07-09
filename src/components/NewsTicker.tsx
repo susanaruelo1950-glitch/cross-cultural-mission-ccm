@@ -138,7 +138,13 @@ export function NewsTicker({
         id: a.id, text: a.title, href: a.link_url ?? undefined, layer: a.layer,
       }));
     },
-    staleTime: 30_000,
+    // Keep the ticker honest about scheduled publish / expiry windows even
+    // when no realtime event fires — refetch every minute so a headline that
+    // just crossed its `publish_at` or `expires_at` boundary shows/hides
+    // without waiting for the next admin edit.
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   const items = (data && data.length > 0 ? data : fallback) ?? [];
