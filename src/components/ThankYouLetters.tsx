@@ -54,11 +54,19 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("thank_you_letters").delete().eq("id", id);
+      const { data, error } = await supabase
+        .from("thank_you_letters")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Nothing was deleted. You may not have permission, or the item was already removed.");
+      }
     },
     onSuccess: () => {
       toast.success("Letter deleted.");
+      qc.invalidateQueries({ queryKey: ["thank_you_letters"] });
       qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
       qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
     },
