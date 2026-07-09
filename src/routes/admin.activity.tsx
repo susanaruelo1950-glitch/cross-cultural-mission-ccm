@@ -202,6 +202,20 @@ function ActivityPage() {
               {actionOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={actor} onValueChange={setActor}>
+            <SelectTrigger className="w-[200px]"><Filter className="h-4 w-4" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All actors</SelectItem>
+              {actorOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sortDir} onValueChange={(v) => setSortDir(v as "asc" | "desc")}>
+            <SelectTrigger className="w-[160px]"><Filter className="h-4 w-4" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Newest first</SelectItem>
+              <SelectItem value="asc">Oldest first</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
