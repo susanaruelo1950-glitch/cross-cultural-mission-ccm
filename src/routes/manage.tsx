@@ -281,7 +281,9 @@ function MissionaryForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Snapshot loaded from the cloud row for optimistic-concurrency conflict detection.
   const loadedUpdatedAt = useRef<string | null>(null);
+  const baseSnapshot = useRef<Missionary | null>(initial ?? null);
   const [remoteChanged, setRemoteChanged] = useState(false);
+  const [mergePreview, setMergePreview] = useState<MergePreview<Missionary> | null>(null);
 
   // Load current cloud updated_at when editing an existing missionary.
   useEffect(() => {
@@ -295,6 +297,9 @@ function MissionaryForm({
       .then(({ data }) => {
         if (cancelled || !data) return;
         loadedUpdatedAt.current = data.updated_at;
+        if (data.data && typeof data.data === "object") {
+          baseSnapshot.current = { ...(data.data as Missionary), id: initial.id };
+        }
       });
     // Listen for remote updates to THIS row while editing.
     function onChange(e: Event) {
