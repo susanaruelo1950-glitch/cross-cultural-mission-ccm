@@ -39,6 +39,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
 import { useGlobalRealtime } from "@/hooks/use-global-realtime";
+import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -308,6 +309,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <HeaderSearch />
           <div className="flex items-center gap-2">
+            <LiveUpdatesIndicator />
             <AuthButton />
           </div>
         </div>
