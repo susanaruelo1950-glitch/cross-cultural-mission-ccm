@@ -1324,9 +1324,22 @@ export function upsertMissionary(m: Missionary) {
 export function deleteMissionary(id: string) {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === id) ?? null;
+  const name = previous?.fullName;
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
+  // Tombstone locally so seed-imported missionaries stay hidden after delete.
+  const ids = new Set(s.deletedIds ?? []);
+  ids.add(id);
+  s.deletedIds = Array.from(ids);
+  if (name) {
+    const names = new Set(s.deletedNames ?? []);
+    names.add(name);
+    s.deletedNames = Array.from(names);
+  }
   writeStore(s);
-  void deleteMissionaryFromCloud(id);
+  // Also remember locally so the current tab reflects immediately even before cloud roundtrip.
+  cloudDeletedIds = Array.from(new Set([...cloudDeletedIds, id]));
+  if (name) cloudDeletedNames = Array.from(new Set([...cloudDeletedNames, name]));
+  void deleteMissionaryFromCloud(id, name ?? null);
   void (async () => {
     const { logActivity } = await import("./activity-log");
     await logActivity({
@@ -1352,12 +1365,24 @@ async function syncMissionaryToCloud(m: Missionary) {
   }
 }
 
-async function deleteMissionaryFromCloud(id: string) {
+async function deleteMissionaryFromCloud(id: string, fullName: string | null) {
   if (typeof window === "undefined") return;
   try {
     const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("missionary_extras").delete().eq("id", id);
+    const { data: userData } = await supabase.auth.getUser();
+    // Write a tombstone marker so every device/user (incl. seed rows) hides this pastor.
+    if (userData.user) {
+      await supabase.from("missionary_extras").upsert(
+        {
+          id,
+          data: { __deleted: true, id, fullName, deletedAt: new Date().toISOString() },
+          created_by: userData.user.id,
+        },
+        { onConflict: "id" },
+      );
+    }
   } catch (err) {
+
     console.warn("[missionary sync] cloud delete failed:", err);
   }
 }
