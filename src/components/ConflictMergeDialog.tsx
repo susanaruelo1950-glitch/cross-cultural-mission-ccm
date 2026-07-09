@@ -24,7 +24,7 @@ export interface MergePreview<T extends object> {
  * - If both changed to the same value → no conflict.
  * - If both changed to different values → conflict entry.
  */
-export function computeMerge<T extends Record<string, unknown>>(
+export function computeMerge<T extends object>(
   base: T,
   mine: T,
   theirs: T,
@@ -60,7 +60,7 @@ function display(v: unknown): string {
   return JSON.stringify(v);
 }
 
-export function ConflictMergeDialog<T extends Record<string, unknown>>({
+export function ConflictMergeDialog<T extends object>({
   preview,
   onResolve,
   onCancel,
