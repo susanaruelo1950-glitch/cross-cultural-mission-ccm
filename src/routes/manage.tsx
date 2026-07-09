@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import {
   Pencil,
@@ -275,6 +276,36 @@ function MissionaryForm({
     },
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Snapshot loaded from the cloud row for optimistic-concurrency conflict detection.
+  const loadedUpdatedAt = useRef<string | null>(null);
+  const [remoteChanged, setRemoteChanged] = useState(false);
+
+  // Load current cloud updated_at when editing an existing missionary.
+  useEffect(() => {
+    if (!initial?.id) return;
+    let cancelled = false;
+    supabase
+      .from("missionary_extras")
+      .select("updated_at, data")
+      .eq("id", initial.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        loadedUpdatedAt.current = data.updated_at;
+      });
+    // Listen for remote updates to THIS row while editing.
+    function onChange(e: Event) {
+      const detail = (e as CustomEvent<{ table: string; new: { id?: string } | null }>).detail;
+      if (!detail || detail.table !== "missionary_extras") return;
+      if (detail.new?.id !== initial.id) return;
+      setRemoteChanged(true);
+    }
+    window.addEventListener("gc-realtime-change", onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("gc-realtime-change", onChange);
+    };
+  }, [initial?.id]);
 
   const set = <K extends keyof Missionary>(k: K, v: Missionary[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -305,7 +336,7 @@ function MissionaryForm({
     return { areaProvince: selectedArea.province, entered: form.province };
   }, [selectedArea?.province, form.province]);
 
-  function save() {
+  async function save() {
     const draft: Missionary = {
       ...(form as Missionary),
       id: form.id?.trim() || `m-${slug(form.fullName ?? "")}-${Date.now().toString(36)}`,
@@ -336,10 +367,30 @@ function MissionaryForm({
       );
       if (!ok) return;
     }
+    // Optimistic-concurrency check: has this row been updated by someone else since we loaded it?
+    if (initial?.id && loadedUpdatedAt.current) {
+      const { data: current } = await supabase
+        .from("missionary_extras")
+        .select("updated_at")
+        .eq("id", initial.id)
+        .maybeSingle();
+      if (current && current.updated_at !== loadedUpdatedAt.current) {
+        const ok = confirm(
+          "This missionary was updated by another admin while you were editing. Overwrite their changes with yours?",
+        );
+        if (!ok) {
+          toast.info("Save cancelled — reload the record to see the latest version.");
+          return;
+        }
+      }
+    }
     // Auto-fill province from the area when empty — prevents Kidapawan-style mismatches.
     if (!draft.province && selectedArea?.province) draft.province = selectedArea.province;
     if (!draft.region && selectedArea?.region) draft.region = selectedArea.region;
     upsertMissionary(draft);
+    // Advance our snapshot so subsequent saves don't false-positive.
+    loadedUpdatedAt.current = new Date().toISOString();
+    setRemoteChanged(false);
     toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
