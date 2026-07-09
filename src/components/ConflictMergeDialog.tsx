@@ -11,7 +11,7 @@ export interface FieldConflict {
   base: unknown;
 }
 
-export interface MergePreview<T extends Record<string, unknown>> {
+export interface MergePreview<T extends object> {
   /** Auto-merged (I changed one field, they changed another) */
   autoMerged: T;
   /** True conflicts — both sides changed the same field to different values */
