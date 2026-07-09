@@ -61,6 +61,26 @@ export function useGlobalRealtime() {
   useEffect(() => {
     let channel: RealtimeChannel | null = null;
 
+    // Debounce buffer — coalesces bursts (e.g. bulk import, poor network
+    // buffering many events at once) into a single invalidation per table.
+    const pending = new Map<string, RealtimeChangeDetail>();
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const FLUSH_MS = 250;
+
+    function flush() {
+      flushTimer = null;
+      const tables = Array.from(pending.keys());
+      const details = Array.from(pending.values());
+      pending.clear();
+      for (const table of tables) {
+        for (const key of TABLE_TO_KEYS[table] ?? []) qc.invalidateQueries({ queryKey: key });
+      }
+      // Dispatch one event per unique table with the most recent payload.
+      for (const detail of details) {
+        window.dispatchEvent(new CustomEvent("gc-realtime-change", { detail }));
+      }
+    }
+
     function connect() {
       setStatus("connecting");
       channel = supabase.channel("global_admin_sync");
@@ -69,16 +89,16 @@ export function useGlobalRealtime() {
           "postgres_changes",
           { event: "*", schema: "public", table },
           (payload) => {
-            for (const key of TABLE_TO_KEYS[table]) {
-              qc.invalidateQueries({ queryKey: key });
-            }
             const detail: RealtimeChangeDetail = {
               table,
               event: payload.eventType as RealtimeChangeDetail["event"],
               new: (payload.new ?? null) as Record<string, unknown> | null,
               old: (payload.old ?? null) as Record<string, unknown> | null,
             };
-            window.dispatchEvent(new CustomEvent("gc-realtime-change", { detail }));
+            // Keep only the latest event per table within the debounce window.
+            pending.set(table, detail);
+            if (flushTimer) clearTimeout(flushTimer);
+            flushTimer = setTimeout(flush, FLUSH_MS);
           },
         );
       }
@@ -104,6 +124,7 @@ export function useGlobalRealtime() {
     return () => {
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
+      if (flushTimer) clearTimeout(flushTimer);
       if (channel) supabase.removeChannel(channel);
     };
   }, [qc]);

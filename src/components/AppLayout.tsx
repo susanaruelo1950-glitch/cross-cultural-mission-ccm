@@ -40,6 +40,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
 import { useGlobalRealtime } from "@/hooks/use-global-realtime";
 import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
+import { NotificationBell } from "@/components/NotificationBell";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -181,6 +182,9 @@ function HeaderSearch() {
         placeholder="Search missionaries, churches, areas..."
         className="h-10 rounded-full bg-muted/50 pl-9"
         type="search"
+        dir="ltr"
+        autoComplete="off"
+        spellCheck={false}
         enterKeyHint="search"
       />
     </form>
@@ -310,6 +314,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <HeaderSearch />
           <div className="flex items-center gap-2">
             <LiveUpdatesIndicator />
+            <NotificationBell />
             <AuthButton />
           </div>
         </div>

@@ -55,6 +55,8 @@ function ActivityPage() {
   const [q, setQ] = useState("");
   const [entity, setEntity] = useState<string>("all");
   const [action, setAction] = useState<string>("all");
+  const [actor, setActor] = useState<string>("all");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
@@ -97,12 +99,19 @@ function ActivityPage() {
     () => Array.from(new Set(rows.map((r) => r.action))).sort(),
     [rows],
   );
+  const actorOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.actor_email).filter((e): e is string => Boolean(e))))
+        .sort(),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((r) => {
+    const list = rows.filter((r) => {
       if (entity !== "all" && r.entity_type !== entity) return false;
       if (action !== "all" && r.action !== action) return false;
+      if (actor !== "all" && r.actor_email !== actor) return false;
       if (!needle) return true;
       return (
         (r.summary ?? "").toLowerCase().includes(needle) ||
@@ -110,7 +119,9 @@ function ActivityPage() {
         r.entity_id.toLowerCase().includes(needle)
       );
     });
-  }, [rows, q, entity, action]);
+    // Rows arrive newest-first; reverse when the user picks ascending.
+    return sortDir === "asc" ? [...list].reverse() : list;
+  }, [rows, q, entity, action, actor, sortDir]);
 
   function exportCsv() {
     const header = "when,entity,action,actor,summary,changes\n";
@@ -166,7 +177,7 @@ function ActivityPage() {
       </header>
 
       <Card className="card-soft p-4">
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <div className="flex flex-wrap items-center gap-2 [&>*]:min-w-[140px] [&>*:first-child]:flex-1 [&>*:first-child]:min-w-[200px]">
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -189,6 +200,20 @@ function ActivityPage() {
             <SelectContent>
               <SelectItem value="all">All actions</SelectItem>
               {actionOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={actor} onValueChange={setActor}>
+            <SelectTrigger className="w-[200px]"><Filter className="h-4 w-4" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All actors</SelectItem>
+              {actorOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sortDir} onValueChange={(v) => setSortDir(v as "asc" | "desc")}>
+            <SelectTrigger className="w-[160px]"><Filter className="h-4 w-4" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Newest first</SelectItem>
+              <SelectItem value="asc">Oldest first</SelectItem>
             </SelectContent>
           </Select>
         </div>

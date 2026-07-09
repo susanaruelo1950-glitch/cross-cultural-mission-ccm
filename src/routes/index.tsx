@@ -14,6 +14,7 @@ import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { NewsTicker } from "@/components/NewsTicker";
 
 import {
   missionariesByPhaseCount,
@@ -86,6 +87,17 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       <h1 className="sr-only">Cross-Cultural Mission — Church Planting Dashboard</h1>
+
+      {/* Rolling news / announcements banner */}
+      <NewsTicker
+        items={[
+          {
+            id: "grad-phase2-nov",
+            text: "Upcoming graduation for Phase 2 — FCL Batch 2 this coming November. Pray with us!",
+          },
+        ]}
+      />
+
       {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
       <section
         aria-label="Scripture of the day"

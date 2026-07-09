@@ -1,10 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Send, Sparkles, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { Send, Sparkles, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { missionaries, prayerRequests, reports } from "@/lib/mission-data";
+import { toast } from "sonner";
+import {
+  allAreas,
+  allMissionaries,
+  allPhases,
+  missionStats,
+  prayerRequests,
+  reports,
+} from "@/lib/mission-data";
+import { useDataStore } from "@/hooks/use-data-store";
+import { askAssistant } from "@/lib/ask.functions";
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
@@ -13,92 +25,116 @@ export const Route = createFileRoute("/assistant")({
       { name: "description", content: "Ask questions grounded in Cross-Cultural Mission data — missionaries, reports, prayer." },
       { property: "og:title", content: "AI Mission Assistant — Cross-Cultural Mission" },
       { property: "og:description", content: "Ask questions grounded in Cross-Cultural Mission data — missionaries, reports, prayer." },
-      { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/assistant" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "AI Mission Assistant — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Ask questions grounded in Cross-Cultural Mission data — missionaries, reports, prayer." },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
-    links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/assistant" }],
   }),
   component: Assistant,
 });
 
 interface Message {
   role: "user" | "assistant";
-  text: string;
-  citations?: string[];
+  content: string;
 }
 
-const prompts = [
-  "How many missionaries do we have?",
-  "Show urgent prayer requests",
-  "Summarize recent reports",
-  "List missionaries by phase",
+const PROMPTS = [
+  "How many missionaries do we have and how are they distributed by phase?",
+  "Which areas are in Sarangani or Kidapawan?",
+  "Summarize the recent ministry reports.",
+  "List open prayer requests and who they're for.",
+  "When is the next upcoming event?",
 ];
 
+function buildContext() {
+  const phases = allPhases().map((p) => ({ id: p.id, name: p.name, order: p.order }));
+  const areas = allAreas().map((a) => ({
+    id: a.id,
+    name: a.name,
+    phaseId: a.phaseId,
+    region: a.region,
+    province: a.province,
+  }));
+  const missionaries = allMissionaries().map((m) => ({
+    id: m.id,
+    name: m.fullName,
+    church: m.church,
+    areaId: m.areaId,
+    status: m.status,
+    ministryFocus: m.ministryFocus,
+    province: m.province,
+    municipality: m.municipality,
+  }));
+  return {
+    generatedAt: new Date().toISOString(),
+    counts: {
+      missionaries: missionStats.totalMissionaries,
+      phases: missionStats.totalPhases,
+      areas: missionStats.totalAreas,
+      churches: missionStats.totalChurches,
+      openPrayerRequests: missionStats.totalPrayerRequests,
+      reports: missionStats.totalReports,
+    },
+    phases,
+    areas,
+    missionaries,
+    recentReports: reports.slice(0, 10).map((r) => ({
+      title: r.title,
+      date: r.date,
+      salvations: r.salvations,
+      baptisms: r.baptisms,
+      attendance: r.attendance,
+    })),
+    openPrayerRequests: prayerRequests
+      .filter((p) => !p.answered)
+      .slice(0, 20)
+      .map((p) => ({
+        title: p.title,
+        detail: p.detail,
+        urgent: p.urgent,
+        missionaryId: p.missionaryId,
+      })),
+    announcements: [
+      "Upcoming graduation for Phase 2 — FCL Batch 2 this coming November.",
+    ],
+  };
+}
+
 function Assistant() {
+  useDataStore(); // subscribe so context reflects live data
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "Hello! I'm your Mission Assistant. I only answer using information already in the platform, and I always cite my sources. How can I help you today?",
+      content:
+        "Hi! I'm your Cross-Cultural Mission assistant. I know the current directory, prayer requests, reports, and upcoming events. Ask me anything.",
     },
   ]);
   const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ask = useServerFn(askAssistant);
+  const context = useMemo(() => buildContext(), []);
 
-  const answer = (q: string): Message => {
-    const lower = q.toLowerCase();
-    if (lower.includes("urgent") || lower.includes("prayer")) {
-      const urgent = prayerRequests.filter((p) => p.urgent && !p.answered);
-      if (urgent.length === 0) return { role: "assistant", text: "No urgent prayer requests right now." };
-      return {
-        role: "assistant",
-        text: `There are ${urgent.length} urgent prayer requests:\n\n${urgent
-          .map((p) => {
-            const m = missionaries.find((x) => x.id === p.missionaryId);
-            return `• ${m?.fullName ?? "Unknown"} — ${p.title}: ${p.detail}`;
-          })
-          .join("\n")}`,
-        citations: urgent.map((p) => `Prayer #${p.id}`),
-      };
-    }
-    if (lower.includes("summar") || lower.includes("report")) {
-      if (reports.length === 0) return { role: "assistant", text: "No reports have been submitted yet." };
-      const totals = reports.reduce(
-        (acc, r) => ({
-          salvations: acc.salvations + (r.salvations ?? 0),
-          baptisms: acc.baptisms + (r.baptisms ?? 0),
-          attendance: acc.attendance + (r.attendance ?? 0),
-          bibleStudies: acc.bibleStudies + (r.bibleStudies ?? 0),
-        }),
-        { salvations: 0, baptisms: 0, attendance: 0, bibleStudies: 0 },
-      );
-      return {
-        role: "assistant",
-        text: `Across ${reports.length} report(s):\n\n• Salvations: ${totals.salvations}\n• Baptisms: ${totals.baptisms}\n• Attendance: ${totals.attendance}\n• Bible studies: ${totals.bibleStudies}`,
-        citations: reports.map((r) => r.title),
-      };
-    }
-    if (lower.includes("how many") || lower.includes("missionaries")) {
-      return {
-        role: "assistant",
-        text: `There are ${missionaries.length} missionaries currently in the directory.`,
-        citations: ["Missionary directory"],
-      };
-    }
-    return {
-      role: "assistant",
-      text: "I can help you summarize reports, surface prayer needs, and answer questions about your missionaries. Try one of the suggested prompts, or ask about a specific person or area. I only answer from data in this platform.",
-    };
-  };
-
-  const send = (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = { role: "user", text };
-    const aiMsg = answer(text);
-    setMessages((m) => [...m, userMsg, aiMsg]);
+  async function send(text: string) {
+    const q = text.trim();
+    if (!q || busy) return;
     setInput("");
-  };
+    const nextHistory: Message[] = [...messages, { role: "user", content: q }];
+    setMessages(nextHistory);
+    setBusy(true);
+    try {
+      const { reply } = await ask({
+        data: {
+          question: q,
+          history: nextHistory.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
+          context: buildContext(),
+        },
+      });
+      setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI request failed";
+      toast.error(msg);
+      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${msg}` }]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -107,39 +143,49 @@ function Assistant() {
           <Sparkles className="h-6 w-6" />
         </div>
         <h1 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">AI Mission Assistant</h1>
-        <p className="mt-1 text-muted-foreground">Grounded only in this platform. Every answer cites its source.</p>
+        <p className="mt-1 text-muted-foreground">
+          Grounded in this platform's live data — {context.counts.missionaries} missionaries across{" "}
+          {context.counts.areas} areas.
+        </p>
       </header>
-
-      <Card className="card-soft p-4">
-        <div className="flex items-start gap-2 rounded-xl bg-accent p-3 text-sm text-accent-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Prototype demo — answers are generated locally. Connect Lovable AI Gateway to enable full LLM responses.</p>
-        </div>
-      </Card>
 
       <div className="space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-soft ${
-              m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card"
-            }`}>
-              <p className="whitespace-pre-wrap">{m.text}</p>
-              {m.citations?.length ? (
-                <div className="mt-2 border-t border-border/40 pt-2 text-xs opacity-80">
-                  <div className="font-semibold">Sources</div>
-                  <ul className="mt-1 space-y-0.5">
-                    {m.citations.map((c) => (<li key={c}>· {c}</li>))}
-                  </ul>
+            <div
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-soft ${
+                m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card"
+              }`}
+            >
+              {m.role === "assistant" ? (
+                <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
                 </div>
-              ) : null}
+              ) : (
+                <p className="whitespace-pre-wrap">{m.content}</p>
+              )}
             </div>
           </div>
         ))}
+        {busy ? (
+          <div className="flex justify-start">
+            <div className="rounded-2xl bg-card px-4 py-3 text-sm shadow-soft">
+              <Loader2 className="inline h-4 w-4 animate-spin" /> Thinking…
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {prompts.map((p) => (
-          <Button key={p} size="sm" variant="outline" className="rounded-full" onClick={() => send(p)}>
+        {PROMPTS.map((p) => (
+          <Button
+            key={p}
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => send(p)}
+            disabled={busy}
+          >
             {p}
           </Button>
         ))}
@@ -149,8 +195,16 @@ function Assistant() {
         className="sticky bottom-20 flex gap-2 rounded-full border border-border bg-card p-2 shadow-lift lg:bottom-4"
         onSubmit={(e) => { e.preventDefault(); send(input); }}
       >
-        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask about missionaries, reports, prayer..." className="border-0 bg-transparent shadow-none focus-visible:ring-0" />
-        <Button type="submit" size="icon" className="rounded-full" aria-label="Send"><Send className="h-4 w-4" /></Button>
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about missionaries, reports, prayer, upcoming events…"
+          className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+          disabled={busy}
+        />
+        <Button type="submit" size="icon" className="rounded-full" aria-label="Send" disabled={busy}>
+          <Send className="h-4 w-4" />
+        </Button>
       </form>
     </div>
   );
