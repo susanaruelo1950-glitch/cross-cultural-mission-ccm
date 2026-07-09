@@ -21,7 +21,7 @@ import { useLowData } from "@/hooks/use-low-data";
 import { supabase } from "@/integrations/supabase/client";
 import { createDisplayUrl } from "@/lib/storage-signed";
 
-export const Route = createFileRoute("/missionaries")({
+export const Route = createFileRoute("/missionaries/")({
   head: () => ({
     meta: [
       { title: "Missionary Directory — Cross-Cultural Mission" },
