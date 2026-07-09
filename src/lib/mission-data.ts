@@ -1290,7 +1290,7 @@ export function deletePhase(id: string): { ok: true } | { ok: false; reason: str
   writeStore(s);
   return { ok: true };
 }
-export function upsertMissionary(m: Missionary) {
+export async function upsertMissionary(m: Missionary): Promise<{ ok: true } | { ok: false; reason: string }> {
   const s = readStore();
   const previous = allMissionaries().find((x) => x.id === m.id) ?? null;
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
@@ -1301,9 +1301,10 @@ export function upsertMissionary(m: Missionary) {
   cloudDeletedIds = cloudDeletedIds.filter((x) => x !== m.id);
   cloudDeletedNames = cloudDeletedNames.filter((n) => normalizeName(n) !== normalizeName(m.fullName));
 
-  // Best-effort cloud sync so other users/devices see the change in realtime.
-  void syncMissionaryToCloud(m);
-  // Activity log (fire-and-forget)
+  // Await cloud sync so the caller can surface a real error toast.
+  const result = await syncMissionaryToCloud(m);
+
+  // Activity log (fire-and-forget — never blocks the UI).
   void (async () => {
     const { logActivity, diffFields } = await import("./activity-log");
     if (previous) {
@@ -1326,6 +1327,8 @@ export function upsertMissionary(m: Missionary) {
       });
     }
   })();
+
+  return result;
 }
 export function deleteMissionary(id: string) {
   const s = readStore();
@@ -1357,17 +1360,26 @@ export function deleteMissionary(id: string) {
   })();
 }
 
-async function syncMissionaryToCloud(m: Missionary) {
-  if (typeof window === "undefined") return;
+async function syncMissionaryToCloud(m: Missionary): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (typeof window === "undefined") return { ok: false, reason: "SSR" };
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return; // silent — non-admins or signed-out just skip
-    await supabase
+    if (!userData.user) {
+      return { ok: false, reason: "Not signed in — sign in as an admin to sync to every device." };
+    }
+    const { error } = await supabase
       .from("missionary_extras")
       .upsert({ id: m.id, data: JSON.parse(JSON.stringify(m)), created_by: userData.user.id }, { onConflict: "id" });
+    if (error) {
+      console.warn("[missionary sync] cloud upsert failed:", error.message);
+      return { ok: false, reason: error.message };
+    }
+    return { ok: true };
   } catch (err) {
-    console.warn("[missionary sync] cloud upsert failed:", err);
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn("[missionary sync] cloud upsert failed:", reason);
+    return { ok: false, reason };
   }
 }
 
