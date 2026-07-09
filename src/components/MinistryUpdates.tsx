@@ -1,5 +1,7 @@
-import { useRef, useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createDisplayUrl } from "@/lib/storage-signed";
+
 import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +79,12 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const withImages = useMemo(
+    () => (updates ?? []).filter((u) => !!u.image_url),
+    [updates],
+  );
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -162,7 +170,16 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                 />
               ) : (
                 <>
-                  {u.image_url ? <UpdateImage path={u.image_url} title={u.title} /> : null}
+                  {u.image_url ? (
+                    <UpdateImageThumb
+                      path={u.image_url}
+                      title={u.title}
+                      onOpen={() => {
+                        const idx = withImages.findIndex((x) => x.id === u.id);
+                        setLightboxIndex(idx >= 0 ? idx : 0);
+                      }}
+                    />
+                  ) : null}
                   {u.summary ? (
                     <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
                   ) : null}
@@ -177,9 +194,18 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
           ))
         )}
       </div>
+
+      {lightboxIndex !== null && withImages.length > 0 ? (
+        <UpdatesLightbox
+          items={withImages.map((u) => ({ path: u.image_url as string, title: u.title }))}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </Card>
   );
 }
+
 
 function UpdateEditForm({
   update,
@@ -248,9 +274,16 @@ function UpdateEditForm({
 }
 
 
-function UpdateImage({ path, title }: { path: string; title: string }) {
+function UpdateImageThumb({
+  path,
+  title,
+  onOpen,
+}: {
+  path: string;
+  title: string;
+  onOpen: () => void;
+}) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
-  const [open, setOpen] = useState(false);
   if (isLoading) {
     return (
       <div className="mt-3 flex h-40 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
@@ -260,24 +293,62 @@ function UpdateImage({ path, title }: { path: string; title: string }) {
   }
   if (!url) return null;
   return (
-    <>
-      <button
-        type="button"
-        className="mt-3 block w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        onClick={() => setOpen(true)}
-        aria-label={`View full photo for ${title}`}
-      >
-        <img
-          src={url}
-          alt={title}
-          className="max-h-80 w-full object-cover transition-transform hover:scale-[1.01]"
-          loading="lazy"
-        />
-      </button>
-      <PhotoLightbox src={url} alt={title} open={open} onClose={() => setOpen(false)} />
-    </>
+    <button
+      type="button"
+      className="mt-3 block w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      onClick={onOpen}
+      aria-label={`View full photo for ${title}`}
+    >
+      <img
+        src={url}
+        alt={title}
+        className="max-h-80 w-full object-cover transition-transform hover:scale-[1.01]"
+        loading="lazy"
+      />
+    </button>
   );
 }
+
+/**
+ * Signs every ministry-update image in parallel and shows them in a gallery
+ * lightbox with prev/next navigation.
+ */
+function UpdatesLightbox({
+  items,
+  index,
+  onClose,
+}: {
+  items: { path: string; title: string }[];
+  index: number;
+  onClose: () => void;
+}) {
+  const results = useQueries({
+    queries: items.map((it) => ({
+      queryKey: ["signed-url", BUCKET, it.path],
+      queryFn: async () => {
+        const url = await createDisplayUrl(BUCKET, it.path);
+        if (!url) throw new Error("Failed to sign URL");
+        return url;
+      },
+      staleTime: 30 * 60 * 1000,
+    })),
+  });
+  const lightboxItems = items
+    .map((it, i) => ({ src: (results[i]?.data as string | undefined) ?? "", alt: it.title }))
+    .filter((it) => it.src);
+  if (lightboxItems.length === 0) return null;
+  const clamped = Math.min(index, lightboxItems.length - 1);
+  return (
+    <PhotoLightbox
+      open
+      onClose={onClose}
+      items={lightboxItems}
+      index={clamped}
+    />
+  );
+}
+
+
 
 function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();

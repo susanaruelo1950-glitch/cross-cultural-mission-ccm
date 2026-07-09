@@ -1,5 +1,8 @@
-import { useState, useRef, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState, useRef, type FormEvent } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createDisplayUrl } from "@/lib/storage-signed";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+
 import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +82,14 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Only images can be shown in the lightbox; PDFs still get the PDF preview.
+  const imageLetters = useMemo(
+    () => (letters ?? []).filter((l) => l.letter_url && !/\.pdf(\?|$)/i.test(l.letter_url)),
+    [letters],
+  );
+
 
   return (
     <Card className="card-soft p-5 sm:p-6">
@@ -168,16 +179,33 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
                       {l.message}
                     </p>
                   ) : null}
-                  {l.letter_url ? <LetterAttachment path={l.letter_url} title={l.title} /> : null}
+                  {l.letter_url ? (
+                    <LetterAttachment
+                      path={l.letter_url}
+                      title={l.title}
+                      onOpenImage={() => {
+                        const idx = imageLetters.findIndex((x) => x.id === l.id);
+                        setLightboxIndex(idx >= 0 ? idx : 0);
+                      }}
+                    />
+                  ) : null}
                 </>
               )}
             </article>
           ))
         )}
       </div>
+      {lightboxIndex !== null && imageLetters.length > 0 ? (
+        <LettersLightbox
+          items={imageLetters.map((l) => ({ path: l.letter_url as string, title: l.title }))}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </Card>
   );
 }
+
 
 function LetterEditForm({
   letter,
@@ -252,7 +280,15 @@ function LetterEditForm({
 }
 
 
-function LetterAttachment({ path, title }: { path: string; title: string }) {
+function LetterAttachment({
+  path,
+  title,
+  onOpenImage,
+}: {
+  path: string;
+  title: string;
+  onOpenImage?: () => void;
+}) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
   const isPdf = /\.pdf(\?|$)/i.test(path);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -268,7 +304,11 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     <div className="mt-3 flex flex-wrap items-start gap-3">
       <button
         type="button"
-        onClick={() => (isPdf ? setPreviewOpen(true) : window.open(url, "_blank", "noopener,noreferrer"))}
+        onClick={() => {
+          if (isPdf) setPreviewOpen(true);
+          else if (onOpenImage) onOpenImage();
+          else window.open(url, "_blank", "noopener,noreferrer");
+        }}
         className="group block overflow-hidden rounded-xl border border-border bg-muted text-left"
         aria-label={`Preview thank you letter: ${title}`}
       >
@@ -315,6 +355,46 @@ function LetterAttachment({ path, title }: { path: string; title: string }) {
     </div>
   );
 }
+
+/**
+ * Signs every image thank-you letter in parallel and shows them in a gallery
+ * lightbox with prev/next navigation.
+ */
+function LettersLightbox({
+  items,
+  index,
+  onClose,
+}: {
+  items: { path: string; title: string }[];
+  index: number;
+  onClose: () => void;
+}) {
+  const results = useQueries({
+    queries: items.map((it) => ({
+      queryKey: ["signed-url", BUCKET, it.path],
+      queryFn: async () => {
+        const url = await createDisplayUrl(BUCKET, it.path);
+        if (!url) throw new Error("Failed to sign URL");
+        return url;
+      },
+      staleTime: 30 * 60 * 1000,
+    })),
+  });
+  const lightboxItems = items
+    .map((it, i) => ({ src: (results[i]?.data as string | undefined) ?? "", alt: it.title }))
+    .filter((it) => it.src);
+  if (lightboxItems.length === 0) return null;
+  return (
+    <PhotoLightbox
+      open
+      onClose={onClose}
+      items={lightboxItems}
+      index={Math.min(index, lightboxItems.length - 1)}
+    />
+  );
+}
+
+
 
 
 function LetterForm({ missionaryId }: { missionaryId: string }) {
