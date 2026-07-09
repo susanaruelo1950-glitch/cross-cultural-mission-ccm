@@ -55,6 +55,8 @@ function ActivityPage() {
   const [q, setQ] = useState("");
   const [entity, setEntity] = useState<string>("all");
   const [action, setAction] = useState<string>("all");
+  const [actor, setActor] = useState<string>("all");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
