@@ -69,14 +69,26 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("prayer_requests_db").delete().eq("id", id);
+      const { data, error } = await supabase
+        .from("prayer_requests_db")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Nothing was deleted. You may not have permission, or the item was already removed.");
+      }
     },
     onSuccess: () => {
       toast.success("Prayer request removed.");
       qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) =>
+      toast.error(
+        /row-level|permission/i.test(e.message)
+          ? "You don't have permission to delete this prayer request."
+          : e.message,
+      ),
   });
 
   const items = data ?? [];
