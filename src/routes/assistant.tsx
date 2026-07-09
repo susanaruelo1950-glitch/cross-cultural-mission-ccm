@@ -196,7 +196,17 @@ function Assistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const ask = useServerFn(askAssistant);
-  const context = useMemo(() => buildContext(), []);
+  const [context, setContext] = useState<LiveContext>(() => baseContext());
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLive().then((c) => {
+      if (!cancelled) setContext(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function send(text: string) {
     const q = text.trim();
@@ -206,11 +216,13 @@ function Assistant() {
     setMessages(nextHistory);
     setBusy(true);
     try {
+      const fresh = await fetchLive();
+      setContext(fresh);
       const { reply } = await ask({
         data: {
           question: q,
           history: nextHistory.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
-          context: buildContext(),
+          context: fresh,
         },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
@@ -222,6 +234,7 @@ function Assistant() {
       setBusy(false);
     }
   }
+
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
