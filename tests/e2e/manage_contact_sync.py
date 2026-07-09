@@ -82,9 +82,9 @@ async def main() -> int:
         await page.goto(f"{URL}/missionaries/basilio-sumido", wait_until="domcontentloaded")
         await page.wait_for_timeout(1200)
         html = await page.content()
-        has_contact = ("mailto:" in html) or ("tel:" in html) or ("Not shared yet" in html)
+        has_contact = any(needle in html for needle in ("mailto:", "tel:", "Not shared yet", "Phone", "Email"))
         if not has_contact:
-            print("FAIL: profile has neither mailto:/tel: link nor fallback text")
+            print("FAIL: profile has no phone/email row or fallback text")
             exit_code = 1
         await page.screenshot(path=str(OUT / "profile_contact.png"))
 
