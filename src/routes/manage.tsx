@@ -305,6 +305,15 @@ function MissionaryForm({
         </Button>
       </div>
 
+      {dupe && !initial ? (
+        <div role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          A missionary named <strong>{dupe.fullName}</strong> already exists
+          {areas.find((a) => a.id === dupe.areaId)?.name ? ` in ${areas.find((a) => a.id === dupe.areaId)?.name}` : ""}.
+          Consider editing that record instead of creating a duplicate.
+        </div>
+      ) : null}
+
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name*" error={errors.fullName}>
           <Input value={form.fullName ?? ""} onChange={(e) => set("fullName", e.target.value)} />
