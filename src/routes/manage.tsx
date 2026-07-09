@@ -84,13 +84,37 @@ function ManagePage() {
   const navigate = useNavigate();
   const store = useDataStore();
   const tab = search.tab ?? "missionaries";
+  const { user, isAdmin, loading } = useAuth();
+
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (!user) {
+    return (
+      <Card className="card-soft mx-auto max-w-md p-8 text-center">
+        <h1 className="font-display text-2xl font-semibold">Admin sign-in required</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Only admins can add or edit missionaries. Please sign in.
+        </p>
+        <Button asChild className="mt-4 rounded-full">
+          <Link to="/auth">Sign in</Link>
+        </Button>
+      </Card>
+    );
+  }
+  if (!isAdmin) {
+    return (
+      <PermissionError
+        title="Admins only"
+        message="Editing the missionary directory is restricted to administrators."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl font-semibold sm:text-4xl">Manage Directory</h1>
         <p className="mt-1 max-w-2xl text-muted-foreground">
-          Add or edit phases, areas, and missionaries. Changes save to this browser.
+          Add or edit phases, areas, and missionaries. Changes sync live to every device.
         </p>
       </header>
 
