@@ -49,7 +49,7 @@ async def main() -> int:
 
         # Prime the profile so we can read its base data.
         await page.goto(f"{URL}/missionaries/{TARGET_ID}", wait_until="domcontentloaded")
-        await page.wait_for_timeout(1500)
+        await page.wait_for_timeout(2500)
 
         # 1. Apply an edited row via the same runtime store the admin uses.
         edit = {
@@ -71,7 +71,7 @@ async def main() -> int:
               window.dispatchEvent(new Event('gc-store-changed'));
             }})()"""
         )
-        await page.wait_for_timeout(1500)
+        await page.wait_for_timeout(2500)
         await page.screenshot(path=str(OUT / "contact_edited.png"))
 
         tel = await page.locator(f'a[href^="tel:"]').count()
@@ -90,7 +90,7 @@ async def main() -> int:
 
         # 2. Hard reload — edit must persist through the store.
         await page.reload(wait_until="networkidle")
-        await page.wait_for_timeout(1500)
+        await page.wait_for_timeout(2500)
         mailto2 = await page.locator(f'a[href="mailto:{NEW_EMAIL}"]').count()
         if mailto2 == 0:
             print("FAIL: edit did not survive reload")
@@ -106,7 +106,7 @@ async def main() -> int:
               window.dispatchEvent(new Event('gc-store-changed'));
             }})()"""
         )
-        await page.wait_for_timeout(1500)
+        await page.wait_for_timeout(2500)
         body = await page.inner_text("body")
         if "Phone not shared yet" not in body:
             print("FAIL: phone fallback missing")
