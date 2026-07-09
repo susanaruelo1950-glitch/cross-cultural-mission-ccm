@@ -298,7 +298,7 @@ function MissionaryForm({
         if (cancelled || !data) return;
         loadedUpdatedAt.current = data.updated_at;
         if (data.data && typeof data.data === "object") {
-          baseSnapshot.current = { ...(data.data as Missionary), id: initial.id };
+          baseSnapshot.current = { ...(data.data as unknown as Missionary), id: initial.id };
         }
       });
     // Listen for remote updates to THIS row while editing.
