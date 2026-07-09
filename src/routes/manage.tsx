@@ -207,6 +207,29 @@ function MissionarySection({
     );
   }, [q, store.missionaries]);
 
+  // Group by area, then alphabetise within each group. Areas themselves are
+  // sorted alphabetically so admins can quickly locate a section.
+  const grouped = useMemo(() => {
+    const byArea = new Map<string, Missionary[]>();
+    for (const m of filtered) {
+      const key = m.areaId || "__unassigned";
+      const bucket = byArea.get(key);
+      if (bucket) bucket.push(m);
+      else byArea.set(key, [m]);
+    }
+    const areaName = (id: string) =>
+      id === "__unassigned"
+        ? "Unassigned"
+        : store.areas.find((a) => a.id === id)?.name ?? "Unknown area";
+    return Array.from(byArea.entries())
+      .map(([areaId, list]) => ({
+        areaId,
+        name: areaName(areaId),
+        missionaries: [...list].sort((a, b) => a.fullName.localeCompare(b.fullName)),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [filtered, store.areas]);
+
   if (showForm || editing) {
     return (
       <MissionaryForm
@@ -217,7 +240,6 @@ function MissionarySection({
         areasLoading={directoryLoading}
         onDone={() => setShowForm(false)}
       />
-
     );
   }
 
@@ -248,45 +270,60 @@ function MissionarySection({
         </Card>
       ) : null}
 
-      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-        {filtered.map((m) => (
-          <li key={m.id} className="flex items-center gap-3 p-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              {m.photo ? (
-                <img src={m.photo} alt="" className="h-full w-full object-cover" />
-              ) : (
-                m.fullName.split(" ").slice(0, 2).map((s) => s[0]).join("")
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{m.fullName}</div>
-              <div className="truncate text-xs text-muted-foreground">
-                {m.church} · {m.address}
-              </div>
-            </div>
-            {isAdmin ? (
-              <>
-                <Button variant="ghost" size="icon" aria-label={`Edit ${m.fullName}`} asChild>
-                  <Link to="/manage" search={{ tab: "missionaries", edit: m.id }}>
-                    <Pencil className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Delete ${m.fullName}`}
-                  onClick={() => setPendingDelete(m)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
-            ) : null}
-          </li>
+      <div className="space-y-4">
+        {grouped.map((group) => (
+          <section key={group.areaId} className="overflow-hidden rounded-2xl border border-border bg-card">
+            <header className="flex items-baseline justify-between gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
+              <h3 className="font-display text-sm font-semibold">{group.name}</h3>
+              <span className="text-xs text-muted-foreground">
+                {group.missionaries.length} missionary{group.missionaries.length === 1 ? "" : "ies"}
+              </span>
+            </header>
+            <ul className="divide-y divide-border">
+              {group.missionaries.map((m) => (
+                <li key={m.id} className="flex items-center gap-3 p-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    {m.photo ? (
+                      <img src={m.photo} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      m.fullName.split(" ").slice(0, 2).map((s) => s[0]).join("")
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{m.fullName}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {m.church} · {m.address}
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <>
+                      <Button variant="ghost" size="icon" aria-label={`Edit ${m.fullName}`} asChild>
+                        <Link to="/manage" search={{ tab: "missionaries", edit: m.id }}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${m.fullName}`}
+                        onClick={() => setPendingDelete(m)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
         {filtered.length === 0 ? (
-          <li className="p-8 text-center text-sm text-muted-foreground">No missionaries found.</li>
+          <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            No missionaries found.
+          </div>
         ) : null}
-      </ul>
+      </div>
+
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
