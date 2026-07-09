@@ -1134,23 +1134,27 @@ type Store = {
   phases: Phase[];
   areas: Area[];
   missionaries: Missionary[];
+  deletedIds?: string[];
+  deletedNames?: string[];
 };
 
 const STORAGE_KEY = "gc.mission.store.v1";
 
 function readStore(): Store {
-  if (typeof window === "undefined") return { phases: [], areas: [], missionaries: [] };
+  if (typeof window === "undefined") return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { phases: [], areas: [], missionaries: [] };
+    if (!raw) return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
     const parsed = JSON.parse(raw) as Partial<Store>;
     return {
       phases: parsed.phases ?? [],
       areas: parsed.areas ?? [],
       missionaries: parsed.missionaries ?? [],
+      deletedIds: parsed.deletedIds ?? [],
+      deletedNames: parsed.deletedNames ?? [],
     };
   } catch {
-    return { phases: [], areas: [], missionaries: [] };
+    return { phases: [], areas: [], missionaries: [], deletedIds: [], deletedNames: [] };
   }
 }
 
@@ -1166,8 +1170,14 @@ export function getRuntimeStore(): Store {
 
 // Cloud-synced extras (loaded via useMissionaryRealtime). Module-level cache.
 let cloudMissionaries: Missionary[] = [];
-export function setCloudMissionaries(list: Missionary[]) {
+let cloudDeletedIds: string[] = [];
+let cloudDeletedNames: string[] = [];
+export function setCloudMissionaries(list: Missionary[], tombstones?: { ids: string[]; names: string[] }) {
   cloudMissionaries = list;
+  if (tombstones) {
+    cloudDeletedIds = tombstones.ids;
+    cloudDeletedNames = tombstones.names;
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gc-store-changed"));
   }
@@ -1175,6 +1185,7 @@ export function setCloudMissionaries(list: Missionary[]) {
 export function getCloudMissionaries(): Missionary[] {
   return cloudMissionaries;
 }
+
 
 function merge<T extends { id: string }>(...groups: T[][]): T[] {
   const map = new Map<string, T>();
