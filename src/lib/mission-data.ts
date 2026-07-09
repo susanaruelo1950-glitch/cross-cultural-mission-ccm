@@ -1198,6 +1198,29 @@ function dedupByName(list: Missionary[]): Missionary[] {
   return Array.from(byName.values());
 }
 
+/**
+ * Fuzzy near-duplicate check. Returns matches with similarity ≥ threshold,
+ * ignoring the given id (so editing yourself doesn't self-trigger).
+ */
+export function findSimilarMissionaries(
+  name: string,
+  opts: { excludeId?: string; threshold?: number } = {},
+): Array<{ missionary: Missionary; score: number }> {
+  const threshold = opts.threshold ?? 0.82;
+  const target = normalizeName(name);
+  if (!target) return [];
+  // Lazy import to avoid a circular dep at module init.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { nameSimilarity } = require("./fuzzy-match") as typeof import("./fuzzy-match");
+  const out: Array<{ missionary: Missionary; score: number }> = [];
+  for (const m of allMissionaries()) {
+    if (opts.excludeId && m.id === opts.excludeId) continue;
+    const score = nameSimilarity(target, normalizeName(m.fullName));
+    if (score >= threshold) out.push({ missionary: m, score });
+  }
+  return out.sort((a, b) => b.score - a.score);
+}
+
 export function allPhases(): Phase[] {
   return merge(seedPhases, readStore().phases);
 }
@@ -1226,16 +1249,50 @@ export function upsertArea(a: Area) {
 }
 export function upsertMissionary(m: Missionary) {
   const s = readStore();
+  const previous = allMissionaries().find((x) => x.id === m.id) ?? null;
   s.missionaries = s.missionaries.filter((x) => x.id !== m.id).concat(m);
   writeStore(s);
   // Best-effort cloud sync so other users/devices see the change in realtime.
   void syncMissionaryToCloud(m);
+  // Activity log (fire-and-forget)
+  void (async () => {
+    const { logActivity, diffFields } = await import("./activity-log");
+    if (previous) {
+      const changes = diffFields(previous as unknown as Record<string, unknown>, m as unknown as Record<string, unknown>);
+      if (changes.length) {
+        await logActivity({
+          entityType: "missionary",
+          entityId: m.id,
+          action: "update",
+          summary: `Updated ${m.fullName} (${changes.map((c) => c.field).join(", ")})`,
+          changes,
+        });
+      }
+    } else {
+      await logActivity({
+        entityType: "missionary",
+        entityId: m.id,
+        action: "create",
+        summary: `Added ${m.fullName}`,
+      });
+    }
+  })();
 }
 export function deleteMissionary(id: string) {
   const s = readStore();
+  const previous = allMissionaries().find((x) => x.id === id) ?? null;
   s.missionaries = s.missionaries.filter((x) => x.id !== id);
   writeStore(s);
   void deleteMissionaryFromCloud(id);
+  void (async () => {
+    const { logActivity } = await import("./activity-log");
+    await logActivity({
+      entityType: "missionary",
+      entityId: id,
+      action: "delete",
+      summary: `Deleted ${previous?.fullName ?? id}`,
+    });
+  })();
 }
 
 async function syncMissionaryToCloud(m: Missionary) {
