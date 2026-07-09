@@ -37,6 +37,7 @@ import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { useMissionaryCover } from "@/hooks/use-missionary-cover";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { useState } from "react";
+import { useDataStore } from "@/hooks/use-data-store";
 
 export const Route = createFileRoute("/missionaries/$id")({
   loader: ({ params }): { m: Missionary } => {
