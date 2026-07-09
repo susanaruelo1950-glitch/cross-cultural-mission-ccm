@@ -1163,11 +1163,39 @@ export function getRuntimeStore(): Store {
   return readStore();
 }
 
-function merge<T extends { id: string }>(seed: T[], extras: T[]): T[] {
+// Cloud-synced extras (loaded via useMissionaryRealtime). Module-level cache.
+let cloudMissionaries: Missionary[] = [];
+export function setCloudMissionaries(list: Missionary[]) {
+  cloudMissionaries = list;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("gc-store-changed"));
+  }
+}
+export function getCloudMissionaries(): Missionary[] {
+  return cloudMissionaries;
+}
+
+function merge<T extends { id: string }>(...groups: T[][]): T[] {
   const map = new Map<string, T>();
-  for (const s of seed) map.set(s.id, s);
-  for (const e of extras) map.set(e.id, e);
+  for (const g of groups) for (const item of g) map.set(item.id, item);
   return Array.from(map.values());
+}
+
+/** Normalize a name for duplicate-detection: strip titles, punctuation, extra spaces, case. */
+export function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(ptr|pastor|rev|bro|sis|mr|mrs|ms|dr)\.?\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Dedup missionaries by normalized full name — keep the LAST occurrence (cloud/local overrides seed). */
+function dedupByName(list: Missionary[]): Missionary[] {
+  const byName = new Map<string, Missionary>();
+  for (const m of list) byName.set(normalizeName(m.fullName), m);
+  return Array.from(byName.values());
 }
 
 export function allPhases(): Phase[] {
@@ -1177,12 +1205,14 @@ export function allAreas(): Area[] {
   return merge(seedAreas, readStore().areas);
 }
 export function allMissionaries(): Missionary[] {
-  return merge(seedMissionaries, readStore().missionaries);
+  // Cloud extras win over local extras, which win over seed. Then dedup by name.
+  return dedupByName(merge(seedMissionaries, readStore().missionaries, cloudMissionaries));
 }
 
 export const phases: Phase[] = allPhases();
 export const areas: Area[] = allAreas();
 export const missionaries: Missionary[] = allMissionaries();
+
 
 export function upsertPhase(p: Phase) {
   const s = readStore();
