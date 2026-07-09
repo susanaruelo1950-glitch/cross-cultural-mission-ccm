@@ -18,19 +18,15 @@ const AskInput = z.object({
       missionaries: z.array(z.any()).default([]),
       recentReports: z.array(z.any()).default([]),
       openPrayerRequests: z.array(z.any()).default([]),
-      announcements: z.array(z.string()).default([]),
+      recentUpdates: z.array(z.any()).default([]),
+      recentLetters: z.array(z.any()).default([]),
+      announcements: z.array(z.any()).default([]),
+      sources: z.array(z.string()).default([]),
     })
-    .default({
-      generatedAt: new Date().toISOString(),
-      counts: {},
-      phases: [],
-      areas: [],
-      missionaries: [],
-      recentReports: [],
-      openPrayerRequests: [],
-      announcements: [],
-    }),
+    .partial()
+    .default({}),
 });
+
 
 /**
  * Grounded chat over the current in-app directory. The client hands us a
