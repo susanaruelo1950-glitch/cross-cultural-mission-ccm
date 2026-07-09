@@ -52,10 +52,11 @@ function saveStore(list: Notif[]) {
  * with an unread badge. Fires a toast on new inserts.
  */
 export function NotificationBell() {
-  const [items, setItems] = useState<Notif[]>(() => loadStore());
+  const [items, setItems] = useState<Notif[]>([]);
   const mountedAt = useRef<number>(Date.now());
 
   useEffect(() => {
+    setItems(loadStore());
     function onChange(e: Event) {
       const detail = (e as CustomEvent<RealtimeChangeDetail>).detail;
       if (!detail) return;

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save } from "lucide-react";
+import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
 
 interface Props {
@@ -88,7 +89,12 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
         </div>
       </div>
 
-      {canEdit ? <UpdateForm missionaryId={missionaryId} /> : null}
+      {canEdit ? (
+        <div className="flex flex-wrap gap-2">
+          <UpdateForm missionaryId={missionaryId} />
+          <BulkUpdateUpload missionaryId={missionaryId} />
+        </div>
+      ) : null}
 
       <div className="mt-5 space-y-4">
         {isLoading ? (
@@ -244,6 +250,7 @@ function UpdateEditForm({
 
 function UpdateImage({ path, title }: { path: string; title: string }) {
   const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  const [open, setOpen] = useState(false);
   if (isLoading) {
     return (
       <div className="mt-3 flex h-40 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
@@ -253,12 +260,111 @@ function UpdateImage({ path, title }: { path: string; title: string }) {
   }
   if (!url) return null;
   return (
-    <img
-      src={url}
-      alt={title}
-      className="mt-3 max-h-80 w-full rounded-xl object-cover"
-      loading="lazy"
-    />
+    <>
+      <button
+        type="button"
+        className="mt-3 block w-full overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        onClick={() => setOpen(true)}
+        aria-label={`View full photo for ${title}`}
+      >
+        <img
+          src={url}
+          alt={title}
+          className="max-h-80 w-full object-cover transition-transform hover:scale-[1.01]"
+          loading="lazy"
+        />
+      </button>
+      <PhotoLightbox src={url} alt={title} open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
+  const qc = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  async function upload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const valid: File[] = [];
+    for (const f of Array.from(files)) {
+      const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
+      if (!check.ok) {
+        toast.error(`Skipped ${f.name}: ${check.reason}`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
+    setBusy(true);
+    setProgress({ done: 0, total: valid.length });
+    let successes = 0;
+    let failures = 0;
+    try {
+      for (let i = 0; i < valid.length; i++) {
+        const f = valid[i];
+        try {
+          const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
+          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: f.type || undefined,
+          });
+          if (upErr) throw upErr;
+          const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
+          const { error: dbErr } = await supabase.from("ministry_updates").insert({
+            missionary_id: missionaryId,
+            title,
+            image_url: path,
+          });
+          if (dbErr) throw dbErr;
+          successes++;
+        } catch (err) {
+          failures++;
+          console.error("bulk ministry update upload failed for", f.name, err);
+        } finally {
+          setProgress({ done: i + 1, total: valid.length });
+        }
+      }
+      if (successes > 0) {
+        toast.success(`Uploaded ${successes} update photo${successes === 1 ? "" : "s"}.`);
+        qc.invalidateQueries({ queryKey: ["ministry_updates"] });
+        qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
+      }
+      if (failures > 0) toast.error(`${failures} file${failures === 1 ? "" : "s"} failed to upload.`);
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = e.target.files;
+          e.target.value = "";
+          void upload(files);
+        }}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        aria-label="Bulk upload ministry update photos"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Files className="h-4 w-4" />}
+        {busy && progress ? `Uploading ${progress.done}/${progress.total}…` : "Bulk upload photos"}
+      </Button>
+    </>
   );
 }
 

@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { recordRealtimeSyncError } from "@/lib/mission-data";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
@@ -35,10 +37,26 @@ export type RealtimeStatus = "connecting" | "live" | "offline";
 
 let status: RealtimeStatus = "connecting";
 const statusListeners = new Set<() => void>();
+let lastRealtimeErrorAt = 0;
 function setStatus(next: RealtimeStatus) {
   if (status === next) return;
   status = next;
   for (const l of statusListeners) l();
+}
+
+function reportRealtimeError(id: string, reason: string) {
+  setStatus("offline");
+  recordRealtimeSyncError(id, reason);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("gc-realtime-error", { detail: { id, reason, at: Date.now() } }));
+  }
+  const now = Date.now();
+  if (now - lastRealtimeErrorAt > 10_000) {
+    lastRealtimeErrorAt = now;
+    toast.error("Realtime sync connection failed", {
+      description: `${reason}. The app will keep trying to reconnect.`,
+    });
+  }
 }
 
 export function useRealtimeStatus(): RealtimeStatus {
@@ -108,7 +126,9 @@ export function useGlobalRealtime() {
       }
       channel.subscribe((s) => {
         if (s === "SUBSCRIBED") setStatus("live");
-        else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") setStatus("offline");
+        else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
+          reportRealtimeError("global_admin_sync", s === "CHANNEL_ERROR" ? "Channel error" : s === "TIMED_OUT" ? "Connection timed out" : "Channel closed");
+        }
       });
     }
 

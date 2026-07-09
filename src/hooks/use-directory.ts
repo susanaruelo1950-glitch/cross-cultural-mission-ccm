@@ -39,14 +39,14 @@ export function useDirectory() {
     queryFn: async (): Promise<Area[]> => {
       const { data, error } = await supabase
         .from("areas")
-        .select("id, phase_id, name, region_id, province_id, description, gps_lat, gps_lng");
+        .select("id, phase_id, name, region_id, province_id, description, gps_lat, gps_lng, regions(name), provinces(name)");
       if (error) throw error;
       return (data ?? []).map((a) => ({
         id: a.id,
         phaseId: a.phase_id,
         name: a.name,
-        region: a.region_id ?? undefined,
-        province: a.province_id ?? undefined,
+        region: ((a as unknown as { regions?: { name?: string } | null }).regions?.name ?? a.region_id) ?? undefined,
+        province: ((a as unknown as { provinces?: { name?: string } | null }).provinces?.name ?? a.province_id) ?? undefined,
         description: a.description ?? undefined,
         gps: a.gps_lat != null && a.gps_lng != null ? [a.gps_lat, a.gps_lng] : undefined,
       }));
