@@ -25,7 +25,6 @@ import {
 import { toast } from "sonner";
 import {
   deleteMissionary,
-  findMissionaryByName,
   upsertArea,
   upsertMissionary,
   upsertPhase,
@@ -261,13 +260,8 @@ function MissionaryForm({
       toast.error("Please fix the highlighted fields");
       return;
     }
-    // Redundancy guard — merge with existing person of the same name.
-    const dupe = findMissionaryByName(draft.fullName, draft.id);
-    if (dupe && !confirm(`A missionary named "${dupe.fullName}" already exists. Update that record instead of creating a new one?`)) {
-      return;
-    }
     upsertMissionary(draft);
-    toast.success(initial ? "Missionary updated" : dupe ? "Merged with existing record" : "Missionary added");
+    toast.success(initial ? "Missionary updated" : "Missionary added");
     navigate({ to: "/manage", search: { tab: "missionaries", edit: undefined } });
     onDone();
   }

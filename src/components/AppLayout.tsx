@@ -37,7 +37,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { useMissionarySync } from "@/hooks/use-missionary-sync";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
@@ -48,44 +47,23 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   role?: Role;
 };
-type NavGroup = { label: string; items: readonly NavItem[] };
 
-const navGroups: readonly NavGroup[] = [
-  {
-    label: "Directory",
-    items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/missionaries", label: "Missionaries", icon: Users },
-      { to: "/phases", label: "Phases & Areas", icon: Layers },
-      { to: "/map", label: "Mission Map", icon: MapIcon },
-    ],
-  },
-  {
-    label: "Prayer & Support",
-    items: [
-      { to: "/pray", label: "Prayer Mode", icon: Heart },
-      { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
-      { to: "/support", label: "Support Center", icon: Wallet },
-    ],
-  },
-  {
-    label: "Insights",
-    items: [
-      { to: "/reports", label: "Ministry Reports", icon: FileText },
-      { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
-      { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
-      { to: "/assistant", label: "AI Assistant", icon: Sparkles },
-    ],
-  },
-  {
-    label: "Content & Admin",
-    items: [
-      { to: "/documents", label: "Documents", icon: FolderOpen },
-      { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
-      { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
-      { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
-    ],
-  },
+const nav: readonly NavItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/missionaries", label: "Missionaries", icon: Users },
+  { to: "/phases", label: "Phases & Areas", icon: Layers },
+  { to: "/map", label: "Mission Map", icon: MapIcon },
+  { to: "/pray", label: "Prayer Mode", icon: Heart },
+  { to: "/prayer", label: "Prayer Center", icon: HeartHandshake },
+  { to: "/reports", label: "Ministry Reports", icon: FileText },
+  { to: "/summaries", label: "AI Summaries", icon: Wand2, role: "admin" },
+  { to: "/analytics", label: "Annual Analytics", icon: BarChart3 },
+  { to: "/support", label: "Support Center", icon: Wallet },
+  { to: "/documents", label: "Documents", icon: FolderOpen },
+  { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
+  { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
+  { to: "/assistant", label: "AI Assistant", icon: Sparkles },
+  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
 ];
 
 const mobileNav = [
@@ -93,6 +71,7 @@ const mobileNav = [
   { to: "/missionaries", label: "People", icon: Users },
   { to: "/map", label: "Map", icon: MapIcon },
   { to: "/pray", label: "Pray", icon: Heart },
+  { to: "/analytics", label: "Stats", icon: BarChart3 },
 ] as const;
 
 function useActive() {
@@ -103,38 +82,29 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useActive();
   const { isAdmin } = useAuth();
   return (
-    <nav className="flex flex-col gap-4 overflow-y-auto p-3 pb-8" aria-label="Primary">
-      {navGroups.map((group) => {
-        const items = group.items.filter((i) => i.role !== "admin" || isAdmin);
-        if (items.length === 0) return null;
-        return (
-          <div key={group.label} className="flex flex-col gap-1">
-            <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-              {group.label}
-            </div>
-            {items.map(({ to, label, icon: Icon }) => {
-              const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-soft"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                  <span className="truncate">{label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        );
-      })}
+    <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
+      {nav
+        .filter((item) => item.role !== "admin" || isAdmin)
+        .map(({ to, label, icon: Icon }) => {
+          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+                active
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">{label}</span>
+            </Link>
+          );
+        })}
     </nav>
   );
 }
@@ -157,7 +127,7 @@ function Brand() {
   );
 }
 
-function MobileBottomNav({ onMore }: { onMore: () => void }) {
+function MobileBottomNav() {
   const pathname = useActive();
   return (
     <nav
@@ -184,17 +154,6 @@ function MobileBottomNav({ onMore }: { onMore: () => void }) {
             </li>
           );
         })}
-        <li>
-          <button
-            type="button"
-            onClick={onMore}
-            aria-label="More navigation"
-            className="flex w-full flex-col items-center gap-0.5 px-2 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:bg-accent"
-          >
-            <Menu className="h-5 w-5" aria-hidden />
-            <span>More</span>
-          </button>
-        </li>
       </ul>
     </nav>
   );
@@ -281,8 +240,6 @@ function AuthButton() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  // Real-time cross-device sync: broadcast admin edits to every viewer.
-  useMissionarySync();
   return (
     <div className="min-h-screen bg-background">
       {/* Skip to content — visible on focus for keyboard users */}
@@ -294,11 +251,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-sidebar-border bg-sidebar lg:flex" aria-label="Sidebar">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-sidebar-border bg-sidebar lg:block" aria-label="Sidebar">
         <Brand />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <NavItems />
-        </div>
+        <NavItems />
       </aside>
 
       {/* Top bar */}
@@ -339,7 +294,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <MobileBottomNav onMore={() => setOpen(true)} />
+      <MobileBottomNav />
       <Toaster position="top-center" />
     </div>
   );
