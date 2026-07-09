@@ -1,23 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export interface LightboxItem {
+  src: string;
+  alt: string;
+}
+
 /**
- * Facebook-style photo viewer: click backdrop or ✕ to close,
- * click image to cycle zoom (1× → 2× → 3× → 1×), drag when zoomed,
- * mouse-wheel/pinch zooms, Esc closes.
+ * Facebook-style photo viewer. Supports a single image (via `src`/`alt`) or
+ * a gallery (via `items`/`index`) with keyboard/click prev-next navigation,
+ * click-to-cycle zoom, drag when zoomed, mouse-wheel zoom, and Esc to close.
  */
 export function PhotoLightbox({
   src,
   alt,
+  items,
+  index: indexProp,
   open,
   onClose,
 }: {
-  src: string;
-  alt: string;
+  src?: string;
+  alt?: string;
+  items?: LightboxItem[];
+  index?: number;
   open: boolean;
   onClose: () => void;
 }) {
+  const gallery: LightboxItem[] =
+    items && items.length > 0
+      ? items
+      : src
+        ? [{ src, alt: alt ?? "" }]
+        : [];
+  const [index, setIndex] = useState(indexProp ?? 0);
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
@@ -29,14 +45,35 @@ export function PhotoLightbox({
     setTy(0);
   }, []);
 
+  const hasMany = gallery.length > 1;
+  const current = gallery[Math.min(index, gallery.length - 1)];
+
+  const goPrev = useCallback(() => {
+    if (!hasMany) return;
+    setIndex((i) => (i - 1 + gallery.length) % gallery.length);
+    reset();
+  }, [gallery.length, hasMany, reset]);
+  const goNext = useCallback(() => {
+    if (!hasMany) return;
+    setIndex((i) => (i + 1) % gallery.length);
+    reset();
+  }, [gallery.length, hasMany, reset]);
+
   useEffect(() => {
     if (!open) return;
+    setIndex(indexProp ?? 0);
     reset();
+  }, [open, indexProp, reset]);
+
+  useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
-      if (e.key === "+" || e.key === "=") setScale((s) => Math.min(6, s + 0.5));
-      if (e.key === "-") setScale((s) => Math.max(1, s - 0.5));
-      if (e.key === "0") reset();
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "+" || e.key === "=") setScale((s) => Math.min(6, s + 0.5));
+      else if (e.key === "-") setScale((s) => Math.max(1, s - 0.5));
+      else if (e.key === "0") reset();
     }
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -45,15 +82,15 @@ export function PhotoLightbox({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose, reset]);
+  }, [open, onClose, reset, goPrev, goNext]);
 
-  if (!open) return null;
+  if (!open || !current) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={alt}
+      aria-label={current.alt}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
       onClick={onClose}
       onWheel={(e) => {
@@ -62,47 +99,56 @@ export function PhotoLightbox({
       }}
     >
       <div className="absolute right-3 top-3 z-10 flex gap-2">
-        <Button
-          size="icon"
-          variant="secondary"
-          className="rounded-full"
-          aria-label="Zoom out"
-          onClick={(e) => { e.stopPropagation(); setScale((s) => Math.max(1, s - 0.5)); }}
-        >
+        <Button size="icon" variant="secondary" className="rounded-full" aria-label="Zoom out"
+          onClick={(e) => { e.stopPropagation(); setScale((s) => Math.max(1, s - 0.5)); }}>
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button
-          size="icon"
-          variant="secondary"
-          className="rounded-full"
-          aria-label="Zoom in"
-          onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(6, s + 0.5)); }}
-        >
+        <Button size="icon" variant="secondary" className="rounded-full" aria-label="Zoom in"
+          onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(6, s + 0.5)); }}>
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <Button
-          size="icon"
-          variant="secondary"
-          className="rounded-full"
-          aria-label="Reset zoom"
-          onClick={(e) => { e.stopPropagation(); reset(); }}
-        >
+        <Button size="icon" variant="secondary" className="rounded-full" aria-label="Reset zoom"
+          onClick={(e) => { e.stopPropagation(); reset(); }}>
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <Button
-          size="icon"
-          variant="secondary"
-          className="rounded-full"
-          aria-label="Close"
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-        >
+        <Button size="icon" variant="secondary" className="rounded-full" aria-label="Close"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}>
           <X className="h-4 w-4" />
         </Button>
       </div>
 
+      {hasMany ? (
+        <>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full"
+            aria-label="Previous photo"
+            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full"
+            aria-label="Next photo"
+            onClick={(e) => { e.stopPropagation(); goNext(); }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+          <div
+            className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {index + 1} / {gallery.length}
+          </div>
+        </>
+      ) : null}
+
       <img
-        src={src}
-        alt={alt}
+        src={current.src}
+        alt={current.alt}
         draggable={false}
         onClick={(e) => {
           e.stopPropagation();
