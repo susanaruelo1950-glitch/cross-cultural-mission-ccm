@@ -68,6 +68,21 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const toggleVisible = useMutation({
+    mutationFn: async ({ id, visible }: { id: string; visible: boolean }) => {
+      const { error } = await supabase
+        .from("prayer_requests_db")
+        .update({ visible })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_r, v) => {
+      toast.success(v.visible ? "Prayer request is now visible to everyone." : "Prayer request hidden from non-admins.");
+      qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const del = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
