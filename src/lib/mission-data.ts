@@ -14,6 +14,7 @@ import erleeDadan from "@/assets/missionaries/erlee-dadan.json";
 import gilmarkGuyos from "@/assets/missionaries/gilmark-guyos.json";
 import vincentJuromay from "@/assets/missionaries/vincent-juromay.json";
 import basilioSumido from "@/assets/missionaries/basilio-sumido.json";
+import { nameSimilarity } from "./fuzzy-match";
 
 export type Status = "Active" | "On Leave" | "Retired" | "Transferred" | "Completed";
 
