@@ -57,6 +57,7 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          layer: string
           link_url: string | null
           publish_at: string
           published: boolean
@@ -69,6 +70,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          layer?: string
           link_url?: string | null
           publish_at?: string
           published?: boolean
@@ -81,6 +83,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          layer?: string
           link_url?: string | null
           publish_at?: string
           published?: boolean
@@ -419,6 +422,7 @@ export type Database = {
           missionary_id: string
           title: string
           urgent: boolean
+          visible: boolean
         }
         Insert: {
           answered?: boolean
@@ -432,6 +436,7 @@ export type Database = {
           missionary_id: string
           title: string
           urgent?: boolean
+          visible?: boolean
         }
         Update: {
           answered?: boolean
@@ -445,6 +450,7 @@ export type Database = {
           missionary_id?: string
           title?: string
           urgent?: boolean
+          visible?: boolean
         }
         Relationships: []
       }
