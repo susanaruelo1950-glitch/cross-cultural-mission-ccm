@@ -173,24 +173,34 @@ function Dashboard() {
             </div>
           </Card>
 
-          <Card className="card-soft p-6">
-            <h2 className="font-display text-xl font-semibold">Areas</h2>
-            <p className="text-sm text-muted-foreground">Grouped by phase.</p>
-            <ul className="mt-4 space-y-3 text-sm">
+          <Card className="card-soft overflow-hidden p-6">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-xl font-semibold tracking-tight">Areas</h2>
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">By phase</span>
+            </div>
+            <p className="text-sm text-muted-foreground">Grouped and counted from the live directory.</p>
+            <ul className="mt-4 space-y-4 text-sm">
               {phases.map((p) => (
-                <li key={p.id}>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{p.name}</div>
-                  <ul className="mt-1 space-y-1">
+                <li key={p.id} className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-accent/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-display text-[0.78rem] font-bold uppercase tracking-[0.14em] text-primary">
+                      {p.name}
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      {areasByPhase(p.id).length}
+                    </span>
+                  </div>
+                  <ul className="mt-2 space-y-1">
                     {areasByPhase(p.id).map((a) => (
-                      <li key={a.id} className="flex items-center justify-between">
-                        <span>{a.name}</span>
-                        <span className="text-xs text-muted-foreground">
+                      <li key={a.id} className="flex items-center justify-between rounded-lg px-1 py-0.5 hover:bg-accent/50">
+                        <span className="font-medium text-foreground/90">{a.name}</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">
                           {missionariesByArea(a.id).length}
                         </span>
                       </li>
                     ))}
                     {areasByPhase(p.id).length === 0 ? (
-                      <li className="text-xs text-muted-foreground">No areas yet</li>
+                      <li className="text-xs italic text-muted-foreground">No areas yet</li>
                     ) : null}
                   </ul>
                 </li>
@@ -200,6 +210,7 @@ function Dashboard() {
               ) : null}
             </ul>
           </Card>
+
         </section>
       ) : null}
 
