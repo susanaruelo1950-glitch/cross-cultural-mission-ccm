@@ -842,7 +842,30 @@ function Field({
 // ---------- Areas ----------------------------------------------------------
 
 function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDataStore>; phasesLoading: boolean }) {
+  const directory = useDirectory();
   const [form, setForm] = useState<Partial<Area>>({ phaseId: store.phases[0]?.id ?? "" });
+
+  // Dedupe by normalized area name so historical/legacy duplicates never
+  // reappear in the admin list. Keep the first record (usually the DB-backed
+  // canonical one) and sort alphabetically.
+  const uniqueAreas = useMemo(() => {
+    const seen = new Map<string, Area>();
+    for (const a of store.areas) {
+      const key = a.name.trim().toLowerCase().replace(/\s+/g, " ");
+      if (!seen.has(key)) seen.set(key, a);
+    }
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [store.areas]);
+
+  // Region/province select data — the DB directory is the source of truth.
+  const regionOptions = directory.regions;
+  const provinceOptions = useMemo(() => {
+    // If a region is chosen, filter provinces to that region; otherwise show
+    // every province so the admin still has a full pick-list.
+    const selectedRegion = regionOptions.find((r) => r.name === form.region);
+    if (!selectedRegion) return directory.provinces;
+    return directory.provinces.filter((p) => p.region_id === selectedRegion.id);
+  }, [directory.provinces, regionOptions, form.region]);
 
   async function save() {
     if (!form.name || !form.phaseId) {
@@ -868,8 +891,13 @@ function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDat
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="card-soft p-5">
         <h2 className="mb-3 font-display text-xl font-semibold">Existing areas</h2>
+        {uniqueAreas.length < store.areas.length ? (
+          <p className="mb-2 text-xs text-muted-foreground">
+            Hiding {store.areas.length - uniqueAreas.length} duplicate area name(s).
+          </p>
+        ) : null}
         <ul className="divide-y divide-border">
-          {store.areas.map((a) => (
+          {uniqueAreas.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-2 py-3 text-sm">
               <div className="min-w-0">
                 <div className="truncate font-medium">{a.name}</div>
@@ -900,7 +928,7 @@ function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDat
               </div>
             </li>
           ))}
-          {store.areas.length === 0 ? (
+          {uniqueAreas.length === 0 ? (
             <li className="py-6 text-center text-sm text-muted-foreground">No areas yet.</li>
           ) : null}
         </ul>
@@ -926,8 +954,45 @@ function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDat
             ) : null}
           </Field>
           <Field label="Name"><Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <Field label="Province"><Input value={form.province ?? ""} onChange={(e) => setForm({ ...form, province: e.target.value })} /></Field>
-          <Field label="Region"><Input value={form.region ?? ""} onChange={(e) => setForm({ ...form, region: e.target.value })} /></Field>
+          <Field label="Region">
+            <Select
+              value={form.region ?? ""}
+              onValueChange={(v) => {
+                // Reset province when switching regions so we never leave a
+                // stale province attached to the wrong region.
+                setForm((f) => ({ ...f, region: v, province: undefined }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={regionOptions.length ? "Choose region" : "Loading regions…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {regionOptions.map((r) => (
+                  <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Province">
+            <Select
+              value={form.province ?? ""}
+              onValueChange={(v) => {
+                // Auto-fill region from the province so the two never conflict.
+                const prov = directory.provinces.find((p) => p.name === v);
+                const region = prov ? regionOptions.find((r) => r.id === prov.region_id)?.name : form.region;
+                setForm((f) => ({ ...f, province: v, region: region ?? f.region }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={provinceOptions.length ? "Choose province" : "Loading provinces…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {provinceOptions.map((p) => (
+                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Description"><Textarea rows={2} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
         </div>
         <div className="mt-4 flex justify-end gap-2">
@@ -940,6 +1005,7 @@ function AreaSection({ store, phasesLoading }: { store: ReturnType<typeof useDat
     </div>
   );
 }
+
 
 // ---------- Phases ---------------------------------------------------------
 
