@@ -297,7 +297,7 @@ function MissionaryForm({
     function onChange(e: Event) {
       const detail = (e as CustomEvent<{ table: string; new: { id?: string } | null }>).detail;
       if (!detail || detail.table !== "missionary_extras") return;
-      if (detail.new?.id !== initial.id) return;
+      if (detail.new?.id !== initial?.id) return;
       setRemoteChanged(true);
     }
     window.addEventListener("gc-realtime-change", onChange);
