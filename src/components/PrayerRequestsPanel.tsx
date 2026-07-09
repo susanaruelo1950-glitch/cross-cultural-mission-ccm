@@ -19,6 +19,7 @@ export interface DbPrayer {
   detail: string | null;
   urgent: boolean;
   answered: boolean;
+  visible: boolean;
   created_at: string;
 }
 
