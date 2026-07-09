@@ -222,6 +222,7 @@ function MissionMap() {
                 style={{ height: "100%", width: "100%" }}
                 scrollWheelZoom
                 zoomControl
+                preferCanvas
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
