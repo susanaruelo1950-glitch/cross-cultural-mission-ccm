@@ -256,8 +256,18 @@ function Profile() {
             <ul className="mt-4 space-y-3 text-sm">
               {m.church ? <ContactRow icon={Church} label={m.church} /> : null}
               {m.address ? <ContactRow icon={MapPin} label={m.address} /> : null}
-              {m.phone ? <ContactRow icon={Phone} label={m.phone} href={`tel:${m.phone.replace(/\s+/g, "")}`} /> : null}
-              {m.email ? <ContactRow icon={Mail} label={m.email} href={`mailto:${m.email}`} /> : null}
+              <ContactRow
+                icon={Phone}
+                label={m.phone ? formatPhoneDisplay(m.phone) : "Phone not shared yet"}
+                href={m.phone ? `tel:${(m.phone || "").replace(/[^\d+]/g, "")}` : undefined}
+                muted={!m.phone}
+              />
+              <ContactRow
+                icon={Mail}
+                label={m.email ? m.email : "Email not shared yet"}
+                href={m.email ? `mailto:${m.email.trim()}` : undefined}
+                muted={!m.email}
+              />
               {m.birthday ? <ContactRow icon={Cake} label={`Birthday ${m.birthday}`} /> : null}
               {m.anniversary ? <ContactRow icon={Heart} label={`Anniversary ${m.anniversary}`} /> : null}
               {m.spouse ? <ContactRow icon={Users} label={`Spouse: ${m.spouse}`} /> : null}
@@ -377,17 +387,26 @@ function Profile() {
   );
 }
 
-function ContactRow({ icon: Icon, label, href }: { icon: typeof Phone; label: string; href?: string }) {
+function ContactRow({ icon: Icon, label, href, muted = false }: { icon: typeof Phone; label: string; href?: string; muted?: boolean }) {
   return (
     <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${muted ? "text-muted-foreground/50" : "text-muted-foreground"}`} />
       {href ? (
         <a href={href} className="min-w-0 break-words text-primary hover:underline">{label}</a>
       ) : (
-        <span className="min-w-0 break-words">{label}</span>
+        <span className={`min-w-0 break-words ${muted ? "italic text-muted-foreground" : ""}`}>{label}</span>
       )}
     </li>
   );
+}
+
+function formatPhoneDisplay(raw: string): string {
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/[^\d]/g, "");
+  // Philippine mobile: 09XX XXX XXXX or +63 9XX XXX XXXX
+  if (/^09\d{9}$/.test(digits)) return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  if (/^639\d{9}$/.test(digits)) return `+63 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  return trimmed;
 }
 function Detail({ label, value }: { label: string; value: string }) {
   return (

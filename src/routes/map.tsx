@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { MapIcon, List, ExternalLink, Locate } from "lucide-react";
+import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
 import {
   allAreas,
   allMissionaries,
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
 import { toast } from "sonner";
@@ -52,6 +53,9 @@ function MissionMap() {
   const [Cluster, setCluster] = useState<null | typeof import("leaflet.markercluster")>(null);
   const [phaseId, setPhaseId] = useState<string>("all");
   const [areaId, setAreaId] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [markersReady, setMarkersReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -112,8 +116,18 @@ function MissionMap() {
         .filter((m): m is Missionary & { gps: [number, number] } => !!m),
     [filteredMissionaries],
   );
+
+  const q = search.trim().toLowerCase();
+  const visiblePinned = useMemo(() => {
+    if (!q) return pinned;
+    return pinned.filter((m) =>
+      [m.fullName, m.church, m.address].filter(Boolean).some((v) => (v as string).toLowerCase().includes(q)),
+    );
+  }, [pinned, q]);
+  const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
+
   // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
-  const deferredPinned = useDeferredValue(pinned);
+  const deferredPinned = useDeferredValue(visiblePinned);
 
   function locateMyPastors() {
     if (filters.phaseId !== ALL) setPhaseId(filters.phaseId);
@@ -184,8 +198,43 @@ function MissionMap() {
           <Locate className="h-4 w-4" /> Locate my supported pastors
         </Button>
         <Badge variant="secondary" className="rounded-full">
-          {pinned.length} {pinned.length === 1 ? "pin" : "pins"}
+          {visiblePinned.length} {visiblePinned.length === 1 ? "pin" : "pins"}
         </Badge>
+      </div>
+
+      <div className="relative w-full sm:max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search a pastor by name, church, or address…"
+          className="rounded-full pl-9"
+          aria-label="Search pastors on the map"
+        />
+        {searchSuggestions.length > 0 ? (
+          <div className="absolute z-[500] mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-border/60 bg-popover shadow-lg">
+            {searchSuggestions.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => {
+                  setFocusId(m.id);
+                  setSearch(m.fullName);
+                }}
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarImage src={m.photo} alt="" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{initials(m.fullName)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{m.fullName}</div>
+                  <div className="truncate text-xs text-muted-foreground">{m.church}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </header>
   );
@@ -206,16 +255,16 @@ function MissionMap() {
   return (
     <div className="space-y-5">
       {header}
-      {pinned.length === 0 ? (
+      {visiblePinned.length === 0 ? (
         <EmptyState
           icon={MapIcon}
-          title="No mapped locations for this filter"
-          description="Try a different phase or area, or add a gps: [latitude, longitude] value to a missionary."
+          title={search ? `No pastors match "${search}"` : "No mapped locations for this filter"}
+          description={search ? "Try a different name, church, or clear the search." : "Try a different phase or area, or add GPS coordinates to a missionary."}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="card-soft overflow-hidden p-0">
-            <div className="h-[55vh] w-full sm:h-[70vh]">
+            <div className="relative h-[55vh] w-full sm:h-[70vh]">
               <MapContainer
                 center={[7.2, 124.9]}
                 zoom={7}
@@ -228,8 +277,22 @@ function MissionMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <ClusteredMarkers L={L} pinned={deferredPinned} />
+                <ClusteredMarkers
+                  L={L}
+                  pinned={deferredPinned}
+                  focusId={focusId}
+                  onReady={() => setMarkersReady(true)}
+                  onStart={() => setMarkersReady(false)}
+                />
               </MapContainer>
+              {!markersReady ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-[400] flex items-center justify-center bg-background/70 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+                    Loading {deferredPinned.length.toLocaleString()} pastor pin{deferredPinned.length === 1 ? "" : "s"}…
+                  </span>
+                </div>
+              ) : null}
             </div>
           </Card>
 
@@ -237,19 +300,18 @@ function MissionMap() {
             <div className="flex items-center gap-2 border-b border-border/60 p-4">
               <List className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-display text-sm font-semibold uppercase tracking-wide">
-                {areaId === "all" && phaseId === "all"
-                  ? "All missionaries"
-                  : "Selected list"}
+                {search ? `Matches (${visiblePinned.length})` : areaId === "all" && phaseId === "all" ? "All missionaries" : "Selected list"}
               </h2>
             </div>
             <ul className="max-h-[65vh] overflow-y-auto divide-y divide-border/60">
-              {pinned.map((m) => {
+              {visiblePinned.map((m) => {
                 const area = getArea(m.areaId);
                 return (
                   <li key={m.id} className="p-3">
-                    <a
-                      href={`/missionaries/${m.id}`}
-                      className="group flex items-center gap-3 rounded-lg p-1 hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    <button
+                      type="button"
+                      onClick={() => setFocusId(m.id)}
+                      className="group flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={m.photo} alt={m.fullName} />
@@ -269,7 +331,7 @@ function MissionMap() {
                         ) : null}
                       </div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </a>
+                    </button>
                   </li>
                 );
               })}
@@ -284,31 +346,45 @@ function MissionMap() {
 function ClusteredMarkers({
   L,
   pinned,
+  focusId,
+  onReady,
+  onStart,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
+  focusId: string | null;
+  onReady: () => void;
+  onStart: () => void;
 }) {
   const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
   useEffect(() => {
     import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
   }, []);
   if (!useMapHook) return null;
-  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} />;
+  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} />;
 }
 
 function ClusteredInner({
   L,
   pinned,
   useMap,
+  focusId,
+  onReady,
+  onStart,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
   useMap: typeof import("react-leaflet").useMap;
+  focusId: string | null;
+  onReady: () => void;
+  onStart: () => void;
 }) {
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const markerMapRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
 
   useEffect(() => {
+    onStart();
     const icon = L.divIcon({
       className: "",
       html: `<div style="background:oklch(0.45 0.14 245);border:3px solid white;border-radius:50%;width:22px;height:22px;box-shadow:0 4px 12px rgba(0,0,0,0.25)"></div>`,
@@ -316,33 +392,38 @@ function ClusteredInner({
       iconAnchor: [11, 11],
     });
 
+    const large = pinned.length > 300;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cluster = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
-      maxClusterRadius: 60,
+      // Wider cluster radius on large sets = fewer clusters to render = faster paint
+      maxClusterRadius: large ? 90 : 60,
       chunkedLoading: true,
-      chunkInterval: 100,
-      chunkDelay: 30,
+      chunkInterval: large ? 60 : 100,
+      chunkDelay: large ? 15 : 30,
       removeOutsideVisibleBounds: true,
       disableClusteringAtZoom: 14,
+      animate: !large,
     });
 
-    // Build markers off the main thread using requestIdleCallback so the map
-    // paints tiles first on low-end mobile, then fills pins progressively.
     let cancelled = false;
     const batch: import("leaflet").Marker[] = [];
+    const localMap = new Map<string, import("leaflet").Marker>();
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
-      const html = `
-        <div style="width:220px">
-          ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
-          <div style="margin-top:8px;font-weight:600">${m.fullName}</div>
-          <div style="font-size:12px;color:#666">${m.church ?? ""}</div>
-          <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
-        </div>`;
-      marker.bindPopup(html);
+      // Lazy-build popup HTML only when opened — avoids stringifying every profile up front.
+      marker.bindPopup(() => {
+        return `
+          <div style="width:220px">
+            ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
+            <div style="margin-top:8px;font-weight:600">${escapeHtml(m.fullName)}</div>
+            <div style="font-size:12px;color:#666">${escapeHtml(m.church ?? "")}</div>
+            <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
+          </div>`;
+      });
       batch.push(marker);
+      localMap.set(m.id, marker);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -352,18 +433,42 @@ function ClusteredInner({
       cluster.addLayers(batch);
       map.addLayer(cluster);
       groupRef.current = cluster;
+      markerMapRef.current = localMap;
       if (pinned.length > 0) {
         const bounds = L.latLngBounds(pinned.map((p) => p.gps));
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: true });
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: !large });
       }
+      onReady();
     });
 
     return () => {
       cancelled = true;
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
+      markerMapRef.current = new Map();
     };
-  }, [L, map, pinned]);
+  }, [L, map, pinned, onReady, onStart]);
+
+  // Fly + open popup when a pastor is picked from the search or list.
+  useEffect(() => {
+    if (!focusId) return;
+    const marker = markerMapRef.current.get(focusId);
+    const group = groupRef.current;
+    if (!marker || !group) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cluster = group as any;
+    const latlng = marker.getLatLng();
+    map.flyTo(latlng, Math.max(map.getZoom(), 13), { duration: 0.8 });
+    if (typeof cluster.zoomToShowLayer === "function") {
+      cluster.zoomToShowLayer(marker, () => marker.openPopup());
+    } else {
+      marker.openPopup();
+    }
+  }, [focusId, map]);
 
   return null;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
