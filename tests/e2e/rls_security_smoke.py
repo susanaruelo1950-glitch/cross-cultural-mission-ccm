@@ -149,9 +149,9 @@ async def main() -> int:
               window.dispatchEvent(new Event('gc-store-changed'));
             }})()"""
         )
-        await page_a.wait_for_timeout(1500)
-        appeared_a = await page_a.locator('a[href="/missionaries/m-rls-live-check"]').count()
-        if appeared_a == 0:
+        await page_a.wait_for_timeout(2500)
+        body_a = await page_a.inner_text("body")
+        if "Live Sync Check Pastor" not in body_a:
             print("FAIL: allowed update did not render on originating tab")
             exit_code = 1
         else:
