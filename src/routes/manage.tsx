@@ -731,20 +731,23 @@ function Field({
 function AreaSection({ store }: { store: ReturnType<typeof useDataStore> }) {
   const [form, setForm] = useState<Partial<Area>>({ phaseId: store.phases[0]?.id ?? "" });
 
-  function save() {
+  async function save() {
     if (!form.name || !form.phaseId) {
       toast.error("Name and Phase are required");
       return;
     }
-    upsertArea({
+    const area: Area = {
       id: form.id || `area-${slug(form.name)}-${Date.now().toString(36)}`,
       phaseId: form.phaseId,
       name: form.name,
       region: form.region,
       province: form.province,
       description: form.description,
-    });
-    toast.success("Area saved");
+    };
+    upsertArea(area);
+    const res = await syncAreaToCloud(area);
+    if (res.ok) toast.success("Area saved — synced live to every device");
+    else toast.error(`Saved locally, cloud sync failed: ${res.reason}`);
     setForm({ phaseId: form.phaseId });
   }
 
