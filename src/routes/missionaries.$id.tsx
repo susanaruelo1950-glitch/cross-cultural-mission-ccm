@@ -122,6 +122,7 @@ function Profile() {
   const timeline: NonNullable<Missionary["timeline"]> = m.timeline ?? [];
 
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+  const [coverFit, setCoverFit] = useState<"cover" | "contain">("cover");
 
   return (
     <div className="space-y-6">
@@ -136,13 +137,26 @@ function Profile() {
             <button
               type="button"
               onClick={() => setLightbox({ src: cover, alt: `${m.fullName} cover photo` })}
-              className="block h-40 w-full cursor-zoom-in overflow-hidden bg-cover bg-center transition-opacity hover:opacity-95 sm:h-64 lg:h-80"
-              style={{ backgroundImage: `url(${cover})` }}
+              className="block h-48 w-full cursor-zoom-in overflow-hidden bg-center bg-no-repeat bg-muted transition-opacity hover:opacity-95 sm:h-72 lg:h-96"
+              style={{
+                backgroundImage: `url(${cover})`,
+                backgroundSize: coverFit === "cover" ? "cover" : "contain",
+              }}
               aria-label="View cover photo"
             />
           ) : (
-            <div className="h-40 w-full gradient-mission sm:h-64 lg:h-80" />
+            <div className="h-48 w-full gradient-mission sm:h-72 lg:h-96" />
           )}
+          {cover ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setCoverFit((f) => (f === "cover" ? "contain" : "cover")); }}
+              className="absolute bottom-2 right-2 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-black/70"
+              aria-label="Toggle background fit"
+            >
+              {coverFit === "cover" ? "Show whole photo" : "Fill background"}
+            </button>
+          ) : null}
           <MissionaryCoverUpload missionaryId={m.id} missionaryName={m.fullName} />
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">

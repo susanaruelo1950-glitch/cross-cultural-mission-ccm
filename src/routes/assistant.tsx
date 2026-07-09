@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Sparkles, Loader2 } from "lucide-react";
+import { Send, Sparkles, Loader2, Filter } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   allAreas,
@@ -14,8 +21,13 @@ import {
   reports,
 } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
 import { askAssistant } from "@/lib/ask.functions";
 import { supabase } from "@/integrations/supabase/client";
+
+const ALL = "__all__";
+interface Filters { regionId: string; provinceId: string; phaseId: string }
+
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
@@ -101,6 +113,41 @@ function baseContext(): LiveContext {
     sources: ["directory (in-app)", "reports (in-app)"],
   };
 }
+
+function applyFilters(ctx: LiveContext, f: Filters, regionName?: string, provinceName?: string): LiveContext {
+  const filterActive = f.regionId !== ALL || f.provinceId !== ALL || f.phaseId !== ALL;
+  if (!filterActive) return ctx;
+  const areaOk = (region?: string, province?: string, phaseId?: string) => {
+    if (f.phaseId !== ALL && phaseId !== f.phaseId) return false;
+    if (f.regionId !== ALL && region !== f.regionId && region !== regionName) return false;
+    if (f.provinceId !== ALL && province !== f.provinceId && province !== provinceName) return false;
+    return true;
+  };
+  const areas = ctx.areas.filter((a) => areaOk(a.region, a.province, a.phaseId));
+  const areaMap = new Map(ctx.areas.map((a) => [a.id, a] as const));
+  const missionaries = ctx.missionaries.filter((m) => {
+    const a = areaMap.get(m.areaId);
+    return a ? areaOk(a.region, a.province, a.phaseId) : false;
+  });
+  const mids = new Set(missionaries.map((m) => m.id));
+  const chips = [
+    f.regionId !== ALL ? `region=${regionName ?? f.regionId}` : null,
+    f.provinceId !== ALL ? `province=${provinceName ?? f.provinceId}` : null,
+    f.phaseId !== ALL ? `phase=${f.phaseId}` : null,
+  ].filter(Boolean).join(", ");
+  return {
+    ...ctx,
+    areas,
+    missionaries,
+    openPrayerRequests: ctx.openPrayerRequests.filter((p) => mids.has(p.missionaryId)),
+    recentUpdates: ctx.recentUpdates.filter((u) => mids.has(u.missionaryId)),
+    recentLetters: ctx.recentLetters.filter((l) => mids.has(l.missionaryId)),
+    counts: { ...ctx.counts, missionaries: missionaries.length, areas: areas.length },
+    sources: [...ctx.sources, `filters: ${chips}`],
+  };
+}
+
+
 
 async function fetchLive(): Promise<LiveContext> {
   const ctx = baseContext();
@@ -196,12 +243,34 @@ function Assistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const ask = useServerFn(askAssistant);
-  const [context, setContext] = useState<LiveContext>(() => baseContext());
+  const { regions, provinces, phases } = useDirectory();
+  const [filters, setFilters] = useState<Filters>(() => {
+    if (typeof window === "undefined") return { regionId: ALL, provinceId: ALL, phaseId: ALL };
+    try {
+      const raw = window.sessionStorage.getItem("assistant.filters");
+      if (raw) return { regionId: ALL, provinceId: ALL, phaseId: ALL, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { regionId: ALL, provinceId: ALL, phaseId: ALL };
+  });
+  useEffect(() => {
+    try { window.sessionStorage.setItem("assistant.filters", JSON.stringify(filters)); } catch { /* ignore */ }
+  }, [filters]);
+  const regionName = regions.find((r) => r.id === filters.regionId)?.name;
+  const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
+  const filteredProvinces = useMemo(
+    () => (filters.regionId === ALL ? provinces : provinces.filter((p) => p.region_id === filters.regionId)),
+    [provinces, filters.regionId],
+  );
+  const [rawContext, setRawContext] = useState<LiveContext>(() => baseContext());
+  const context = useMemo(
+    () => applyFilters(rawContext, filters, regionName, provinceName),
+    [rawContext, filters, regionName, provinceName],
+  );
 
   useEffect(() => {
     let cancelled = false;
     void fetchLive().then((c) => {
-      if (!cancelled) setContext(c);
+      if (!cancelled) setRawContext(c);
     });
     return () => {
       cancelled = true;
@@ -217,12 +286,13 @@ function Assistant() {
     setBusy(true);
     try {
       const fresh = await fetchLive();
-      setContext(fresh);
+      setRawContext(fresh);
+      const scoped = applyFilters(fresh, filters, regionName, provinceName);
       const { reply } = await ask({
         data: {
           question: q,
           history: nextHistory.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
-          context: fresh,
+          context: scoped,
         },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
@@ -252,8 +322,37 @@ function Assistant() {
             <span className="font-medium">Sources:</span> {context.sources.join(" · ")} · updated {new Date(context.generatedAt).toLocaleTimeString()}
           </p>
         ) : null}
-
       </header>
+
+      <div className="rounded-2xl border border-border bg-card p-3 shadow-soft">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" /> Answer scope
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Select value={filters.regionId} onValueChange={(v) => setFilters((f) => ({ ...f, regionId: v, provinceId: ALL }))}>
+            <SelectTrigger><SelectValue placeholder="All regions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All regions</SelectItem>
+              {regions.map((r) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={filters.provinceId} onValueChange={(v) => setFilters((f) => ({ ...f, provinceId: v }))}>
+            <SelectTrigger><SelectValue placeholder="All provinces" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All provinces</SelectItem>
+              {filteredProvinces.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={filters.phaseId} onValueChange={(v) => setFilters((f) => ({ ...f, phaseId: v }))}>
+            <SelectTrigger><SelectValue placeholder="All phases" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All phases</SelectItem>
+              {phases.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
 
       <div className="space-y-3">
         {messages.map((m, i) => (

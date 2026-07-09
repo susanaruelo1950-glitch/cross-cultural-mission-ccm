@@ -27,6 +27,7 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const rawInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("cover.jpg");
   const [busy, setBusy] = useState(false);
@@ -105,16 +106,44 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
           if (f) pickFile(f);
         }}
       />
-      <Button
-        size="sm"
-        variant="secondary"
-        className="rounded-full bg-background/85 backdrop-blur hover:bg-background"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-        {busy ? "Uploading…" : "Upload family/background photo"}
-      </Button>
+      <input
+        ref={rawInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-label={`Choose full cover photo for ${missionaryName}`}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (!f) return;
+          if (!f.type.startsWith("image/")) return toast.error("Please choose an image.");
+          if (f.size > MAX_MB * 1024 * 1024) return toast.error(`Max ${MAX_MB} MB.`);
+          setBusy(true);
+          mut.mutate(f);
+        }}
+      />
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="rounded-full bg-background/85 backdrop-blur hover:bg-background"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+          {busy ? "Uploading…" : "Upload & crop"}
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="rounded-full bg-background/85 backdrop-blur hover:bg-background"
+          onClick={() => rawInputRef.current?.click()}
+          disabled={busy}
+          title="Upload the photo as-is without cropping"
+        >
+          Upload full photo
+        </Button>
+      </div>
 
       {previewUrl ? (
         <ImageCropDialog
