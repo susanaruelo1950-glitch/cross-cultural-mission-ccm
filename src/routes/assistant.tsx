@@ -157,11 +157,12 @@ async function fetchLive(): Promise<LiveContext> {
   if (letters.data) {
     ctx.recentLetters = letters.data.map((l) => ({
       title: l.title,
-      excerpt: l.excerpt,
+      excerpt: l.message ? l.message.slice(0, 240) : null,
       letter_date: l.letter_date,
       missionaryId: l.missionary_id,
       missionaryName: nameById.get(l.missionary_id),
     }));
+
     ctx.sources.push("thank_you_letters (live)");
   }
   if (anns.data) {
