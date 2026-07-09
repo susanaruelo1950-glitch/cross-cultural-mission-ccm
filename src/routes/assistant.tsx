@@ -286,12 +286,13 @@ function Assistant() {
     setBusy(true);
     try {
       const fresh = await fetchLive();
-      setContext(fresh);
+      setRawContext(fresh);
+      const scoped = applyFilters(fresh, filters, regionName, provinceName);
       const { reply } = await ask({
         data: {
           question: q,
           history: nextHistory.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
-          context: fresh,
+          context: scoped,
         },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
