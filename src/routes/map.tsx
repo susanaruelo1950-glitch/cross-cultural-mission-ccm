@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
 import {
   allAreas,
@@ -23,9 +23,19 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const mapSearchSchema = z.object({
+  focus: z.string().optional(),
+  phase: z.string().optional(),
+  area: z.string().optional(),
+  region: z.string().optional(),
+  province: z.string().optional(),
+});
 
 export const Route = createFileRoute("/map")({
   ssr: false,
+  validateSearch: mapSearchSchema,
   head: () => ({
     meta: [
       { title: "Mission Map — Cross-Cultural Mission" },
@@ -48,14 +58,33 @@ function initials(name: string) {
 }
 
 function MissionMap() {
+  const search = useSearch({ from: "/map" });
+  const navigate = useNavigate({ from: "/map" });
+  const { filters, setFilters } = useSharedFilters();
+
   const [Leaflet, setLeaflet] = useState<null | typeof import("react-leaflet")>(null);
   const [L, setL] = useState<null | typeof import("leaflet")>(null);
   const [Cluster, setCluster] = useState<null | typeof import("leaflet.markercluster")>(null);
-  const [phaseId, setPhaseId] = useState<string>("all");
-  const [areaId, setAreaId] = useState<string>("all");
-  const [search, setSearch] = useState("");
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [phaseId, setPhaseId] = useState<string>(search.phase ?? "all");
+  const [areaId, setAreaId] = useState<string>(search.area ?? "all");
+  const [query, setQuery] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(search.focus ?? null);
   const [markersReady, setMarkersReady] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+
+  const listboxId = useId();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync incoming URL filters into shared filter store once on mount.
+  useEffect(() => {
+    const patch: Partial<{ regionId: string; provinceId: string; phaseId: string }> = {};
+    if (search.region) patch.regionId = search.region;
+    if (search.province) patch.provinceId = search.province;
+    if (search.phase) patch.phaseId = search.phase;
+    if (Object.keys(patch).length) setFilters(patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -86,8 +115,6 @@ function MissionMap() {
     [phaseId, areas],
   );
 
-  const { filters } = useSharedFilters();
-
   const filteredMissionaries = useMemo(
     () =>
       missionaries
@@ -117,7 +144,7 @@ function MissionMap() {
     [filteredMissionaries],
   );
 
-  const q = search.trim().toLowerCase();
+  const q = query.trim().toLowerCase();
   const visiblePinned = useMemo(() => {
     if (!q) return pinned;
     return pinned.filter((m) =>
@@ -126,8 +153,55 @@ function MissionMap() {
   }, [pinned, q]);
   const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
 
-  // Defer heavy marker rebuilds so filter dropdowns stay snappy on low-end devices
-  const deferredPinned = useDeferredValue(visiblePinned);
+  // Keep the URL in sync so the current view is a shareable deep link.
+  useEffect(() => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        focus: focusId ?? undefined,
+        phase: phaseId !== "all" ? phaseId : undefined,
+        area: areaId !== "all" ? areaId : undefined,
+        region: filters.regionId !== ALL ? filters.regionId : undefined,
+        province: filters.provinceId !== ALL ? filters.provinceId : undefined,
+      }),
+      replace: true,
+    });
+  }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, navigate]);
+
+  function pickSuggestion(m: Missionary) {
+    setFocusId(m.id);
+    setQuery(m.fullName);
+    setOpen(false);
+    setActiveIdx(-1);
+  }
+
+  function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      if (query) setQuery("");
+      setOpen(false);
+      setActiveIdx(-1);
+      e.currentTarget.blur();
+      return;
+    }
+    if (!searchSuggestions.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setActiveIdx((i) => (i + 1) % searchSuggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setOpen(true);
+      setActiveIdx((i) => (i <= 0 ? searchSuggestions.length - 1 : i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const pick = searchSuggestions[activeIdx >= 0 ? activeIdx : 0];
+      if (pick) pickSuggestion(pick);
+    } else if (e.key === "Home") {
+      setActiveIdx(0);
+    } else if (e.key === "End") {
+      setActiveIdx(searchSuggestions.length - 1);
+    }
+  }
 
   function locateMyPastors() {
     if (filters.phaseId !== ALL) setPhaseId(filters.phaseId);
@@ -145,6 +219,11 @@ function MissionMap() {
         : `Showing all ${pinned.length} pastor(s) — set a region/phase in the dashboard to narrow.`,
     );
   }
+
+  const activeOptionId =
+    activeIdx >= 0 && searchSuggestions[activeIdx]
+      ? `${listboxId}-opt-${searchSuggestions[activeIdx].id}`
+      : undefined;
 
   const header = (
     <header className="flex flex-col gap-3">
@@ -205,36 +284,66 @@ function MissionMap() {
       <div className="relative w-full sm:max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          ref={searchInputRef}
+          role="combobox"
+          aria-expanded={open && searchSuggestions.length > 0}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeOptionId}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setActiveIdx(-1);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          onKeyDown={onSearchKeyDown}
           placeholder="Search a pastor by name, church, or address…"
           className="rounded-full pl-9"
           aria-label="Search pastors on the map"
         />
-        {searchSuggestions.length > 0 ? (
-          <div className="absolute z-[500] mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-border/60 bg-popover shadow-lg">
-            {searchSuggestions.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                onClick={() => {
-                  setFocusId(m.id);
-                  setSearch(m.fullName);
-                }}
-              >
-                <Avatar className="h-7 w-7 shrink-0">
-                  <AvatarImage src={m.photo} alt="" />
-                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{initials(m.fullName)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{m.fullName}</div>
-                  <div className="truncate text-xs text-muted-foreground">{m.church}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+        {open && searchSuggestions.length > 0 ? (
+          <ul
+            id={listboxId}
+            role="listbox"
+            aria-label="Pastor search results"
+            className="absolute z-[500] mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-border/60 bg-popover shadow-lg"
+          >
+            {searchSuggestions.map((m, i) => {
+              const optId = `${listboxId}-opt-${m.id}`;
+              const active = i === activeIdx;
+              return (
+                <li
+                  key={m.id}
+                  id={optId}
+                  role="option"
+                  aria-selected={active}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pickSuggestion(m);
+                  }}
+                  onMouseEnter={() => setActiveIdx(i)}
+                  className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm ${
+                    active ? "bg-accent" : ""
+                  }`}
+                >
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarImage src={m.photo} alt="" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{initials(m.fullName)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{m.fullName}</div>
+                    <div className="truncate text-xs text-muted-foreground">{m.church}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
+        <div className="sr-only" aria-live="polite">
+          {q ? `${searchSuggestions.length} result${searchSuggestions.length === 1 ? "" : "s"}` : ""}
+        </div>
       </div>
     </header>
   );
@@ -258,8 +367,8 @@ function MissionMap() {
       {visiblePinned.length === 0 ? (
         <EmptyState
           icon={MapIcon}
-          title={search ? `No pastors match "${search}"` : "No mapped locations for this filter"}
-          description={search ? "Try a different name, church, or clear the search." : "Try a different phase or area, or add GPS coordinates to a missionary."}
+          title={query ? `No pastors match "${query}"` : "No mapped locations for this filter"}
+          description={query ? "Try a different name, church, or clear the search." : "Try a different phase or area, or add GPS coordinates to a missionary."}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -279,7 +388,7 @@ function MissionMap() {
                 />
                 <ClusteredMarkers
                   L={L}
-                  pinned={deferredPinned}
+                  pinned={visiblePinned}
                   focusId={focusId}
                   onReady={() => setMarkersReady(true)}
                   onStart={() => setMarkersReady(false)}
@@ -289,7 +398,7 @@ function MissionMap() {
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-[400] flex items-center justify-center bg-background/70 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm">
                   <span className="inline-flex items-center gap-2">
                     <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
-                    Loading {deferredPinned.length.toLocaleString()} pastor pin{deferredPinned.length === 1 ? "" : "s"}…
+                    Loading {visiblePinned.length.toLocaleString()} pastor pin{visiblePinned.length === 1 ? "" : "s"}…
                   </span>
                 </div>
               ) : null}
@@ -300,7 +409,7 @@ function MissionMap() {
             <div className="flex items-center gap-2 border-b border-border/60 p-4">
               <List className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-display text-sm font-semibold uppercase tracking-wide">
-                {search ? `Matches (${visiblePinned.length})` : areaId === "all" && phaseId === "all" ? "All missionaries" : "Selected list"}
+                {query ? `Matches (${visiblePinned.length})` : areaId === "all" && phaseId === "all" ? "All missionaries" : "Selected list"}
               </h2>
             </div>
             <ul className="max-h-[65vh] overflow-y-auto divide-y divide-border/60">
@@ -382,6 +491,7 @@ function ClusteredInner({
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
   const markerMapRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
+  const didFitRef = useRef(false);
 
   useEffect(() => {
     onStart();
@@ -397,22 +507,20 @@ function ClusteredInner({
     const cluster = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
-      // Wider cluster radius on large sets = fewer clusters to render = faster paint
       maxClusterRadius: large ? 90 : 60,
       chunkedLoading: true,
       chunkInterval: large ? 60 : 100,
       chunkDelay: large ? 15 : 30,
       removeOutsideVisibleBounds: true,
       disableClusteringAtZoom: 14,
-      animate: !large,
+      animate: false,
+      animateAddingMarkers: false,
     });
 
-    let cancelled = false;
     const batch: import("leaflet").Marker[] = [];
     const localMap = new Map<string, import("leaflet").Marker>();
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
-      // Lazy-build popup HTML only when opened — avoids stringifying every profile up front.
       marker.bindPopup(() => {
         return `
           <div style="width:220px">
@@ -426,30 +534,26 @@ function ClusteredInner({
       localMap.set(m.id, marker);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const idle = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1));
-    idle(() => {
-      if (cancelled) return;
-      cluster.addLayers(batch);
-      map.addLayer(cluster);
-      groupRef.current = cluster;
-      markerMapRef.current = localMap;
-      if (pinned.length > 0) {
-        const bounds = L.latLngBounds(pinned.map((p) => p.gps));
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: !large });
-      }
-      onReady();
-    });
+    // Add synchronously so pins appear immediately without a scheduler delay.
+    cluster.addLayers(batch);
+    map.addLayer(cluster);
+    groupRef.current = cluster;
+    markerMapRef.current = localMap;
+
+    if (pinned.length > 0 && !didFitRef.current && !focusId) {
+      const bounds = L.latLngBounds(pinned.map((p) => p.gps));
+      map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: false });
+      didFitRef.current = true;
+    }
+    onReady();
 
     return () => {
-      cancelled = true;
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
       markerMapRef.current = new Map();
     };
-  }, [L, map, pinned, onReady, onStart]);
+  }, [L, map, pinned, onReady, onStart, focusId]);
 
-  // Fly + open popup when a pastor is picked from the search or list.
   useEffect(() => {
     if (!focusId) return;
     const marker = markerMapRef.current.get(focusId);
@@ -458,7 +562,7 @@ function ClusteredInner({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cluster = group as any;
     const latlng = marker.getLatLng();
-    map.flyTo(latlng, Math.max(map.getZoom(), 13), { duration: 0.8 });
+    map.flyTo(latlng, Math.max(map.getZoom(), 13), { duration: 0.6 });
     if (typeof cluster.zoomToShowLayer === "function") {
       cluster.zoomToShowLayer(marker, () => marker.openPopup());
     } else {
