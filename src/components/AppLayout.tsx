@@ -131,10 +131,10 @@ function MobileBottomNav() {
   const pathname = useActive();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
-      aria-label="Mobile primary"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      aria-label="Quick navigation"
     >
-      <ul className="grid grid-cols-5">
+      <ul className="mx-auto grid max-w-3xl grid-cols-5">
         {mobileNav.map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
@@ -158,6 +158,7 @@ function MobileBottomNav() {
     </nav>
   );
 }
+
 
 function HeaderSearch() {
   const navigate = useNavigate();
