@@ -387,17 +387,26 @@ function Profile() {
   );
 }
 
-function ContactRow({ icon: Icon, label, href }: { icon: typeof Phone; label: string; href?: string }) {
+function ContactRow({ icon: Icon, label, href, muted = false }: { icon: typeof Phone; label: string; href?: string; muted?: boolean }) {
   return (
     <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${muted ? "text-muted-foreground/50" : "text-muted-foreground"}`} />
       {href ? (
         <a href={href} className="min-w-0 break-words text-primary hover:underline">{label}</a>
       ) : (
-        <span className="min-w-0 break-words">{label}</span>
+        <span className={`min-w-0 break-words ${muted ? "italic text-muted-foreground" : ""}`}>{label}</span>
       )}
     </li>
   );
+}
+
+function formatPhoneDisplay(raw: string): string {
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/[^\d]/g, "");
+  // Philippine mobile: 09XX XXX XXXX or +63 9XX XXX XXXX
+  if (/^09\d{9}$/.test(digits)) return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  if (/^639\d{9}$/.test(digits)) return `+63 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  return trimmed;
 }
 function Detail({ label, value }: { label: string; value: string }) {
   return (
