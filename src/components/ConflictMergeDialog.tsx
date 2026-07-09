@@ -30,7 +30,7 @@ export function computeMerge<T extends object>(
   theirs: T,
 ): MergePreview<T> {
   const keys = new Set([...Object.keys(base), ...Object.keys(mine), ...Object.keys(theirs)]);
-  const merged: Record<string, unknown> = { ...theirs };
+  const merged: Record<string, unknown> = { ...(theirs as unknown as Record<string, unknown>) };
   const conflicts: FieldConflict[] = [];
   for (const k of keys) {
     const b = (base as Record<string, unknown>)[k];
