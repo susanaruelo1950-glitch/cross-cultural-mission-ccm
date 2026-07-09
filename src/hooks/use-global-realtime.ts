@@ -18,6 +18,10 @@ const TABLE_TO_KEYS: Record<string, string[][]> = {
   scriptures: [["scriptures"]],
   coordinator_assignments: [["coordinator_assignments"]],
   missionary_photos: [["missionary_photo"], ["missionary_cover"]],
+  // Rolling news / announcement layers (primary/events/prayer/urgent/…).
+  // Uses a prefix key so every ["announcements", "live", <layer>] query
+  // refetches whenever an admin publishes, edits, or expires a headline.
+  announcements: [["announcements"]],
   // Directory structure (also drives use-directory.ts)
   areas: [["dir", "areas"]],
   phases: [["dir", "phases"]],
