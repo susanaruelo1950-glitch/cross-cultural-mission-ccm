@@ -27,6 +27,7 @@ export function MissionaryCoverUpload({ missionaryId, missionaryName }: Props) {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const rawInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("cover.jpg");
   const [busy, setBusy] = useState(false);
