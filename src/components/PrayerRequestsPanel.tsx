@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2, Sparkles, AlertTriangle, Check, Pencil, Save, X, Eye, EyeOff } from "lucide-react";
+import { Loader2, Plus, Trash2, Sparkles, AlertTriangle, Check, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +20,6 @@ export interface DbPrayer {
   urgent: boolean;
   answered: boolean;
   created_at: string;
-  coordinator_approved_public?: boolean | null;
 }
 
 interface Props {
@@ -44,7 +43,7 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     queryFn: async (): Promise<DbPrayer[]> => {
       let q = supabase
         .from("prayer_requests_db")
-        .select("id, missionary_id, title, detail, urgent, answered, created_at, coordinator_approved_public")
+        .select("id, missionary_id, title, detail, urgent, answered, created_at")
         .order("urgent", { ascending: false })
         .order("created_at", { ascending: false });
       if (missionaryId) q = q.eq("missionary_id", missionaryId);
@@ -63,23 +62,6 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const toggleApproved = useMutation({
-    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
-      const patch = {
-        coordinator_approved_public: approved,
-        approved_by: approved ? user?.id ?? null : null,
-        approved_at: approved ? new Date().toISOString() : null,
-      };
-      const { error } = await supabase.from("prayer_requests_db").update(patch).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: (_d, v) => {
-      toast.success(v.approved ? "Approved for public view." : "Hidden from public view.");
       qc.invalidateQueries({ queryKey: ["prayer_requests_db"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -174,11 +156,6 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           <Sparkles className="h-3 w-3" /> Answered
                         </Badge>
                       ) : null}
-                      {p.coordinator_approved_public ? (
-                        <Badge variant="outline" className="rounded-full">
-                          <Eye className="h-3 w-3" /> Public
-                        </Badge>
-                      ) : null}
                     </div>
                   </div>
                   {p.detail ? (
@@ -205,19 +182,6 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           aria-label="Edit prayer request"
                         >
                           <Pencil className="h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 rounded-full text-xs"
-                          onClick={() => toggleApproved.mutate({ id: p.id, approved: !p.coordinator_approved_public })}
-                          aria-label={p.coordinator_approved_public ? "Hide from public" : "Approve for public view"}
-                        >
-                          {p.coordinator_approved_public ? (
-                            <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
-                          ) : (
-                            <><Eye className="h-3.5 w-3.5" /> Approve public</>
-                          )}
                         </Button>
                         {isAdmin ? (
                           <Button

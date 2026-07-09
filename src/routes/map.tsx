@@ -53,25 +53,19 @@ function MissionMap() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      const [rl, l] = await Promise.all([
-        import("react-leaflet"),
-        import("leaflet"),
-        import("leaflet/dist/leaflet.css"),
-      ]);
-      // leaflet.markercluster is a non-ESM plugin that expects a global `L`.
-      // Assign it before importing the plugin, or it throws "L is not defined".
-      (window as unknown as { L: typeof import("leaflet") }).L = l;
-      const [mc] = await Promise.all([
-        import("leaflet.markercluster"),
-        import("leaflet.markercluster/dist/MarkerCluster.css"),
-        import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
-      ]);
+    Promise.all([
+      import("react-leaflet"),
+      import("leaflet"),
+      import("leaflet/dist/leaflet.css"),
+      import("leaflet.markercluster"),
+      import("leaflet.markercluster/dist/MarkerCluster.css"),
+      import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
+    ]).then(([rl, l, , mc]) => {
       if (!mounted) return;
       setLeaflet(rl);
       setL(l);
       setCluster(mc);
-    })();
+    });
     return () => {
       mounted = false;
     };

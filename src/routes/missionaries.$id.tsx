@@ -131,25 +131,20 @@ function Profile() {
       <div className="card-soft overflow-hidden">
         <div className="relative">
           <div
-            className="relative h-64 w-full gradient-mission bg-cover bg-center sm:h-80 md:h-96 lg:h-[28rem]"
+            className="h-48 w-full gradient-mission bg-cover bg-center sm:h-60"
             style={cover ? { backgroundImage: `url(${cover})` } : undefined}
-          >
-            {/* Bottom gradient to keep any overlaid text or the tucked avatar readable */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card via-card/60 to-transparent" />
-          </div>
+          />
           <MissionaryCoverUpload missionaryId={m.id} missionaryName={m.fullName} />
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-5 pb-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-8">
-          <Avatar className="-mt-16 h-28 w-28 border-4 border-card shadow-lift sm:-mt-20 sm:h-36 sm:w-36">
+          <Avatar className="-mt-14 h-24 w-24 border-4 border-card shadow-lift sm:-mt-16 sm:h-32 sm:w-32">
             <AvatarImage src={photo} alt={m.fullName} />
             <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials(m.fullName)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 self-end">
-            <h1 className="font-display text-xl font-semibold leading-tight break-words hyphens-auto sm:text-2xl md:text-3xl">
-              {m.fullName}
-            </h1>
+            <h1 className="font-display text-2xl font-semibold sm:text-3xl">{m.fullName}</h1>
             {m.church ? (
-              <p className="mt-0.5 break-words text-sm text-muted-foreground sm:text-base">{m.church}</p>
+              <p className="mt-0.5 text-muted-foreground">{m.church}</p>
             ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {phase ? (
@@ -165,13 +160,11 @@ function Profile() {
                 <Badge variant="outline" className="rounded-full">{m.status}</Badge>
               ) : null}
               {m.address ? (
-                <span className="inline-flex min-w-0 max-w-full items-start gap-1 break-words text-xs text-muted-foreground">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span className="break-words">{m.address}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" /> {m.address}
                 </span>
               ) : null}
             </div>
-
             <div className="mt-3">
               <MissionaryPhotoUpload missionaryId={m.id} missionaryName={m.fullName} />
             </div>
