@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as SummariesRouteImport } from './routes/summaries'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PrayerRouteImport } from './routes/prayer'
 import { Route as PrayRouteImport } from './routes/pray'
@@ -37,11 +36,6 @@ const SupportRoute = SupportRouteImport.update({
 const SummariesRoute = SummariesRouteImport.update({
   id: '/summaries',
   path: '/summaries',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -140,7 +134,6 @@ export interface FileRoutesByFullPath {
   '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
@@ -160,7 +153,6 @@ export interface FileRoutesByTo {
   '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
@@ -182,7 +174,6 @@ export interface FileRoutesById {
   '/pray': typeof PrayRoute
   '/prayer': typeof PrayerRoute
   '/reports': typeof ReportsRoute
-  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/summaries': typeof SummariesRoute
   '/support': typeof SupportRoute
   '/missionaries/$id': typeof MissionariesIdRoute
@@ -205,7 +196,6 @@ export interface FileRouteTypes {
     | '/pray'
     | '/prayer'
     | '/reports'
-    | '/sitemap.xml'
     | '/summaries'
     | '/support'
     | '/missionaries/$id'
@@ -225,7 +215,6 @@ export interface FileRouteTypes {
     | '/pray'
     | '/prayer'
     | '/reports'
-    | '/sitemap.xml'
     | '/summaries'
     | '/support'
     | '/missionaries/$id'
@@ -246,7 +235,6 @@ export interface FileRouteTypes {
     | '/pray'
     | '/prayer'
     | '/reports'
-    | '/sitemap.xml'
     | '/summaries'
     | '/support'
     | '/missionaries/$id'
@@ -268,7 +256,6 @@ export interface RootRouteChildren {
   PrayRoute: typeof PrayRoute
   PrayerRoute: typeof PrayerRoute
   ReportsRoute: typeof ReportsRoute
-  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SummariesRoute: typeof SummariesRoute
   SupportRoute: typeof SupportRoute
 }
@@ -287,13 +274,6 @@ declare module '@tanstack/react-router' {
       path: '/summaries'
       fullPath: '/summaries'
       preLoaderRoute: typeof SummariesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -440,10 +420,19 @@ const rootRouteChildren: RootRouteChildren = {
   PrayRoute: PrayRoute,
   PrayerRoute: PrayerRoute,
   ReportsRoute: ReportsRoute,
-  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SummariesRoute: SummariesRoute,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
