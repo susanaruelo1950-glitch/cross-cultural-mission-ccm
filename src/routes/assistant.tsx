@@ -247,6 +247,12 @@ function Assistant() {
           Grounded in this platform's live data — {context.counts.missionaries} missionaries across{" "}
           {context.counts.areas} areas.
         </p>
+        {context.sources.length > 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            <span className="font-medium">Sources:</span> {context.sources.join(" · ")} · updated {new Date(context.generatedAt).toLocaleTimeString()}
+          </p>
+        ) : null}
+
       </header>
 
       <div className="space-y-3">
