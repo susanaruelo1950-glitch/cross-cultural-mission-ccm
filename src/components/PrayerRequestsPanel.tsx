@@ -44,13 +44,13 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
     queryFn: async (): Promise<DbPrayer[]> => {
       let q = supabase
         .from("prayer_requests_db")
-        .select("id, missionary_id, title, detail, urgent, answered, created_at")
+        .select("id, missionary_id, title, detail, urgent, answered, visible, created_at")
         .order("urgent", { ascending: false })
         .order("created_at", { ascending: false });
       if (missionaryId) q = q.eq("missionary_id", missionaryId);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as DbPrayer[];
     },
   });
 
