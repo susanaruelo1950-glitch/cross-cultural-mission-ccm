@@ -182,9 +182,9 @@ function Directory() {
         <Select
           value={regionId}
           onValueChange={(v) => {
-            setRegionId(v);
-            resetFilter(setProvinceId, ALL);
-            resetFilter(setAreaId, ALL);
+            setFilters({ regionId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Region" /></SelectTrigger>
@@ -196,8 +196,9 @@ function Directory() {
         <Select
           value={provinceId}
           onValueChange={(v) => {
-            setProvinceId(v);
-            resetFilter(setAreaId, ALL);
+            setFilters({ provinceId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Province" /></SelectTrigger>
@@ -209,8 +210,9 @@ function Directory() {
         <Select
           value={phaseId}
           onValueChange={(v) => {
-            setPhaseId(v);
-            resetFilter(setAreaId, ALL);
+            setFilters({ phaseId: v });
+            setAreaId(ALL);
+            setPage(1);
           }}
         >
           <SelectTrigger><SelectValue placeholder="Phase" /></SelectTrigger>
