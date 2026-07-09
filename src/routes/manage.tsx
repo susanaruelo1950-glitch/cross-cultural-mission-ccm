@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createDisplayUrl } from "@/lib/storage-signed";
 import { z } from "zod";
 import {
   Pencil,
@@ -10,6 +11,8 @@ import {
   Search as SearchIcon,
   Save,
   X,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -515,8 +518,12 @@ function MissionaryForm({
         <Field label="Mission statement*" error={errors.missionStatement} className="sm:col-span-2">
           <Textarea rows={3} value={form.missionStatement ?? ""} onChange={(e) => set("missionStatement", e.target.value)} />
         </Field>
-        <Field label="Photo URL">
-          <Input value={form.photo ?? ""} onChange={(e) => set("photo", e.target.value)} placeholder="https://…" />
+        <Field label="Photo URL" className="sm:col-span-2">
+          <PhotoUrlUpload
+            value={form.photo ?? ""}
+            onChange={(v) => set("photo", v)}
+            missionaryId={form.id || "new"}
+          />
         </Field>
         <Field label="Ministry focus">
           <Select value={form.ministryFocus ?? ""} onValueChange={(v) => set("ministryFocus", v as Missionary["ministryFocus"])}>
@@ -552,6 +559,97 @@ function MissionaryForm({
       </div>
     </Card>
     </>
+  );
+}
+
+function PhotoUrlUpload({
+  value,
+  onChange,
+  missionaryId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  missionaryId: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function upload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file (JPG, PNG, or WebP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image is too large. Max 5 MB.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `manual/${missionaryId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("missionary-photos")
+        .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+      if (upErr) throw upErr;
+      const signed = await createDisplayUrl("missionary-photos", path);
+      if (!signed) throw new Error("Could not sign uploaded photo URL.");
+      onChange(signed);
+      toast.success("Photo uploaded. It will save with the missionary.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://… or click Upload"
+          className="min-w-[220px] flex-1"
+        />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) upload(f);
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {busy ? "Uploading…" : "Upload photo"}
+        </Button>
+      </div>
+      {value ? (
+        <div className="flex items-center gap-3">
+          <img
+            src={value}
+            alt="Photo preview"
+            className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            Face preview — pastors will see their face on the front.
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

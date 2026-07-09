@@ -256,8 +256,8 @@ function Profile() {
             <ul className="mt-4 space-y-3 text-sm">
               {m.church ? <ContactRow icon={Church} label={m.church} /> : null}
               {m.address ? <ContactRow icon={MapPin} label={m.address} /> : null}
-              {m.phone ? <ContactRow icon={Phone} label={m.phone} /> : null}
-              {m.email ? <ContactRow icon={Mail} label={m.email} /> : null}
+              {m.phone ? <ContactRow icon={Phone} label={m.phone} href={`tel:${m.phone.replace(/\s+/g, "")}`} /> : null}
+              {m.email ? <ContactRow icon={Mail} label={m.email} href={`mailto:${m.email}`} /> : null}
               {m.birthday ? <ContactRow icon={Cake} label={`Birthday ${m.birthday}`} /> : null}
               {m.anniversary ? <ContactRow icon={Heart} label={`Anniversary ${m.anniversary}`} /> : null}
               {m.spouse ? <ContactRow icon={Users} label={`Spouse: ${m.spouse}`} /> : null}
@@ -377,11 +377,15 @@ function Profile() {
   );
 }
 
-function ContactRow({ icon: Icon, label }: { icon: typeof Phone; label: string }) {
+function ContactRow({ icon: Icon, label, href }: { icon: typeof Phone; label: string; href?: string }) {
   return (
     <li className="flex items-start gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 break-words">{label}</span>
+      {href ? (
+        <a href={href} className="min-w-0 break-words text-primary hover:underline">{label}</a>
+      ) : (
+        <span className="min-w-0 break-words">{label}</span>
+      )}
     </li>
   );
 }
