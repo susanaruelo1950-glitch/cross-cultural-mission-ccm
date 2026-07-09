@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type {} from "@tanstack/react-start";
+import "@tanstack/react-start";
 import { missionaries } from "@/lib/mission-data";
 
 const BASE_URL = "https://cross-cultural-mission-ccm.lovable.app";
