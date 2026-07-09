@@ -320,32 +320,46 @@ function ClusteredInner({
     const cluster = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
-      maxClusterRadius: 50,
+      maxClusterRadius: 60,
+      chunkedLoading: true,
+      chunkInterval: 100,
+      chunkDelay: 30,
+      removeOutsideVisibleBounds: true,
+      disableClusteringAtZoom: 14,
     });
 
+    // Build markers off the main thread using requestIdleCallback so the map
+    // paints tiles first on low-end mobile, then fills pins progressively.
+    let cancelled = false;
+    const batch: import("leaflet").Marker[] = [];
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
       const html = `
         <div style="width:220px">
-          ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
+          ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
           <div style="margin-top:8px;font-weight:600">${m.fullName}</div>
           <div style="font-size:12px;color:#666">${m.church ?? ""}</div>
           <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
         </div>`;
       marker.bindPopup(html);
-      cluster.addLayer(marker);
+      batch.push(marker);
     }
 
-    map.addLayer(cluster);
-    groupRef.current = cluster;
-
-    // Fit to markers when set changes
-    if (pinned.length > 0) {
-      const bounds = L.latLngBounds(pinned.map((p) => p.gps));
-      map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: true });
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const idle = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1));
+    idle(() => {
+      if (cancelled) return;
+      cluster.addLayers(batch);
+      map.addLayer(cluster);
+      groupRef.current = cluster;
+      if (pinned.length > 0) {
+        const bounds = L.latLngBounds(pinned.map((p) => p.gps));
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: true });
+      }
+    });
 
     return () => {
+      cancelled = true;
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
     };
