@@ -313,6 +313,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <HeaderSearch />
           <div className="flex items-center gap-2">
             <LiveUpdatesIndicator />
+            <NotificationBell />
             <AuthButton />
           </div>
         </div>
