@@ -220,6 +220,19 @@ export function PrayerRequestsPanel({ missionaryId, missionaryName }: Props) {
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="h-7 rounded-full text-xs"
+                            onClick={() => toggleVisible.mutate({ id: p.id, visible: !p.visible })}
+                            aria-label={p.visible ? "Hide from non-admins" : "Show to everyone"}
+                            title={p.visible ? "Hide from guests, supporters, and coordinators" : "Show to everyone again"}
+                          >
+                            {p.visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            {p.visible ? "Hide" : "Show"}
+                          </Button>
+                        ) : null}
+                        {isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             className="h-7 rounded-full text-xs text-destructive hover:bg-destructive/10"
                             onClick={() => {
                               if (confirm("Delete this prayer request?")) del.mutate(p.id);
