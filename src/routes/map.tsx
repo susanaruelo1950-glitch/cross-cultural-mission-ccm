@@ -553,7 +553,10 @@ function ClusteredInner({
       groupRef.current = null;
       markerMapRef.current = new Map();
     };
-  }, [L, map, pinned, onReady, onStart, focusId]);
+    // focusId is intentionally excluded — the sibling effect below handles focus
+    // without rebuilding every marker.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [L, map, pinned, onReady, onStart]);
 
   useEffect(() => {
     if (!focusId) return;
