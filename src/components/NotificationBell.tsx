@@ -108,7 +108,14 @@ export function NotificationBell() {
       });
     }
     window.addEventListener("gc-realtime-change", onChange);
-    return () => window.removeEventListener("gc-realtime-change", onChange);
+    function onStorage(e: StorageEvent) {
+      if (e.key === STORE_KEY) setItems(loadStore());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("gc-realtime-change", onChange);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [navigate]);
 
   const unread = items.filter((i) => !i.read).length;
