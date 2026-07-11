@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
 import {
   allAreas,
@@ -72,6 +72,8 @@ function MissionMap() {
   const [markersReady, setMarkersReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const handleMarkersReady = useCallback(() => setMarkersReady(true), []);
+  const handleMarkersStart = useCallback(() => setMarkersReady(false), []);
 
   const listboxId = useId();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -389,8 +391,8 @@ function MissionMap() {
                   L={L}
                   pinned={visiblePinned}
                   focusId={focusId}
-                  onReady={() => setMarkersReady(true)}
-                  onStart={() => setMarkersReady(false)}
+                  onReady={handleMarkersReady}
+                  onStart={handleMarkersStart}
                 />
               </MapContainer>
               {!markersReady ? (
