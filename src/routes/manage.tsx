@@ -261,12 +261,36 @@ function MissionarySection({
         </Button>
       </div>
 
-      {store.areas.length === 0 ? (
+      {directoryLoading && store.missionaries.length === 0 ? (
+        <Card className="card-soft flex items-center gap-2 p-6 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Syncing directory from the cloud…
+        </Card>
+      ) : store.areas.length === 0 ? (
         <Card className="card-soft p-6 text-sm text-muted-foreground">
           You need at least one area before adding missionaries.{" "}
           <Link to="/manage" search={{ tab: "areas", edit: undefined }} className="text-primary underline">
             Create an area →
           </Link>
+        </Card>
+      ) : grouped.length === 0 ? (
+        <Card className="card-soft p-8 text-center">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <UserPlus className="h-6 w-6" />
+          </div>
+          <h3 className="mt-3 font-display text-lg font-semibold">
+            {q ? `No missionaries match "${q}"` : "No missionaries yet"}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {q
+              ? "Try a different name, church, or clear the search."
+              : "Click “Add missionary” above to create the first one. New entries sync live to every device."}
+          </p>
+          {directoryLoading ? (
+            <p className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Still syncing from the cloud…
+            </p>
+          ) : null}
         </Card>
       ) : null}
 
