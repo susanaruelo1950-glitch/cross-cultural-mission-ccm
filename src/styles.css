@@ -210,11 +210,17 @@ textarea {
   unicode-bidi: plaintext;
 }
 
-/* Dashboard headline polish */
-.font-hero {
-  font-family: var(--font-display, ui-sans-serif, system-ui);
-  letter-spacing: -0.02em;
-  font-feature-settings: "ss01", "cv11";
+/* Smooth in-page navigation for hash anchors (dashboard stat → section). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
+
+/* Offset for sticky/app-header so anchored sections aren't hidden underneath. */
+:where([data-section-anchor]) {
+  scroll-margin-top: 6rem;
+}
+
 
 
