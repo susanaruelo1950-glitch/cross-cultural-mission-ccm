@@ -14,6 +14,9 @@ interface StatCardProps {
   to?: string;
   /** Optional aria-label override when linked. */
   linkLabel?: string;
+  /** Optional hash target on the destination route (e.g. "directory-list"). */
+  hash?: string;
+
 }
 
 const tones = {
@@ -23,7 +26,7 @@ const tones = {
   muted: "bg-muted text-muted-foreground",
 };
 
-export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to, linkLabel }: StatCardProps) {
+export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to, linkLabel, hash }: StatCardProps) {
   const prev = useRef(value);
   const [flash, setFlash] = useState(false);
   useEffect(() => {
@@ -58,7 +61,7 @@ export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to,
 
   if (to) {
     return (
-      <Link to={to} aria-label={linkLabel ?? `View ${label}`} className="block rounded-2xl">
+      <Link to={to} hash={hash} aria-label={linkLabel ?? `View ${label}`} className="block rounded-2xl">
         <Card className={cardClasses} aria-live="polite">{inner}</Card>
       </Link>
     );

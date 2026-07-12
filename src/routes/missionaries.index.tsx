@@ -277,7 +277,7 @@ function Directory() {
             ) : null}
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div id="directory-list" data-section-anchor className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {pageItems.map((m) => (
               <MissionaryCard key={m.id} m={m} />
             ))}

@@ -372,7 +372,7 @@ function MissionMap() {
           description={query ? "Try a different name, church, or clear the search." : "Try a different phase or area, or add GPS coordinates to a missionary."}
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div id="mission-map" data-section-anchor className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="card-soft overflow-hidden p-0">
             <div className="relative h-[55vh] w-full sm:h-[70vh]">
               <MapContainer

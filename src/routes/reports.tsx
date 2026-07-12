@@ -42,7 +42,7 @@ function ReportsPage() {
       {sorted.length === 0 ? (
         <EmptyState icon={FileText} title="No reports yet" description="Reports will appear here once missionaries submit them." />
       ) : (
-        <div className="grid gap-5">
+        <div id="reports-list" data-section-anchor className="grid gap-5">
           {sorted.map((r) => {
             const m = getMissionary(r.missionaryId);
             return (

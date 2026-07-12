@@ -125,7 +125,7 @@ function PrayerCenter() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div id="prayer-list" data-section-anchor className="space-y-6">
           {grouped.map(([mid, items]) => (
             <MissionaryGroup key={mid} missionaryId={mid} count={items.length} />
           ))}
