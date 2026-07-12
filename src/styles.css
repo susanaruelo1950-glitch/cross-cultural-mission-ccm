@@ -222,5 +222,13 @@ textarea {
   scroll-margin-top: 6rem;
 }
 
+/* Dashboard headline polish */
+.font-hero {
+  font-family: var(--font-display, ui-sans-serif, system-ui);
+  letter-spacing: -0.02em;
+  font-feature-settings: "ss01", "cv11";
+}
+
+
 
 
