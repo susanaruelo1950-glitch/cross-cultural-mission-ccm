@@ -167,12 +167,12 @@ function Dashboard() {
 
       {/* Stat grid — reflects the shared filter when active. */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" />
-        <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" />
-        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" />
-        <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" />
-        <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" />
-        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" />
+        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" to="/missionaries" linkLabel="Browse missionary directory" />
+        <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" to="/phases" linkLabel="View phases and areas" />
+        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" linkLabel="Open mission map" />
+        <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" linkLabel="View church planters" />
+        <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" linkLabel="Open prayer center" />
+        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" to="/reports" linkLabel="Read ministry updates" />
       </section>
 
       {/* Empty state when nothing entered */}
