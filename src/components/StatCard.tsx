@@ -58,9 +58,9 @@ export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to,
 
   if (to) {
     return (
-      <Card asChild className={cardClasses} aria-live="polite">
-        <Link to={to} aria-label={linkLabel ?? `View ${label}`}>{inner}</Link>
-      </Card>
+      <Link to={to} aria-label={linkLabel ?? `View ${label}`} className="block rounded-2xl">
+        <Card className={cardClasses} aria-live="polite">{inner}</Card>
+      </Link>
     );
   }
 
