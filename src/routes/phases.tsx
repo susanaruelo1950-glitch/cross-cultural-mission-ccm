@@ -44,7 +44,7 @@ function PhasesPage() {
           description="Open src/lib/mission-data.ts and add entries to the phases and areas arrays to get started."
         />
       ) : (
-        <div className="space-y-6">
+        <div id="phases-list" data-section-anchor className="space-y-6">
           {phases
             .slice()
             .sort((a, b) => a.order - b.order)
