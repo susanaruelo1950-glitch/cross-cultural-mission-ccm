@@ -26,7 +26,7 @@ const tones = {
   muted: "bg-muted text-muted-foreground",
 };
 
-export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to, linkLabel }: StatCardProps) {
+export function StatCard({ label, value, icon: Icon, hint, tone = "primary", to, linkLabel, hash }: StatCardProps) {
   const prev = useRef(value);
   const [flash, setFlash] = useState(false);
   useEffect(() => {
