@@ -14,6 +14,9 @@ interface StatCardProps {
   to?: string;
   /** Optional aria-label override when linked. */
   linkLabel?: string;
+  /** Optional hash target on the destination route (e.g. "directory-list"). */
+  hash?: string;
+
 }
 
 const tones = {
