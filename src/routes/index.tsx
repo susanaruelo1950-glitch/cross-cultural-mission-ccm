@@ -167,12 +167,12 @@ function Dashboard() {
 
       {/* Stat grid — reflects the shared filter when active. */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" to="/missionaries" linkLabel="Browse missionary directory" />
-        <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" to="/phases" linkLabel="View phases and areas" />
-        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" linkLabel="Open mission map" />
-        <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" linkLabel="View church planters" />
-        <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" linkLabel="Open prayer center" />
-        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" to="/reports" linkLabel="Read ministry updates" />
+        <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to missionary directory list" />
+        <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" to="/phases" hash="phases-list" linkLabel="Jump to phases and areas" />
+        <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" hash="mission-map" linkLabel="Jump to mission map" />
+        <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to church planters list" />
+        <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" hash="prayer-list" linkLabel="Jump to prayer requests" />
+        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
       </section>
 
       {/* Empty state when nothing entered */}
