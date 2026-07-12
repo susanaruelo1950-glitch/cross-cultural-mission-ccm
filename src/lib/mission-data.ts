@@ -1383,12 +1383,14 @@ export interface SyncLogEntry {
 const SYNC_LOG_MAX = 100;
 const syncLog: SyncLogEntry[] = [];
 const syncLogListeners = new Set<() => void>();
+let syncLogSnapshot: SyncLogEntry[] = [];
 function pushSyncLog(e: SyncLogEntry) {
   syncLog.unshift(e);
   if (syncLog.length > SYNC_LOG_MAX) syncLog.length = SYNC_LOG_MAX;
+  syncLogSnapshot = syncLog.slice();
   for (const l of syncLogListeners) l();
 }
-export function getSyncLog(): SyncLogEntry[] { return syncLog.slice(); }
+export function getSyncLog(): SyncLogEntry[] { return syncLogSnapshot; }
 export function subscribeSyncLog(cb: () => void) { syncLogListeners.add(cb); return () => { syncLogListeners.delete(cb); }; }
 export function recordRealtimeSyncError(id: string, reason: string) {
   pushSyncLog({ at: Date.now(), kind: "realtime-subscription", id, status: "error", reason });
