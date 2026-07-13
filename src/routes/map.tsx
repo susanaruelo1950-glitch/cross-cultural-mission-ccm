@@ -156,6 +156,7 @@ function MissionMap() {
   const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
 
   // Keep the URL in sync so the current view is a shareable deep link.
+  // Preserve the incoming hash (e.g. #mission-map from the dashboard stat).
   useEffect(() => {
     navigate({
       search: {
@@ -165,6 +166,9 @@ function MissionMap() {
         region: filters.regionId !== ALL ? filters.regionId : undefined,
         province: filters.provinceId !== ALL ? filters.provinceId : undefined,
       },
+      hash: typeof window !== "undefined"
+        ? window.location.hash.replace(/^#/, "") || undefined
+        : undefined,
       replace: true,
     });
   }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, navigate]);
