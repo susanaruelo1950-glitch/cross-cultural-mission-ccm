@@ -497,7 +497,9 @@ function MissionMap() {
                   focusId={focusId}
                   onReady={handleMarkersReady}
                   onStart={handleMarkersStart}
+                  navigate={navigate}
                 />
+
               </MapContainer>
               {!markersReady ? (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-[400] flex items-center justify-center bg-background/70 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm">
@@ -590,19 +592,21 @@ function ClusteredMarkers({
   focusId,
   onReady,
   onStart,
+  navigate,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
   focusId: string | null;
   onReady: () => void;
   onStart: () => void;
+  navigate: (opts: { to: string; params?: Record<string, string> }) => void;
 }) {
   const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
   useEffect(() => {
     import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
   }, []);
   if (!useMapHook) return null;
-  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} />;
+  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} navigate={navigate} />;
 }
 
 function ClusteredInner({
@@ -612,6 +616,7 @@ function ClusteredInner({
   focusId,
   onReady,
   onStart,
+  navigate,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
@@ -619,6 +624,7 @@ function ClusteredInner({
   focusId: string | null;
   onReady: () => void;
   onStart: () => void;
+  navigate: (opts: { to: string; params?: Record<string, string> }) => void;
 }) {
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
@@ -658,24 +664,47 @@ function ClusteredInner({
     const localMap = new Map<string, import("leaflet").Marker>();
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
+      // Whole popup card is a client-side link to the missionary profile.
       marker.bindPopup(() => {
         return `
-          <div style="width:220px">
+          <a data-nav-id="${m.id}" href="/missionaries/${m.id}" style="display:block;width:220px;text-decoration:none;color:inherit;cursor:pointer">
             ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
             <div style="margin-top:8px;font-weight:600">${escapeHtml(m.fullName)}</div>
             <div style="font-size:12px;color:#666">${escapeHtml(m.church ?? "")}</div>
-            <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
-          </div>`;
+            <div style="margin-top:6px;font-size:12px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</div>
+          </a>`;
+      });
+      // Double-click on a pin jumps straight to the profile without needing the popup.
+      marker.on("dblclick", () => {
+        navigate({ to: "/missionaries/$id", params: { id: m.id } });
       });
       batch.push(marker);
       localMap.set(m.id, marker);
     }
+
 
     // Add synchronously so pins appear immediately without a scheduler delay.
     cluster.addLayers(batch);
     map.addLayer(cluster);
     groupRef.current = cluster;
     markerMapRef.current = localMap;
+
+    // Intercept popup link clicks so profiles open via the client router
+    // (no full page reload).
+    const onPopupOpen = (ev: { popup: import("leaflet").Popup }) => {
+      const el = ev.popup.getElement();
+      if (!el) return;
+      const link = el.querySelector<HTMLAnchorElement>("a[data-nav-id]");
+      if (!link) return;
+      link.onclick = (e: MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        const id = link.getAttribute("data-nav-id");
+        if (id) navigate({ to: "/missionaries/$id", params: { id } });
+      };
+    };
+    map.on("popupopen", onPopupOpen);
+
 
     if (pinned.length > 0 && !didFitRef.current && !focusId) {
       const bounds = L.latLngBounds(pinned.map((p) => p.gps));
@@ -685,6 +714,7 @@ function ClusteredInner({
     onReady();
 
     return () => {
+      map.off("popupopen", onPopupOpen);
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
       markerMapRef.current = new Map();
@@ -692,7 +722,7 @@ function ClusteredInner({
     // focusId is intentionally excluded — the sibling effect below handles focus
     // without rebuilding every marker.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [L, map, pinned, onReady, onStart]);
+  }, [L, map, pinned, onReady, onStart, navigate]);
 
   useEffect(() => {
     if (!focusId) return;
