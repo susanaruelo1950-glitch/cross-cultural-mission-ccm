@@ -58,7 +58,7 @@ function normalizeLocationKey(value?: string | null): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function locationMatches(value: string | null | undefined, filterId: string, aliases: string[] = []) {
+function locationMatches(value: string | null | undefined, filterId: string, aliases: Array<string | null | undefined> = []) {
   const filterKey = normalizeLocationKey(filterId);
   if (!filterKey) return true;
   const keys = [value, ...aliases].map(normalizeLocationKey).filter(Boolean);
