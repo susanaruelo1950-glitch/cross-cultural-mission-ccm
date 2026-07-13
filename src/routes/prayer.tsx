@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMissionary } from "@/lib/mission-data";
 import { useMissionaryPhoto } from "@/hooks/use-missionary-photo";
 import { PrayerRequestsPanel, type DbPrayer } from "@/components/PrayerRequestsPanel";
+import { useHashScroll } from "@/hooks/use-hash-scroll";
 
 export const Route = createFileRoute("/prayer")({
   head: () => ({
@@ -70,6 +71,7 @@ function PrayerCenter() {
   const urgent = (data ?? []).filter((p) => p.urgent && !p.answered);
   const active = (data ?? []).filter((p) => !p.answered);
   const answered = (data ?? []).filter((p) => p.answered);
+  useHashScroll(data);
 
   return (
     <div className="space-y-6">
