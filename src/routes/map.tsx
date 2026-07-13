@@ -361,7 +361,27 @@ function MissionMap() {
             Offline · synced {formatSyncedAgo(cache.ts)}
           </Badge>
         ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={downloadMapData}
+          disabled={downloadPct !== null || allPins.length === 0}
+          aria-label="Download latest mission map data for offline use"
+        >
+          <Download className="h-4 w-4" />
+          {downloadPct === null ? "Download offline data" : downloadPct < 100 ? `Preparing… ${downloadPct}%` : "Saving…"}
+        </Button>
       </div>
+      {downloadPct !== null ? (
+        <div className="w-full sm:max-w-md" aria-live="polite">
+          <Progress value={downloadPct} className="h-1.5" />
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            {downloadPct < 100 ? `Packaging ${allPins.length} pins… ${downloadPct}%` : "Saving to your device…"}
+          </div>
+        </div>
+      ) : null}
 
       <div className="relative w-full sm:max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
