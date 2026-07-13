@@ -201,6 +201,22 @@ function MissionMap() {
     setActiveIdx(-1);
   }
 
+  async function copyDeepLink(id: string, name?: string) {
+    try {
+      const params = new URLSearchParams();
+      params.set("focus", id);
+      if (phaseId !== "all") params.set("phase", phaseId);
+      if (areaId !== "all") params.set("area", areaId);
+      if (filters.regionId !== ALL) params.set("region", filters.regionId);
+      if (filters.provinceId !== ALL) params.set("province", filters.provinceId);
+      const url = `${window.location.origin}/map?${params.toString()}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(name ? `Link to ${name} copied` : "Map link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  }
+
   function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") {
       if (query) setQuery("");
