@@ -157,8 +157,13 @@ function MissionMap() {
   const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
 
   // Keep the URL in sync so the current view is a shareable deep link.
-  // Preserve the incoming hash (e.g. #mission-map from the dashboard stat).
+  // Skip the first run so we don't clobber the incoming hash (e.g. #mission-map).
+  const didSyncOnce = useRef(false);
   useEffect(() => {
+    if (!didSyncOnce.current) {
+      didSyncOnce.current = true;
+      return;
+    }
     navigate({
       search: {
         focus: focusId ?? undefined,
