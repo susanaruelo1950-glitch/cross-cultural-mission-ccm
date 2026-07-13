@@ -658,18 +658,24 @@ function ClusteredInner({
     const localMap = new Map<string, import("leaflet").Marker>();
     for (const m of pinned) {
       const marker = L.marker(m.gps, { icon });
+      // Whole popup card is a client-side link to the missionary profile.
       marker.bindPopup(() => {
         return `
-          <div style="width:220px">
+          <a data-nav-id="${m.id}" href="/missionaries/${m.id}" style="display:block;width:220px;text-decoration:none;color:inherit;cursor:pointer">
             ${m.photo ? `<img src="${m.photo}" alt="${m.fullName}" loading="lazy" style="width:100%;height:110px;object-fit:cover;border-radius:8px" />` : ""}
             <div style="margin-top:8px;font-weight:600">${escapeHtml(m.fullName)}</div>
             <div style="font-size:12px;color:#666">${escapeHtml(m.church ?? "")}</div>
-            <a href="/missionaries/${m.id}" style="display:inline-block;margin-top:8px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</a>
-          </div>`;
+            <div style="margin-top:6px;font-size:12px;color:oklch(0.45 0.14 245);font-weight:500">Open profile →</div>
+          </a>`;
+      });
+      // Double-click on a pin jumps straight to the profile without needing the popup.
+      marker.on("dblclick", () => {
+        navigate({ to: "/missionaries/$id", params: { id: m.id } });
       });
       batch.push(marker);
       localMap.set(m.id, marker);
     }
+
 
     // Add synchronously so pins appear immediately without a scheduler delay.
     cluster.addLayers(batch);
