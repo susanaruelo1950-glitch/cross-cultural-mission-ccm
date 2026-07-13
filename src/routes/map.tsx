@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useSearch, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapIcon, List, ExternalLink, Locate, Search, Download } from "lucide-react";
+import { MapIcon, List, ExternalLink, Locate, Search, Download, Share2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   getArea,
