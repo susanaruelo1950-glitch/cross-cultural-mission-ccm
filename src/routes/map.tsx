@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
+import { useMapOfflineCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -118,33 +119,39 @@ function MissionMap() {
     [phaseId, areas],
   );
 
-  const filteredMissionaries = useMemo(
+
+
+
+  // Full pool of missionaries with GPS — cached offline for instant open + daily refresh.
+  const allPinsLive = useMemo<MapPin[]>(
     () =>
       missionaries
-        .filter((m) => (phaseId === "all" ? true : getArea(m.areaId)?.phaseId === phaseId))
-        .filter((m) => (areaId === "all" ? true : m.areaId === areaId))
-        .filter((m) => {
-          if (filters.regionId === ALL) return true;
-          const area = getArea(m.areaId);
-          return (m.region ?? area?.region) === filters.regionId;
+        .map((m) => {
+          const gps = m.gps ?? getArea(m.areaId)?.gps;
+          return gps ? ({ ...m, gps } as MapPin) : null;
         })
-        .filter((m) => {
-          if (filters.provinceId === ALL) return true;
-          const area = getArea(m.areaId);
-          return (m.province ?? area?.province) === filters.provinceId;
-        }),
-    [missionaries, phaseId, areaId, filters.regionId, filters.provinceId],
+        .filter((m): m is MapPin => !!m),
+    [missionaries],
   );
+  const cache = useMapOfflineCache(allPinsLive);
+  const allPins = cache.pins;
 
   const pinned = useMemo(
     () =>
-      filteredMissionaries
-        .map((m) => {
-          const gps = m.gps ?? getArea(m.areaId)?.gps;
-          return gps ? { ...m, gps } : null;
-        })
-        .filter((m): m is Missionary & { gps: [number, number] } => !!m),
-    [filteredMissionaries],
+      allPins.filter((m) => {
+        if (phaseId !== "all" && getArea(m.areaId)?.phaseId !== phaseId) return false;
+        if (areaId !== "all" && m.areaId !== areaId) return false;
+        if (filters.regionId !== ALL) {
+          const area = getArea(m.areaId);
+          if ((m.region ?? area?.region) !== filters.regionId) return false;
+        }
+        if (filters.provinceId !== ALL) {
+          const area = getArea(m.areaId);
+          if ((m.province ?? area?.province) !== filters.provinceId) return false;
+        }
+        return true;
+      }),
+    [allPins, phaseId, areaId, filters.regionId, filters.provinceId],
   );
 
   const q = query.trim().toLowerCase();
@@ -288,6 +295,11 @@ function MissionMap() {
         <Badge variant="secondary" className="rounded-full">
           {visiblePinned.length} {visiblePinned.length === 1 ? "pin" : "pins"}
         </Badge>
+        {cache.ts ? (
+          <Badge variant="outline" className="rounded-full text-[11px] font-normal text-muted-foreground" title="Offline snapshot — refreshes daily">
+            Offline · synced {formatSyncedAgo(cache.ts)}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="relative w-full sm:max-w-md">
@@ -395,6 +407,7 @@ function MissionMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <InvalidateSizeOnMount />
                 <ClusteredMarkers
                   L={L}
                   pinned={visiblePinned}
@@ -460,6 +473,38 @@ function MissionMap() {
     </div>
   );
 }
+
+/**
+ * Fixes the common "map appears grey / doesn't render until I resize" bug by
+ * calling map.invalidateSize() after mount and on window resize.
+ */
+function InvalidateSizeOnMount() {
+  const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
+  useEffect(() => {
+    import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
+  }, []);
+  if (!useMapHook) return null;
+  return <InvalidateSizeInner useMap={useMapHook} />;
+}
+
+function InvalidateSizeInner({ useMap }: { useMap: typeof import("react-leaflet").useMap }) {
+  const map = useMap();
+  useEffect(() => {
+    const kick = () => map.invalidateSize();
+    const t1 = window.setTimeout(kick, 0);
+    const t2 = window.setTimeout(kick, 250);
+    const t3 = window.setTimeout(kick, 800);
+    window.addEventListener("resize", kick);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.removeEventListener("resize", kick);
+    };
+  }, [map]);
+  return null;
+}
+
 
 function ClusteredMarkers({
   L,
@@ -583,6 +628,17 @@ function ClusteredInner({
   }, [focusId, map]);
 
   return null;
+}
+
+function formatSyncedAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }
 
 function escapeHtml(s: string): string {
