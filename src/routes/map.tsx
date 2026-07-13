@@ -49,6 +49,26 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0] ?? "").join("");
 }
 
+function normalizeLocationKey(value?: string | null): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function locationMatches(value: string | null | undefined, filterId: string, aliases: Array<string | null | undefined> = []) {
+  const filterKey = normalizeLocationKey(filterId);
+  if (!filterKey) return true;
+  const keys = [value, ...aliases].map(normalizeLocationKey).filter(Boolean);
+  if (keys.includes(filterKey)) return true;
+  if (filterKey === "region-xii") return keys.some((k) => k.includes("soccsksargen") || k === "xii");
+  if (filterKey === "region-xi") return keys.some((k) => k.includes("davao") || k === "xi");
+  if (filterKey === "barmm") return keys.some((k) => k.includes("bangsamoro") || k.includes("barmm"));
+  return false;
+}
+
 function MiniAvatar({ name, src, size = "md" }: { name: string; src?: string; size?: "sm" | "md" }) {
   const className = size === "sm" ? "h-7 w-7 text-[10px]" : "h-10 w-10 text-xs";
   return (
@@ -138,6 +158,8 @@ function MissionMap() {
 
   const { phases, areas, missionaries } = useDataStore();
 
+  const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+
   const filteredAreas = useMemo(
     () => (phaseId === "all" ? areas : areas.filter((a) => a.phaseId === phaseId)),
     [phaseId, areas],
@@ -163,19 +185,18 @@ function MissionMap() {
   const pinned = useMemo(
     () =>
       allPins.filter((m) => {
-        if (phaseId !== "all" && getArea(m.areaId)?.phaseId !== phaseId) return false;
+        const area = areaById.get(m.areaId) ?? getArea(m.areaId);
+        if (phaseId !== "all" && area?.phaseId !== phaseId) return false;
         if (areaId !== "all" && m.areaId !== areaId) return false;
         if (filters.regionId !== ALL) {
-          const area = getArea(m.areaId);
-          if ((m.region ?? area?.region) !== filters.regionId) return false;
+          if (!locationMatches(m.region ?? area?.region, filters.regionId, [area?.region])) return false;
         }
         if (filters.provinceId !== ALL) {
-          const area = getArea(m.areaId);
-          if ((m.province ?? area?.province) !== filters.provinceId) return false;
+          if (!locationMatches(m.province ?? area?.province, filters.provinceId, [area?.province])) return false;
         }
         return true;
       }),
-    [allPins, phaseId, areaId, filters.regionId, filters.provinceId],
+    [allPins, phaseId, areaId, filters.regionId, filters.provinceId, areaById],
   );
 
   const q = query.trim().toLowerCase();
