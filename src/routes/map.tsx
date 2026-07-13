@@ -238,6 +238,65 @@ function MissionMap() {
     );
   }
 
+  async function downloadMapData() {
+    if (downloadPct !== null) return;
+    try {
+      setDownloadPct(0);
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        source: "cross-cultural-mission-ccm",
+        version: 1,
+        count: allPins.length,
+        pins: allPins.map((m) => ({
+          id: m.id,
+          fullName: m.fullName,
+          church: m.church,
+          address: m.address,
+          areaId: m.areaId,
+          region: m.region,
+          province: m.province,
+          gps: m.gps,
+          photo: m.photo,
+        })),
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+
+      // Write to cache immediately so "offline" is guaranteed post-download.
+      writeMapCacheFromRoute(allPins);
+
+      // Simulate progress via FileReader for user feedback on large payloads.
+      await new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable) setDownloadPct(Math.round((e.loaded / e.total) * 100));
+        };
+        reader.onload = () => {
+          setDownloadPct(100);
+          resolve();
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(blob);
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mission-map-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Downloaded ${allPins.length} pins for offline use.`);
+    } catch (err) {
+      console.error("Map download failed", err);
+      toast.error("Download failed. Please try again.");
+    } finally {
+      window.setTimeout(() => setDownloadPct(null), 1200);
+    }
+  }
+
   const activeOptionId =
     activeIdx >= 0 && searchSuggestions[activeIdx]
       ? `${listboxId}-opt-${searchSuggestions[activeIdx].id}`
