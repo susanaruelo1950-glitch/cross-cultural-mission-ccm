@@ -263,7 +263,7 @@ function MissionMap() {
       const blob = new Blob([json], { type: "application/json" });
 
       // Write to cache immediately so "offline" is guaranteed post-download.
-      writeMapCacheFromRoute(allPins);
+      writeMapCache(allPins);
 
       // Simulate progress via FileReader for user feedback on large payloads.
       await new Promise<void>((resolve, reject) => {
