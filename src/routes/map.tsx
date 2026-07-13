@@ -469,6 +469,38 @@ function MissionMap() {
   );
 }
 
+/**
+ * Fixes the common "map appears grey / doesn't render until I resize" bug by
+ * calling map.invalidateSize() after mount and on window resize.
+ */
+function InvalidateSizeOnMount() {
+  const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
+  useEffect(() => {
+    import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
+  }, []);
+  if (!useMapHook) return null;
+  return <InvalidateSizeInner useMap={useMapHook} />;
+}
+
+function InvalidateSizeInner({ useMap }: { useMap: typeof import("react-leaflet").useMap }) {
+  const map = useMap();
+  useEffect(() => {
+    const kick = () => map.invalidateSize();
+    const t1 = window.setTimeout(kick, 0);
+    const t2 = window.setTimeout(kick, 250);
+    const t3 = window.setTimeout(kick, 800);
+    window.addEventListener("resize", kick);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.removeEventListener("resize", kick);
+    };
+  }, [map]);
+  return null;
+}
+
+
 function ClusteredMarkers({
   L,
   pinned,
