@@ -93,18 +93,29 @@ function MissionMap() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([
-      import("react-leaflet"),
-      import("leaflet"),
-      import("leaflet/dist/leaflet.css"),
-      import("leaflet.markercluster"),
-      import("leaflet.markercluster/dist/MarkerCluster.css"),
-      import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
-    ]).then(([rl, l, , mc]) => {
+    (async () => {
+      // Order matters: leaflet.markercluster expects a global `L`.
+      // Load leaflet first, expose it on window, THEN load the plugin.
+      const [rl, l] = await Promise.all([
+        import("react-leaflet"),
+        import("leaflet"),
+        import("leaflet/dist/leaflet.css"),
+      ]);
+      const leafletNs = (l as unknown as { default?: unknown }).default ?? l;
+      (window as unknown as { L: unknown }).L = leafletNs;
+      const [mc] = await Promise.all([
+        import("leaflet.markercluster"),
+        import("leaflet.markercluster/dist/MarkerCluster.css"),
+        import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
+      ]);
       if (!mounted) return;
       setLeaflet(rl);
-      setL(l);
+      // Store the same object markercluster patched (window.L), not the ESM namespace wrapper.
+      setL(leafletNs as typeof import("leaflet"));
       setCluster(mc);
+      setCluster(mc);
+    })().catch((err) => {
+      console.error("Map libs failed to load", err);
     });
     return () => {
       mounted = false;
@@ -625,7 +636,12 @@ function ClusteredInner({
 
     const large = pinned.length > 300;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cluster = (L as any).markerClusterGroup({
+    // markercluster monkey-patches the global L, which may not be the same
+    // object identity as the ESM namespace we captured — always read from window.L.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const GL = (window as any).L ?? L;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cluster = (GL as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
       maxClusterRadius: large ? 90 : 60,
