@@ -137,15 +137,36 @@ function MissionMap() {
     [missionaries, phaseId, areaId, filters.regionId, filters.provinceId],
   );
 
-  const pinned = useMemo(
+  // Full pool of missionaries with GPS — cached offline for instant open + daily refresh.
+  const allPinsLive = useMemo<MapPin[]>(
     () =>
-      filteredMissionaries
+      missionaries
         .map((m) => {
           const gps = m.gps ?? getArea(m.areaId)?.gps;
-          return gps ? { ...m, gps } : null;
+          return gps ? ({ ...m, gps } as MapPin) : null;
         })
-        .filter((m): m is Missionary & { gps: [number, number] } => !!m),
-    [filteredMissionaries],
+        .filter((m): m is MapPin => !!m),
+    [missionaries],
+  );
+  const cache = useMapOfflineCache(allPinsLive);
+  const allPins = cache.pins;
+
+  const pinned = useMemo(
+    () =>
+      allPins.filter((m) => {
+        if (phaseId !== "all" && getArea(m.areaId)?.phaseId !== phaseId) return false;
+        if (areaId !== "all" && m.areaId !== areaId) return false;
+        if (filters.regionId !== ALL) {
+          const area = getArea(m.areaId);
+          if ((m.region ?? area?.region) !== filters.regionId) return false;
+        }
+        if (filters.provinceId !== ALL) {
+          const area = getArea(m.areaId);
+          if ((m.province ?? area?.province) !== filters.provinceId) return false;
+        }
+        return true;
+      }),
+    [allPins, phaseId, areaId, filters.regionId, filters.provinceId],
   );
 
   const q = query.trim().toLowerCase();
