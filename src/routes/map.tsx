@@ -93,18 +93,27 @@ function MissionMap() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([
-      import("react-leaflet"),
-      import("leaflet"),
-      import("leaflet/dist/leaflet.css"),
-      import("leaflet.markercluster"),
-      import("leaflet.markercluster/dist/MarkerCluster.css"),
-      import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
-    ]).then(([rl, l, , mc]) => {
+    (async () => {
+      // Order matters: leaflet.markercluster expects a global `L`.
+      // Load leaflet first, expose it on window, THEN load the plugin.
+      const [rl, l] = await Promise.all([
+        import("react-leaflet"),
+        import("leaflet"),
+        import("leaflet/dist/leaflet.css"),
+      ]);
+      const leafletNs = (l as unknown as { default?: unknown }).default ?? l;
+      (window as unknown as { L: unknown }).L = leafletNs;
+      const [mc] = await Promise.all([
+        import("leaflet.markercluster"),
+        import("leaflet.markercluster/dist/MarkerCluster.css"),
+        import("leaflet.markercluster/dist/MarkerCluster.Default.css"),
+      ]);
       if (!mounted) return;
       setLeaflet(rl);
       setL(l);
       setCluster(mc);
+    })().catch((err) => {
+      console.error("Map libs failed to load", err);
     });
     return () => {
       mounted = false;
