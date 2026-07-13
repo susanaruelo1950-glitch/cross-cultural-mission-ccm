@@ -295,6 +295,11 @@ function MissionMap() {
         <Badge variant="secondary" className="rounded-full">
           {visiblePinned.length} {visiblePinned.length === 1 ? "pin" : "pins"}
         </Badge>
+        {cache.ts ? (
+          <Badge variant="outline" className="rounded-full text-[11px] font-normal text-muted-foreground" title="Offline snapshot — refreshes daily">
+            Offline · synced {formatSyncedAgo(cache.ts)}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="relative w-full sm:max-w-md">
