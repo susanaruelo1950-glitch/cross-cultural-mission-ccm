@@ -714,6 +714,7 @@ function ClusteredInner({
     onReady();
 
     return () => {
+      map.off("popupopen", onPopupOpen);
       if (groupRef.current) map.removeLayer(groupRef.current);
       groupRef.current = null;
       markerMapRef.current = new Map();
@@ -721,7 +722,7 @@ function ClusteredInner({
     // focusId is intentionally excluded — the sibling effect below handles focus
     // without rebuilding every marker.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [L, map, pinned, onReady, onStart]);
+  }, [L, map, pinned, onReady, onStart, navigate]);
 
   useEffect(() => {
     if (!focusId) return;
