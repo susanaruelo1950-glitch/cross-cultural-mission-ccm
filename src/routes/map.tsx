@@ -64,13 +64,24 @@ function MissionMap() {
   const routeHash = useLocation({ select: (l) => l.hash });
   const { filters, setFilters } = useSharedFilters();
 
+  // Read persisted filters once (URL wins over localStorage).
+  const persisted = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem("mission-map:filters");
+      return raw ? (JSON.parse(raw) as { phase?: string; area?: string; region?: string; province?: string; focus?: string }) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [Leaflet, setLeaflet] = useState<null | typeof import("react-leaflet")>(null);
   const [L, setL] = useState<null | typeof import("leaflet")>(null);
   const [Cluster, setCluster] = useState<null | typeof import("leaflet.markercluster")>(null);
-  const [phaseId, setPhaseId] = useState<string>(search.phase ?? "all");
-  const [areaId, setAreaId] = useState<string>(search.area ?? "all");
+  const [phaseId, setPhaseId] = useState<string>(search.phase ?? persisted?.phase ?? "all");
+  const [areaId, setAreaId] = useState<string>(search.area ?? persisted?.area ?? "all");
   const [query, setQuery] = useState("");
-  const [focusId, setFocusId] = useState<string | null>(search.focus ?? null);
+  const [focusId, setFocusId] = useState<string | null>(search.focus ?? persisted?.focus ?? null);
   const [markersReady, setMarkersReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -81,12 +92,15 @@ function MissionMap() {
   const listboxId = useId();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync incoming URL filters into shared filter store once on mount.
+  // Sync incoming URL filters (or persisted fallback) into shared filter store once on mount.
   useEffect(() => {
     const patch: Partial<{ regionId: string; provinceId: string; phaseId: string }> = {};
-    if (search.region) patch.regionId = search.region;
-    if (search.province) patch.provinceId = search.province;
-    if (search.phase) patch.phaseId = search.phase;
+    const region = search.region ?? persisted?.region;
+    const province = search.province ?? persisted?.province;
+    const phase = search.phase ?? persisted?.phase;
+    if (region) patch.regionId = region;
+    if (province) patch.provinceId = province;
+    if (phase) patch.phaseId = phase;
     if (Object.keys(patch).length) setFilters(patch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -192,6 +206,20 @@ function MissionMap() {
       hash: routeHash || undefined,
       replace: true,
     });
+    try {
+      window.localStorage.setItem(
+        "mission-map:filters",
+        JSON.stringify({
+          focus: focusId ?? undefined,
+          phase: phaseId !== "all" ? phaseId : undefined,
+          area: areaId !== "all" ? areaId : undefined,
+          region: filters.regionId !== ALL ? filters.regionId : undefined,
+          province: filters.provinceId !== ALL ? filters.provinceId : undefined,
+        }),
+      );
+    } catch {
+      // storage disabled/full — ignore
+    }
   }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, routeHash, navigate]);
 
   function pickSuggestion(m: Missionary) {
