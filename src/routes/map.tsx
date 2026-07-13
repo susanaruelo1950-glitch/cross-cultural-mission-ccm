@@ -119,23 +119,8 @@ function MissionMap() {
     [phaseId, areas],
   );
 
-  const filteredMissionaries = useMemo(
-    () =>
-      missionaries
-        .filter((m) => (phaseId === "all" ? true : getArea(m.areaId)?.phaseId === phaseId))
-        .filter((m) => (areaId === "all" ? true : m.areaId === areaId))
-        .filter((m) => {
-          if (filters.regionId === ALL) return true;
-          const area = getArea(m.areaId);
-          return (m.region ?? area?.region) === filters.regionId;
-        })
-        .filter((m) => {
-          if (filters.provinceId === ALL) return true;
-          const area = getArea(m.areaId);
-          return (m.province ?? area?.province) === filters.provinceId;
-        }),
-    [missionaries, phaseId, areaId, filters.regionId, filters.provinceId],
-  );
+
+
 
   // Full pool of missionaries with GPS — cached offline for instant open + daily refresh.
   const allPinsLive = useMemo<MapPin[]>(
