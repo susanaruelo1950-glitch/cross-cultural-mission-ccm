@@ -636,7 +636,12 @@ function ClusteredInner({
 
     const large = pinned.length > 300;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cluster = (L as any).markerClusterGroup({
+    // markercluster monkey-patches the global L, which may not be the same
+    // object identity as the ESM namespace we captured — always read from window.L.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const GL = (window as any).L ?? L;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cluster = (GL as any).markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
       maxClusterRadius: large ? 90 : 60,
