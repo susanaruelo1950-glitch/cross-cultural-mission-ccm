@@ -3,26 +3,16 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { MapIcon, List, ExternalLink, Locate, Search, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
-  allAreas,
-  allMissionaries,
-  allPhases,
   getArea,
   type Missionary,
 } from "@/lib/mission-data";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
+import { useDataStore } from "@/hooks/use-data-store";
 import { useMapOfflineCache, writeMapCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -57,6 +47,15 @@ export const Route = createFileRoute("/map")({
 
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0] ?? "").join("");
+}
+
+function MiniAvatar({ name, src, size = "md" }: { name: string; src?: string; size?: "sm" | "md" }) {
+  const className = size === "sm" ? "h-7 w-7 text-[10px]" : "h-10 w-10 text-xs";
+  return (
+    <div className={`${className} grid shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 font-medium text-primary`}>
+      {src ? <img src={src} alt={name} className="h-full w-full object-cover" loading="lazy" /> : initials(name)}
+    </div>
+  );
 }
 
 function MissionMap() {
@@ -112,9 +111,7 @@ function MissionMap() {
     };
   }, []);
 
-  const phases = allPhases();
-  const areas = allAreas();
-  const missionaries = allMissionaries();
+  const { phases, areas, missionaries } = useDataStore();
 
   const filteredAreas = useMemo(
     () => (phaseId === "all" ? areas : areas.filter((a) => a.phaseId === phaseId)),
@@ -312,38 +309,35 @@ function MissionMap() {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Select
+        <select
           value={phaseId}
-          onValueChange={(v) => {
-            setPhaseId(v);
+          onChange={(e) => {
+            setPhaseId(e.target.value);
             setAreaId("all");
           }}
+          className="h-10 w-full rounded-full border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-56"
+          aria-label="Filter by phase"
         >
-          <SelectTrigger className="w-full rounded-full sm:w-56" aria-label="Filter by phase">
-            <SelectValue placeholder="All phases" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All phases</SelectItem>
-            {phases.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={areaId} onValueChange={setAreaId}>
-          <SelectTrigger className="w-full rounded-full sm:w-56" aria-label="Filter by area">
-            <SelectValue placeholder="All areas" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All areas</SelectItem>
-            {filteredAreas.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <option value="all">All phases</option>
+          {phases.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={areaId}
+          onChange={(e) => setAreaId(e.target.value)}
+          className="h-10 w-full rounded-full border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-56"
+          aria-label="Filter by area"
+        >
+          <option value="all">All areas</option>
+          {filteredAreas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
         <Button
           type="button"
           variant="default"
@@ -430,10 +424,7 @@ function MissionMap() {
                     active ? "bg-accent" : ""
                   }`}
                 >
-                  <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarImage src={m.photo} alt="" />
-                    <AvatarFallback className="bg-primary/10 text-primary text-[10px]">{initials(m.fullName)}</AvatarFallback>
-                  </Avatar>
+                  <MiniAvatar name={m.fullName} src={m.photo} size="sm" />
                   <div className="min-w-0">
                     <div className="truncate font-medium">{m.fullName}</div>
                     <div className="truncate text-xs text-muted-foreground">{m.church}</div>
@@ -525,12 +516,7 @@ function MissionMap() {
                       onClick={() => setFocusId(m.id)}
                       className="group flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={m.photo} alt={m.fullName} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {initials(m.fullName)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <MiniAvatar name={m.fullName} src={m.photo} />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{m.fullName}</div>
                         <div className="truncate text-xs text-muted-foreground">
