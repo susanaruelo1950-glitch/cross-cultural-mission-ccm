@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useSearch, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
+import { MapIcon, List, ExternalLink, Locate, Search, Download } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import {
   allAreas,
   allMissionaries,
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
-import { useMapOfflineCache, type MapPin } from "@/hooks/use-map-offline-cache";
+import { useMapOfflineCache, writeMapCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -74,6 +75,7 @@ function MissionMap() {
   const [markersReady, setMarkersReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const handleMarkersReady = useCallback(() => setMarkersReady(true), []);
   const handleMarkersStart = useCallback(() => setMarkersReady(false), []);
 
@@ -236,6 +238,65 @@ function MissionMap() {
     );
   }
 
+  async function downloadMapData() {
+    if (downloadPct !== null) return;
+    try {
+      setDownloadPct(0);
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        source: "cross-cultural-mission-ccm",
+        version: 1,
+        count: allPins.length,
+        pins: allPins.map((m) => ({
+          id: m.id,
+          fullName: m.fullName,
+          church: m.church,
+          address: m.address,
+          areaId: m.areaId,
+          region: m.region,
+          province: m.province,
+          gps: m.gps,
+          photo: m.photo,
+        })),
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+
+      // Write to cache immediately so "offline" is guaranteed post-download.
+      writeMapCache(allPins);
+
+      // Simulate progress via FileReader for user feedback on large payloads.
+      await new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable) setDownloadPct(Math.round((e.loaded / e.total) * 100));
+        };
+        reader.onload = () => {
+          setDownloadPct(100);
+          resolve();
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(blob);
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mission-map-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Downloaded ${allPins.length} pins for offline use.`);
+    } catch (err) {
+      console.error("Map download failed", err);
+      toast.error("Download failed. Please try again.");
+    } finally {
+      window.setTimeout(() => setDownloadPct(null), 1200);
+    }
+  }
+
   const activeOptionId =
     activeIdx >= 0 && searchSuggestions[activeIdx]
       ? `${listboxId}-opt-${searchSuggestions[activeIdx].id}`
@@ -300,7 +361,27 @@ function MissionMap() {
             Offline · synced {formatSyncedAgo(cache.ts)}
           </Badge>
         ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={downloadMapData}
+          disabled={downloadPct !== null || allPins.length === 0}
+          aria-label="Download latest mission map data for offline use"
+        >
+          <Download className="h-4 w-4" />
+          {downloadPct === null ? "Download offline data" : downloadPct < 100 ? `Preparing… ${downloadPct}%` : "Saving…"}
+        </Button>
       </div>
+      {downloadPct !== null ? (
+        <div className="w-full sm:max-w-md" aria-live="polite">
+          <Progress value={downloadPct} className="h-1.5" />
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            {downloadPct < 100 ? `Packaging ${allPins.length} pins… ${downloadPct}%` : "Saving to your device…"}
+          </div>
+        </div>
+      ) : null}
 
       <div className="relative w-full sm:max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
