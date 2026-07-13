@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
-import { useMapOfflineCache, type MapPin } from "@/hooks/use-map-offline-cache";
+import { useMapOfflineCache, writeMapCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
 
