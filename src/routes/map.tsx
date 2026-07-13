@@ -592,19 +592,21 @@ function ClusteredMarkers({
   focusId,
   onReady,
   onStart,
+  navigate,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
   focusId: string | null;
   onReady: () => void;
   onStart: () => void;
+  navigate: (opts: { to: string; params?: Record<string, string> }) => void;
 }) {
   const [useMapHook, setUseMapHook] = useState<null | typeof import("react-leaflet").useMap>(null);
   useEffect(() => {
     import("react-leaflet").then((rl) => setUseMapHook(() => rl.useMap));
   }, []);
   if (!useMapHook) return null;
-  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} />;
+  return <ClusteredInner L={L} pinned={pinned} useMap={useMapHook} focusId={focusId} onReady={onReady} onStart={onStart} navigate={navigate} />;
 }
 
 function ClusteredInner({
@@ -614,6 +616,7 @@ function ClusteredInner({
   focusId,
   onReady,
   onStart,
+  navigate,
 }: {
   L: typeof import("leaflet");
   pinned: (Missionary & { gps: [number, number] })[];
@@ -621,6 +624,7 @@ function ClusteredInner({
   focusId: string | null;
   onReady: () => void;
   onStart: () => void;
+  navigate: (opts: { to: string; params?: Record<string, string> }) => void;
 }) {
   const map = useMap();
   const groupRef = useRef<import("leaflet").LayerGroup | null>(null);
