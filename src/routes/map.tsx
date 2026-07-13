@@ -770,7 +770,7 @@ function ClusteredInner({
     } else {
       marker.openPopup();
     }
-  }, [focusId, map]);
+  }, [focusId, map, pinned]);
 
   return null;
 }
