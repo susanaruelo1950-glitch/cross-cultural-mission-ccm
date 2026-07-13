@@ -75,6 +75,7 @@ function MissionMap() {
   const [markersReady, setMarkersReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const handleMarkersReady = useCallback(() => setMarkersReady(true), []);
   const handleMarkersStart = useCallback(() => setMarkersReady(false), []);
 
