@@ -689,6 +689,23 @@ function ClusteredInner({
     groupRef.current = cluster;
     markerMapRef.current = localMap;
 
+    // Intercept popup link clicks so profiles open via the client router
+    // (no full page reload).
+    const onPopupOpen = (ev: { popup: import("leaflet").Popup }) => {
+      const el = ev.popup.getElement();
+      if (!el) return;
+      const link = el.querySelector<HTMLAnchorElement>("a[data-nav-id]");
+      if (!link) return;
+      link.onclick = (e: MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        const id = link.getAttribute("data-nav-id");
+        if (id) navigate({ to: "/missionaries/$id", params: { id } });
+      };
+    };
+    map.on("popupopen", onPopupOpen);
+
+
     if (pinned.length > 0 && !didFitRef.current && !focusId) {
       const bounds = L.latLngBounds(pinned.map((p) => p.gps));
       map.fitBounds(bounds.pad(0.2), { maxZoom: 12, animate: false });
