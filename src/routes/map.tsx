@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
 import {
@@ -60,6 +60,7 @@ function initials(name: string) {
 function MissionMap() {
   const search = useSearch({ from: "/map" });
   const navigate = useNavigate({ from: "/map" });
+  const routeHash = useLocation({ select: (l) => l.hash });
   const { filters, setFilters } = useSharedFilters();
 
   const [Leaflet, setLeaflet] = useState<null | typeof import("react-leaflet")>(null);
@@ -166,12 +167,10 @@ function MissionMap() {
         region: filters.regionId !== ALL ? filters.regionId : undefined,
         province: filters.provinceId !== ALL ? filters.provinceId : undefined,
       },
-      hash: typeof window !== "undefined"
-        ? window.location.hash.replace(/^#/, "") || undefined
-        : undefined,
+      hash: routeHash || undefined,
       replace: true,
     });
-  }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, navigate]);
+  }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, routeHash, navigate]);
 
   function pickSuggestion(m: Missionary) {
     setFocusId(m.id);
