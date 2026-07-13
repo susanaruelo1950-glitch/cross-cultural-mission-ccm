@@ -110,7 +110,9 @@ function MissionMap() {
       ]);
       if (!mounted) return;
       setLeaflet(rl);
-      setL(l);
+      // Store the same object markercluster patched (window.L), not the ESM namespace wrapper.
+      setL(leafletNs as typeof import("leaflet"));
+      setCluster(mc);
       setCluster(mc);
     })().catch((err) => {
       console.error("Map libs failed to load", err);
