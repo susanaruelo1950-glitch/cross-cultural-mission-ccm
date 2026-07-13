@@ -206,6 +206,20 @@ function MissionMap() {
       hash: routeHash || undefined,
       replace: true,
     });
+    try {
+      window.localStorage.setItem(
+        "mission-map:filters",
+        JSON.stringify({
+          focus: focusId ?? undefined,
+          phase: phaseId !== "all" ? phaseId : undefined,
+          area: areaId !== "all" ? areaId : undefined,
+          region: filters.regionId !== ALL ? filters.regionId : undefined,
+          province: filters.provinceId !== ALL ? filters.provinceId : undefined,
+        }),
+      );
+    } catch {
+      // storage disabled/full — ignore
+    }
   }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, routeHash, navigate]);
 
   function pickSuggestion(m: Missionary) {
