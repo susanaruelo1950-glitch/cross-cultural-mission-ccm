@@ -3,9 +3,6 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { MapIcon, List, ExternalLink, Locate, Search, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
-  allAreas,
-  allMissionaries,
-  allPhases,
   getArea,
   type Missionary,
 } from "@/lib/mission-data";
@@ -23,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
+import { useDataStore } from "@/hooks/use-data-store";
 import { useMapOfflineCache, writeMapCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -112,9 +110,7 @@ function MissionMap() {
     };
   }, []);
 
-  const phases = allPhases();
-  const areas = allAreas();
-  const missionaries = allMissionaries();
+  const { phases, areas, missionaries } = useDataStore();
 
   const filteredAreas = useMemo(
     () => (phaseId === "all" ? areas : areas.filter((a) => a.phaseId === phaseId)),
