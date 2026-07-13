@@ -497,7 +497,9 @@ function MissionMap() {
                   focusId={focusId}
                   onReady={handleMarkersReady}
                   onStart={handleMarkersStart}
+                  navigate={navigate}
                 />
+
               </MapContainer>
               {!markersReady ? (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-[400] flex items-center justify-center bg-background/70 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm">
