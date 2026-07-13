@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useSearch, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapIcon, List, ExternalLink, Locate, Search, Download } from "lucide-react";
+import { MapIcon, List, ExternalLink, Locate, Search, Download, Share2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   getArea,
@@ -199,6 +199,22 @@ function MissionMap() {
     setQuery(m.fullName);
     setOpen(false);
     setActiveIdx(-1);
+  }
+
+  async function copyDeepLink(id: string, name?: string) {
+    try {
+      const params = new URLSearchParams();
+      params.set("focus", id);
+      if (phaseId !== "all") params.set("phase", phaseId);
+      if (areaId !== "all") params.set("area", areaId);
+      if (filters.regionId !== ALL) params.set("region", filters.regionId);
+      if (filters.provinceId !== ALL) params.set("province", filters.provinceId);
+      const url = `${window.location.origin}/map?${params.toString()}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(name ? `Link to ${name} copied` : "Map link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
   }
 
   function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -524,25 +540,41 @@ function MissionMap() {
                 const area = getArea(m.areaId);
                 return (
                   <li key={m.id} className="p-3">
-                    <button
-                      type="button"
-                      onClick={() => setFocusId(m.id)}
-                      className="group flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <MiniAvatar name={m.fullName} src={m.photo} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{m.fullName}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {m.church}
-                        </div>
-                        {area ? (
-                          <div className="truncate text-[11px] text-muted-foreground">
-                            {area.name}
+                    <div className="group flex w-full items-center gap-2 rounded-lg p-1 hover:bg-accent">
+                      <button
+                        type="button"
+                        onClick={() => setFocusId(m.id)}
+                        className="flex flex-1 min-w-0 items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+                      >
+                        <MiniAvatar name={m.fullName} src={m.photo} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{m.fullName}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {m.church}
                           </div>
-                        ) : null}
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </button>
+                          {area ? (
+                            <div className="truncate text-[11px] text-muted-foreground">
+                              {area.name}
+                            </div>
+                          ) : null}
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyDeepLink(m.id, m.fullName);
+                        }}
+                        aria-label={`Copy shareable map link to ${m.fullName}`}
+                        title="Copy shareable link"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </li>
                 );
               })}
@@ -738,7 +770,7 @@ function ClusteredInner({
     } else {
       marker.openPopup();
     }
-  }, [focusId, map]);
+  }, [focusId, map, pinned]);
 
   return null;
 }
