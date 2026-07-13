@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
+import { useHashScroll } from "@/hooks/use-hash-scroll";
 import { useLowData } from "@/hooks/use-low-data";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +115,7 @@ function Directory() {
       return true;
     });
   }, [q, phaseId, areaId, regionId, provinceId, regionName, provinceName, missionaries, areaById]);
+  useHashScroll(filtered.length);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

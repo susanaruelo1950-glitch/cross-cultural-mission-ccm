@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
 import { getMissionary } from "@/lib/mission-data";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useHashScroll } from "@/hooks/use-hash-scroll";
 
 export const Route = createFileRoute("/phases")({
   head: () => ({
@@ -28,6 +29,7 @@ function PhasesPage() {
   const { phases, areas, missionaries } = useDataStore();
   const areasByPhase = (id: string) => areas.filter((a) => a.phaseId === id);
   const missionariesByArea = (id: string) => missionaries.filter((m) => m.areaId === id);
+  useHashScroll(phases.length);
   return (
     <div className="space-y-6">
       <header>

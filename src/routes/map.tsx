@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapIcon, List, ExternalLink, Locate, Search } from "lucide-react";
 import {
@@ -60,6 +60,7 @@ function initials(name: string) {
 function MissionMap() {
   const search = useSearch({ from: "/map" });
   const navigate = useNavigate({ from: "/map" });
+  const routeHash = useLocation({ select: (l) => l.hash });
   const { filters, setFilters } = useSharedFilters();
 
   const [Leaflet, setLeaflet] = useState<null | typeof import("react-leaflet")>(null);
@@ -156,7 +157,13 @@ function MissionMap() {
   const searchSuggestions = useMemo(() => (q ? visiblePinned.slice(0, 8) : []), [visiblePinned, q]);
 
   // Keep the URL in sync so the current view is a shareable deep link.
+  // Skip the first run so we don't clobber the incoming hash (e.g. #mission-map).
+  const didSyncOnce = useRef(false);
   useEffect(() => {
+    if (!didSyncOnce.current) {
+      didSyncOnce.current = true;
+      return;
+    }
     navigate({
       search: {
         focus: focusId ?? undefined,
@@ -165,9 +172,10 @@ function MissionMap() {
         region: filters.regionId !== ALL ? filters.regionId : undefined,
         province: filters.provinceId !== ALL ? filters.provinceId : undefined,
       },
+      hash: routeHash || undefined,
       replace: true,
     });
-  }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, navigate]);
+  }, [focusId, phaseId, areaId, filters.regionId, filters.provinceId, routeHash, navigate]);
 
   function pickSuggestion(m: Missionary) {
     setFocusId(m.id);

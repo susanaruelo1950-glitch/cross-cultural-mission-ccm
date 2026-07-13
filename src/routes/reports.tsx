@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { getMissionary, reports } from "@/lib/mission-data";
+import { useHashScroll } from "@/hooks/use-hash-scroll";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -30,6 +31,7 @@ function initials(name: string) {
 
 function ReportsPage() {
   const sorted = [...reports].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  useHashScroll(sorted.length);
   return (
     <div className="space-y-6">
       <header>
