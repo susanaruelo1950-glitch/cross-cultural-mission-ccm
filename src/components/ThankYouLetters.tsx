@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { LETTER_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { bulkFileDate } from "@/lib/parse-filename-date";
 import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
 
 
@@ -49,7 +50,8 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
         .from("thank_you_letters")
         .select("*")
         .eq("missionary_id", missionaryId)
-        .order("letter_date", { ascending: false });
+        .order("letter_date", { ascending: false })
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -587,10 +589,12 @@ function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
           });
           if (upErr) throw upErr;
           const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200);
+          const letter_date = bulkFileDate(f);
           const { error: dbErr } = await supabase.from("thank_you_letters").insert({
             missionary_id: missionaryId,
             title: title || "Thank you letter",
             letter_url: path,
+            letter_date,
           });
           if (dbErr) throw dbErr;
           successes++;

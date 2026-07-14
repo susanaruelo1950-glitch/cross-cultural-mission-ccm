@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { bulkFileDate } from "@/lib/parse-filename-date";
 
 interface Props {
   missionaryId: string;
@@ -34,7 +35,7 @@ interface Update {
 }
 
 const BUCKET = "ministry-updates";
-const MAX_MB = 5;
+const MAX_MB = 15;
 
 export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   const { canEdit, isAdmin } = useAuth();
@@ -47,7 +48,8 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
         .from("ministry_updates")
         .select("*")
         .eq("missionary_id", missionaryId)
-        .order("report_date", { ascending: false });
+        .order("report_date", { ascending: false })
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -384,10 +386,12 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
           });
           if (upErr) throw upErr;
           const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
+          const report_date = bulkFileDate(f);
           const { error: dbErr } = await supabase.from("ministry_updates").insert({
             missionary_id: missionaryId,
             title,
             image_url: path,
+            report_date,
           });
           if (dbErr) throw dbErr;
           successes++;
