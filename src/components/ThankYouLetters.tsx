@@ -588,10 +588,12 @@ function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
           });
           if (upErr) throw upErr;
           const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200);
+          const letter_date = bulkFileDate(f);
           const { error: dbErr } = await supabase.from("thank_you_letters").insert({
             missionary_id: missionaryId,
             title: title || "Thank you letter",
             letter_url: path,
+            letter_date,
           });
           if (dbErr) throw dbErr;
           successes++;
