@@ -30,6 +30,8 @@ const TABLE_TO_KEYS: Record<string, string[][]> = {
   regions: [["dir", "regions"]],
   provinces: [["dir", "provinces"]],
   missionary_area_map: [["dir", "areas"], ["dir", "missionaries"]],
+  documents: [["documents"]],
+  activity_log: [["activity_log"]],
   // missionary_extras is handled by useMissionaryRealtime (merges into seed data)
 };
 
