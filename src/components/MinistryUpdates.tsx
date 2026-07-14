@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { bulkFileDate } from "@/lib/parse-filename-date";
 
 interface Props {
   missionaryId: string;
