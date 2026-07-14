@@ -385,10 +385,12 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
           });
           if (upErr) throw upErr;
           const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
+          const report_date = bulkFileDate(f);
           const { error: dbErr } = await supabase.from("ministry_updates").insert({
             missionary_id: missionaryId,
             title,
             image_url: path,
+            report_date,
           });
           if (dbErr) throw dbErr;
           successes++;
