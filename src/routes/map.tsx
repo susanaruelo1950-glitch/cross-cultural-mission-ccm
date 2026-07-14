@@ -189,11 +189,11 @@ function MissionMap() {
     () =>
       missionaries
         .map((m) => {
-          const gps = m.gps ?? getArea(m.areaId)?.gps;
+          const gps = m.gps ?? areaById.get(m.areaId)?.gps ?? getArea(m.areaId)?.gps;
           return gps ? ({ ...m, gps } as MapPin) : null;
         })
         .filter((m): m is MapPin => !!m),
-    [missionaries],
+    [missionaries, areaById],
   );
   const cache = useMapOfflineCache(allPinsLive);
   const allPins = cache.pins;
