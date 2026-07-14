@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
 import { LETTER_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
+import { bulkFileDate } from "@/lib/parse-filename-date";
 import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
 
 
