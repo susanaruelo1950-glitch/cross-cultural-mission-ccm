@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSharedFilters, ALL } from "@/hooks/use-shared-filters";
 import { useDataStore } from "@/hooks/use-data-store";
+import { useDirectory } from "@/hooks/use-directory";
 import { useMapOfflineCache, writeMapCache, type MapPin } from "@/hooks/use-map-offline-cache";
 import { toast } from "sonner";
 import { z } from "zod";
