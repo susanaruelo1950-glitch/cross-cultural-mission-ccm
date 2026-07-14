@@ -157,7 +157,22 @@ function MissionMap() {
     };
   }, []);
 
-  const { phases, areas, missionaries } = useDataStore();
+  const store = useDataStore();
+  const dir = useDirectory();
+  // Merge local/seed phases+areas with the DB-backed directory so every
+  // admin-added phase or area is visible to all viewers on the map (not
+  // just the admin who created it in their own browser).
+  const phases = useMemo(() => {
+    const m = new Map(store.phases.map((p) => [p.id, p]));
+    for (const p of dir.phases) m.set(p.id, p);
+    return Array.from(m.values());
+  }, [store.phases, dir.phases]);
+  const areas = useMemo(() => {
+    const m = new Map(store.areas.map((a) => [a.id, a]));
+    for (const a of dir.areas) m.set(a.id, a);
+    return Array.from(m.values());
+  }, [store.areas, dir.areas]);
+  const missionaries = store.missionaries;
 
   const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
 
