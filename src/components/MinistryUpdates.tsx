@@ -48,7 +48,8 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
         .from("ministry_updates")
         .select("*")
         .eq("missionary_id", missionaryId)
-        .order("report_date", { ascending: false });
+        .order("report_date", { ascending: false })
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
