@@ -164,31 +164,27 @@ function Dashboard() {
       <section
         aria-label="Scripture and mission purpose"
         aria-live="polite"
-        className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10"
+        className="relative overflow-hidden rounded-2xl gradient-mission p-5 text-white shadow-lift sm:rounded-3xl sm:p-8 lg:p-10"
       >
-        <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-center">
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-center lg:gap-8">
           {/* Left: Scripture */}
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture &amp; Mission Purpose
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur sm:px-3 sm:text-xs sm:tracking-widest">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture &amp; Purpose
             </div>
             <div className={`transition-opacity duration-500 ${fading ? "opacity-0" : "opacity-100"}`}>
-              <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
+              <blockquote className="mt-3 font-display text-[1.6rem] font-semibold italic leading-[1.15] tracking-tight sm:mt-4 sm:text-4xl">
                 &ldquo;{CURRENT_VERSE.text}&rdquo;
               </blockquote>
-              <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
+              <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 sm:mt-3 sm:text-sm sm:tracking-widest">
                 — {CURRENT_VERSE.ref}
               </div>
             </div>
-            <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
+            <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-white/85 sm:mt-4 sm:text-base">
               Every people group. Every area. Every prayer — for the glory of Christ.
             </p>
           </div>
 
-          {/* Right: Partners panel — live from DB, admin-manageable.
-              Responsive grid keeps consistent sizing across breakpoints.
-              A subtle auto-rotating "spotlight" halo drifts through each
-              logo without dots or extra buttons. */}
           <PartnersPanel
             activePartnerId={filters.partnerId}
             onToggle={(id) => setFilters({ partnerId: filters.partnerId === id ? ALL : id })}
