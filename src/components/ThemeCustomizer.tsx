@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Palette, RotateCcw, Check, AlertTriangle, Wand2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Palette, RotateCcw, Check, AlertTriangle, Wand2, Cloud, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import {
   PALETTE_PRESETS,
   FONT_PRESETS,
@@ -30,6 +31,13 @@ import {
   type CustomPalette,
   type FontPreset,
 } from "@/lib/theme-presets";
+
+type RemoteThemePrefs = {
+  palette?: string | null;
+  font?: string | null;
+  custom?: CustomPalette | null;
+};
+
 
 const DEFAULT_CUSTOM: CustomPalette = {
   primary: "#4a5d4e",
