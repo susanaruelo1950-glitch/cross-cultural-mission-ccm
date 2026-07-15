@@ -65,8 +65,8 @@ function ReportsPage() {
     const map = new Map<string, { key: string; label: string; items: LiveUpdate[] }>();
     for (const u of list) {
       const dateSrc = u.report_date ?? u.created_at;
-      const key = monthKey(dateSrc) ?? "unknown";
-      const label = key === "unknown" ? "Undated" : monthLabel(key);
+      const key = monthKey(dateSrc);
+      const label = key === "0000-00" ? "Undated" : monthLabel(key);
       if (!map.has(key)) map.set(key, { key, label, items: [] });
       map.get(key)!.items.push(u);
     }
