@@ -27,15 +27,16 @@ import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { PARTNER_OPTIONS, partnerIdFor } from "@/lib/partners";
 import cbcpLogo from "@/assets/cbcp-logo.png.asset.json";
 import igslLogo from "@/assets/igsl-logo.png.asset.json";
 import fclLogo from "@/assets/fcl-logo.png.asset.json";
 
 const PARTNERS = [
-  { name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
-  { name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
-  { name: "Foundations for Christian Leadership", short: "FCL", url: fclLogo.url },
+  { id: "cbcp", name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
+  { id: "igsl", name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
+  { id: "fcl", name: "Foundations for Christian Leadership", short: "FCL", url: fclLogo.url },
 ];
 
 const SOCIAL_IMAGE =
@@ -89,7 +90,7 @@ function Dashboard() {
   const phases = dir.phases.length ? dir.phases : seedPhasesData;
   const areas = dir.areas.length ? dir.areas : seedAreasData;
   const { regions, provinces } = dir;
-  const { filters } = useSharedFilters();
+  const { filters, setFilters } = useSharedFilters();
   const regionName = regions.find((r) => r.id === filters.regionId)?.name;
   const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
 
@@ -113,8 +114,13 @@ function Dashboard() {
   const areaIdSet = useMemo(() => new Set(filteredAreas.map((a) => a.id)), [filteredAreas]);
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
   const filteredMissionaries = useMemo(
-    () => missionaries.filter((m) => areaIdSet.has(m.areaId)),
-    [missionaries, areaIdSet],
+    () =>
+      missionaries.filter((m) => {
+        if (!areaIdSet.has(m.areaId)) return false;
+        if (filters.partnerId !== ALL && partnerIdFor(m) !== filters.partnerId) return false;
+        return true;
+      }),
+    [missionaries, areaIdSet, filters.partnerId],
   );
 
   const areasByPhase = (id: string) => filteredAreas.filter((a) => a.phaseId === id);
@@ -125,12 +131,34 @@ function Dashboard() {
   }));
   const maxPhase = Math.max(1, ...byPhase.map((b) => b.value));
 
-  const filterActive = filters.regionId !== ALL || filters.provinceId !== ALL || filters.phaseId !== ALL;
+  const filterActive =
+    filters.regionId !== ALL ||
+    filters.provinceId !== ALL ||
+    filters.phaseId !== ALL ||
+    filters.partnerId !== ALL;
   const urgentPrayer = prayerRequests.filter((p) => p.urgent && !p.answered);
   const recentReports = [...reports]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 4);
-  const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
+
+  // Rotating Scripture — cycles every 8s with a soft fade. Seeds from the day
+  // so first paint feels intentional. Pauses on reduced-motion preference.
+  const [verseIdx, setVerseIdx] = useState(() => new Date().getUTCDate() % DASHBOARD_VERSES.length);
+  const [fading, setFading] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const id = window.setInterval(() => {
+      setFading(true);
+      window.setTimeout(() => {
+        setVerseIdx((i) => (i + 1) % DASHBOARD_VERSES.length);
+        setFading(false);
+      }, 400);
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, []);
+  const CURRENT_VERSE = DASHBOARD_VERSES[verseIdx];
 
   return (
     <div className="space-y-8">
@@ -139,30 +167,48 @@ function Dashboard() {
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />
 
-      {/* Scripture of the Day — a warm, commanding mission call. */}
+      {/* Rotating Scripture & Mission Purpose — cycles through the verses that
+          shape our sending. Fades gently every 8s; respects reduced motion. */}
       <section
-        aria-label="Scripture of the day"
+        aria-label="Scripture and mission purpose"
+        aria-live="polite"
         className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10"
       >
         <div className="relative z-10 grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture of the Day
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture &amp; Mission Purpose
             </div>
-            <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
-              "{TODAYS_VERSE.text}"
-            </blockquote>
-            <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
-              — {TODAYS_VERSE.ref}
+            <div
+              className={`transition-opacity duration-500 ${fading ? "opacity-0" : "opacity-100"}`}
+            >
+              <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
+                &ldquo;{CURRENT_VERSE.text}&rdquo;
+              </blockquote>
+              <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
+                — {CURRENT_VERSE.ref}
+              </div>
             </div>
             <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
               Every people group. Every area. Every prayer — for the glory of Christ.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Verse rotation">
+              {DASHBOARD_VERSES.slice(0, 6).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Show verse ${i + 1}`}
+                  aria-current={i === verseIdx % 6 ? "true" : undefined}
+                  onClick={() => { setFading(true); window.setTimeout(() => { setVerseIdx(i); setFading(false); }, 200); }}
+                  className={`h-2.5 w-2.5 rounded-full border border-white/40 transition ${i === verseIdx % 6 ? "bg-white" : "bg-white/20 hover:bg-white/40"}`}
+                />
+              ))}
+            </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="secondary" className="rounded-full">
-                <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" /></Link>
+              <Button asChild size="sm" variant="secondary" className="min-h-11 rounded-full">
+                <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" aria-hidden /></Link>
               </Button>
-              <Button asChild size="sm" variant="ghost" className="rounded-full bg-white/10 text-white hover:bg-white/20">
+              <Button asChild size="sm" variant="ghost" className="min-h-11 rounded-full bg-white/10 text-white hover:bg-white/20">
                 <Link to="/prayer">Open Prayer Center</Link>
               </Button>
             </div>
@@ -174,7 +220,7 @@ function Dashboard() {
       {/* Mission control — filter the entire dashboard by region, province, phase. */}
       <SharedFilterBar
         label="Mission focus"
-        hint="Region · Province · Phase — these filters follow you to the Missionary Directory and AI Assistant."
+        hint="Region · Province · Phase · Sending Partner — these filters follow you to the Missionary Directory and AI Assistant."
       />
 
       {/* Stat scoreboard — the current state of the harvest. */}
@@ -187,32 +233,47 @@ function Dashboard() {
         <StatCard label="Updates" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
       </section>
 
-      {/* Partners — CCM ministry partners (horizontal scroller, monochrome logos) */}
+      {/* Partners — CCM ministry partners. Touch-friendly grid on mobile,
+          3-across on tablets and up. Tap a card to filter the dashboard by
+          that sending partner. */}
       <section aria-label="Our partners" className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Our Partners</h2>
-          <span className="text-xs font-medium text-secondary">In partnership</span>
+          <span className="text-xs font-medium text-secondary">Tap to filter</span>
         </div>
 
-        <div className="scrollbar-hide -mx-2 flex gap-3 overflow-x-auto px-2 pb-4 pt-1">
-          {PARTNERS.map((p) => (
-            <div
-              key={p.short}
-              className="group flex w-36 flex-none flex-col items-center rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lift"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted p-2 transition-colors group-hover:bg-primary/10">
-                <img
-                  src={p.url}
-                  alt={`${p.name} logo`}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-contain grayscale transition-all duration-300 group-hover:grayscale-0"
-                />
-              </div>
-              <div className="mt-2 font-display text-xs font-semibold leading-tight text-foreground">{p.short}</div>
-              <div className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{p.name}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {PARTNERS.map((p) => {
+            const active = filters.partnerId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setFilters({ partnerId: active ? ALL : p.id })}
+                aria-pressed={active}
+                aria-label={`Filter dashboard by ${p.name}`}
+                className={`group flex min-h-[88px] w-full items-center gap-3 rounded-2xl border p-3 text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:flex-col sm:items-center sm:justify-center sm:p-4 sm:text-center ${
+                  active
+                    ? "border-primary bg-primary/5 shadow-lift"
+                    : "border-border/60 bg-card hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lift"
+                }`}
+              >
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full p-2 transition-colors ${active ? "bg-primary/10" : "bg-muted group-hover:bg-primary/10"}`}>
+                  <img
+                    src={p.url}
+                    alt={`${p.name} logo`}
+                    loading="lazy"
+                    decoding="async"
+                    className={`h-full w-full object-contain transition-all duration-300 ${active ? "" : "grayscale group-hover:grayscale-0"}`}
+                  />
+                </div>
+                <div className="min-w-0 sm:mt-2">
+                  <div className="font-display text-sm font-semibold leading-tight text-foreground">{p.short}</div>
+                  <div className="line-clamp-2 text-[11px] text-muted-foreground">{p.name}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
