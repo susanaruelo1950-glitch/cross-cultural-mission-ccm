@@ -28,16 +28,8 @@ import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
 import { useEffect, useMemo, useState } from "react";
-import { PARTNER_OPTIONS, partnerIdFor } from "@/lib/partners";
-import cbcpLogo from "@/assets/cbcp-logo.png.asset.json";
-import igslLogo from "@/assets/igsl-logo.png.asset.json";
-import fclLogo from "@/assets/fcl-logo.png.asset.json";
-
-const PARTNERS = [
-  { id: "cbcp", name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
-  { id: "igsl", name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
-  { id: "fcl", name: "Foundations for Christian Leadership", short: "FCL", url: fclLogo.url },
-];
+import { partnerIdFor } from "@/lib/partners";
+import { usePartners, type Partner } from "@/hooks/use-partners";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
