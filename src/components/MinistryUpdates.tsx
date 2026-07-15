@@ -89,6 +89,38 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
     [updates],
   );
 
+  // Group consecutive photo-only updates that share the same (title, report_date)
+  // — these come from a bulk upload and should render as one collage tile.
+  type Group =
+    | { kind: "single"; update: Update }
+    | { kind: "collage"; title: string; report_date: string; items: Update[] };
+  const groups = useMemo<Group[]>(() => {
+    const out: Group[] = [];
+    for (const u of updates ?? []) {
+      const isPhotoOnly = !!u.image_url && !u.summary && !u.body;
+      const prev = out[out.length - 1];
+      if (
+        isPhotoOnly &&
+        prev &&
+        prev.kind === "collage" &&
+        prev.title === u.title &&
+        prev.report_date === u.report_date
+      ) {
+        prev.items.push(u);
+      } else if (isPhotoOnly) {
+        out.push({ kind: "collage", title: u.title, report_date: u.report_date, items: [u] });
+      } else {
+        out.push({ kind: "single", update: u });
+      }
+    }
+    // Collapse single-item collages back into a single card for a cleaner layout.
+    return out.map((g) =>
+      g.kind === "collage" && g.items.length === 1
+        ? ({ kind: "single", update: g.items[0] } as Group)
+        : g,
+    );
+  }, [updates]);
+
   return (
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
