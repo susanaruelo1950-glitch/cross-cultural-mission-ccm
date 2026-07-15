@@ -49,7 +49,7 @@ export const Route = createFileRoute("/missionaries/")({
 const PAGE_SIZE = 12;
 
 function Directory() {
-  const { q: qFromUrl } = Route.useSearch();
+  const { q: qFromUrl, area: areaFromUrl } = Route.useSearch();
   const [q, setQ] = useState(qFromUrl ?? "");
   const { missionaries } = useDataStore();
   // Filters come from the database (regions/provinces/phases/areas seeded there);
@@ -59,7 +59,15 @@ function Directory() {
   const regionId = filters.regionId;
   const provinceId = filters.provinceId;
   const phaseId = filters.phaseId;
-  const [areaId, setAreaId] = useState<string>(ALL);
+  const [areaId, setAreaId] = useState<string>(areaFromUrl ?? ALL);
+  // Sync when the URL `?area=` changes (e.g. click from dashboard).
+  useEffect(() => {
+    if (areaFromUrl && areaFromUrl !== areaId) {
+      setAreaId(areaFromUrl);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaFromUrl]);
   const [page, setPage] = useState(1);
   const { lowData, setLowData } = useLowData();
   const qc = useQueryClient();
