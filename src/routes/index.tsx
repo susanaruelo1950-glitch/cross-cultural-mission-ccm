@@ -167,30 +167,48 @@ function Dashboard() {
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />
 
-      {/* Scripture of the Day — a warm, commanding mission call. */}
+      {/* Rotating Scripture & Mission Purpose — cycles through the verses that
+          shape our sending. Fades gently every 8s; respects reduced motion. */}
       <section
-        aria-label="Scripture of the day"
+        aria-label="Scripture and mission purpose"
+        aria-live="polite"
         className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10"
       >
         <div className="relative z-10 grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture of the Day
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture &amp; Mission Purpose
             </div>
-            <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
-              "{TODAYS_VERSE.text}"
-            </blockquote>
-            <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
-              — {TODAYS_VERSE.ref}
+            <div
+              className={`transition-opacity duration-500 ${fading ? "opacity-0" : "opacity-100"}`}
+            >
+              <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
+                &ldquo;{CURRENT_VERSE.text}&rdquo;
+              </blockquote>
+              <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
+                — {CURRENT_VERSE.ref}
+              </div>
             </div>
             <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
               Every people group. Every area. Every prayer — for the glory of Christ.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Verse rotation">
+              {DASHBOARD_VERSES.slice(0, 6).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Show verse ${i + 1}`}
+                  aria-current={i === verseIdx % 6 ? "true" : undefined}
+                  onClick={() => { setFading(true); window.setTimeout(() => { setVerseIdx(i); setFading(false); }, 200); }}
+                  className={`h-2.5 w-2.5 rounded-full border border-white/40 transition ${i === verseIdx % 6 ? "bg-white" : "bg-white/20 hover:bg-white/40"}`}
+                />
+              ))}
+            </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="secondary" className="rounded-full">
-                <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" /></Link>
+              <Button asChild size="sm" variant="secondary" className="min-h-11 rounded-full">
+                <Link to="/missionaries">Browse missionaries <ArrowRight className="h-4 w-4" aria-hidden /></Link>
               </Button>
-              <Button asChild size="sm" variant="ghost" className="rounded-full bg-white/10 text-white hover:bg-white/20">
+              <Button asChild size="sm" variant="ghost" className="min-h-11 rounded-full bg-white/10 text-white hover:bg-white/20">
                 <Link to="/prayer">Open Prayer Center</Link>
               </Button>
             </div>
