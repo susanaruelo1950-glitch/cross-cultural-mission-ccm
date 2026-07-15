@@ -391,6 +391,62 @@ function UpdateImageThumb({
 }
 
 /**
+ * Square collage tile — clickable thumbnail with an optional admin delete button
+ * that shows on hover / focus. Used to render bulk-uploaded photo batches.
+ */
+function CollageThumb({
+  path,
+  title,
+  canDelete,
+  onOpen,
+  onDelete,
+}: {
+  path: string;
+  title: string;
+  canDelete: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  return (
+    <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
+      {isLoading || !url ? (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label={`View full photo: ${title}`}
+        >
+          <img
+            src={url}
+            alt={title}
+            className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        </button>
+      )}
+      {canDelete ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute right-1 top-1 rounded-full bg-background/80 p-1 text-destructive opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          aria-label="Delete photo"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Signs every ministry-update image in parallel and shows them in a gallery
  * lightbox with prev/next navigation.
  */
