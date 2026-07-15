@@ -619,3 +619,38 @@ function FontPicker({
     </div>
   );
 }
+
+function SyncPill({
+  userId,
+  status,
+}: {
+  userId: string | null;
+  status: "idle" | "saving" | "saved" | "error";
+}) {
+  if (!userId) {
+    return (
+      <span
+        title="Signed out — using this device only"
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground"
+      >
+        <CloudOff className="h-3 w-3" aria-hidden />
+        Local
+      </span>
+    );
+  }
+  const label =
+    status === "saving" ? "Saving…" : status === "error" ? "Retry" : status === "saved" ? "Synced" : "Synced";
+  const tone =
+    status === "error"
+      ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+      : "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
+  return (
+    <span
+      title={status === "error" ? "Sync failed — will retry on next change" : "Saved to your profile"}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${tone}`}
+    >
+      <Cloud className="h-3 w-3" aria-hidden />
+      {label}
+    </span>
+  );
+}
