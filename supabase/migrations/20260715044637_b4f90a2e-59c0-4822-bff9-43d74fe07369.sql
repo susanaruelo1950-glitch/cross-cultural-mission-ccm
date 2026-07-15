@@ -1,0 +1,3 @@
+update public.partners set logo_url = '/__l5e/assets-v1/7a5e3d4e-8337-4d06-a0bd-3512132c6546/cbcp-logo.png' where slug='cbcp' and (logo_url is null or logo_url='');
+update public.partners set logo_url = '/__l5e/assets-v1/067ff708-5ce6-4832-89c5-eeadadbe013c/igsl-logo.png' where slug='igsl' and (logo_url is null or logo_url='');
+update public.partners set logo_url = '/__l5e/assets-v1/2a8104af-5f04-4728-86eb-cdba5b3db2cf/fcl-logo.png' where slug='fcl' and (logo_url is null or logo_url='');
