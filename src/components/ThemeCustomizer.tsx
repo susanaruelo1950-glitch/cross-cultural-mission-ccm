@@ -109,6 +109,125 @@ export function ThemeCustomizer() {
     };
   }, []);
 
+  // ------------------------------------------------------------------
+  // Profile sync: for signed-in users, mirror choices to profiles.theme_prefs
+  // and hydrate from the profile so the same theme follows them across
+  // devices and tabs. Falls back to localStorage when signed out.
+  // ------------------------------------------------------------------
+  const applyRemote = useCallback((prefs: RemoteThemePrefs | null | undefined) => {
+    if (!prefs) return;
+    skipNextRemoteSaveRef.current = true; // prevent echo-save
+    if (prefs.custom && prefs.custom.primary && prefs.custom.secondary && prefs.custom.accent) {
+      setCustom(prefs.custom);
+      applyCustomPalette(prefs.custom);
+      writeCustomPalette(prefs.custom);
+      setPaletteId(prefs.palette ?? null);
+      try {
+        if (prefs.palette) window.localStorage.setItem(PALETTE_STORAGE_KEY, prefs.palette);
+      } catch { /* ignore */ }
+    } else {
+      setCustom(null);
+      writeCustomPalette(null);
+      setPaletteId(prefs.palette ?? null);
+      applyPalette(findPalette(prefs.palette ?? null));
+      try {
+        if (prefs.palette) window.localStorage.setItem(PALETTE_STORAGE_KEY, prefs.palette);
+        else window.localStorage.removeItem(PALETTE_STORAGE_KEY);
+      } catch { /* ignore */ }
+    }
+    setFontId(prefs.font ?? null);
+    applyFont(findFont(prefs.font ?? null));
+    try {
+      if (prefs.font) window.localStorage.setItem(FONT_STORAGE_KEY, prefs.font);
+      else window.localStorage.removeItem(FONT_STORAGE_KEY);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function hydrate(uid: string) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("theme_prefs")
+        .eq("id", uid)
+        .maybeSingle();
+      if (!active) return;
+      if (error) {
+        // profile row may not exist yet; leave localStorage in effect.
+        return;
+      }
+      const prefs = (data?.theme_prefs ?? null) as RemoteThemePrefs | null;
+      if (prefs) applyRemote(prefs);
+      else skipNextRemoteSaveRef.current = true;
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active) return;
+      const uid = session?.user?.id ?? null;
+      setUserId(uid);
+      if (uid) void hydrate(uid);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const uid = session?.user?.id ?? null;
+      setUserId((prev) => (prev === uid ? prev : uid));
+      if (event === "SIGNED_IN" && uid) void hydrate(uid);
+      if (event === "SIGNED_OUT") skipNextRemoteSaveRef.current = true;
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [applyRemote]);
+
+  // Realtime — a profile update on another device flows in here.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`theme-prefs:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          const next = (payload.new as { theme_prefs?: RemoteThemePrefs })?.theme_prefs ?? null;
+          if (next) applyRemote(next);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, applyRemote]);
+
+  // Debounced save whenever local selection changes and a user is signed in.
+  useEffect(() => {
+    if (!mounted || !userId) return;
+    if (skipNextRemoteSaveRef.current) {
+      skipNextRemoteSaveRef.current = false;
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSyncStatus("saving");
+    saveTimerRef.current = setTimeout(async () => {
+      const payload: RemoteThemePrefs = {
+        palette: paletteId,
+        font: fontId,
+        custom: custom ?? null,
+      };
+      const { error } = await supabase
+        .from("profiles")
+        .update({ theme_prefs: payload })
+        .eq("id", userId);
+      setSyncStatus(error ? "error" : "saved");
+      if (!error) setTimeout(() => setSyncStatus("idle"), 1500);
+    }, 400);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [paletteId, fontId, custom, userId, mounted]);
+
+
   const choosePalette = (id: string) => {
     setPaletteId(id);
     // Selecting a preset clears any custom override so preset takes effect.
