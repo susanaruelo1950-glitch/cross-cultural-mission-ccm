@@ -189,7 +189,15 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                         </span>
                       </h4>
                     </div>
+                    {isAdmin ? (
+                      <CollageDateEditor
+                        missionaryId={missionaryId}
+                        ids={g.items.map((i) => i.id)}
+                        currentDate={g.report_date}
+                      />
+                    ) : null}
                   </div>
+
                   <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
                     {g.items.map((u) => (
                       <CollageThumb
