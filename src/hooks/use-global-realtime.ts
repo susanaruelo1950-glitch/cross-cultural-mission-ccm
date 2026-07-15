@@ -32,7 +32,11 @@ const TABLE_TO_KEYS: Record<string, string[][]> = {
   missionary_area_map: [["dir", "areas"], ["dir", "missionaries"]],
   documents: [["documents"]],
   activity_log: [["activity_log"]],
+  prayer_events: [["prayer_events"], ["prayer_requests_db"]],
+  profiles: [["profiles"]],
+  user_roles: [["user_roles"], ["admin_users"]],
   // missionary_extras is handled by useMissionaryRealtime (merges into seed data)
+
 };
 
 export type RealtimeStatus = "connecting" | "live" | "offline";
