@@ -28,6 +28,15 @@ import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
 import { useMemo } from "react";
+import cbcpLogo from "@/assets/cbcp-logo.png.asset.json";
+import igslLogo from "@/assets/igsl-logo.png.asset.json";
+import fclLogo from "@/assets/fcl-logo.png.asset.json";
+
+const PARTNERS = [
+  { name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
+  { name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
+  { name: "Filipino Church Leaders (FCL)", short: "FCL", url: fclLogo.url },
+];
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
@@ -180,6 +189,33 @@ function Dashboard() {
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to church planters list" />
         <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" hash="prayer-list" linkLabel="Jump to prayer requests" />
         <StatCard label="Updates" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
+      </section>
+
+      {/* Partners — CCM ministry partners */}
+      <section aria-label="Our partners" className="rounded-3xl border border-border/60 bg-gradient-to-br from-card to-accent/20 p-6 shadow-soft sm:p-8">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 className="font-display text-xl font-semibold tracking-tight">Our Partners</h2>
+            <p className="text-sm text-muted-foreground">Standing together with us in the Great Commission.</p>
+          </div>
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">In partnership</span>
+        </div>
+        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {PARTNERS.map((p) => (
+            <li
+              key={p.short}
+              className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/60 p-4 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lift"
+            >
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-border/50">
+                <img src={p.url} alt={`${p.name} logo`} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-display text-sm font-semibold leading-tight text-foreground">{p.short}</div>
+                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{p.name}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* Empty state when nothing entered */}
