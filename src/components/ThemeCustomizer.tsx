@@ -55,6 +55,12 @@ export function ThemeCustomizer() {
   const [custom, setCustom] = useState<CustomPalette | null>(null);
   const [mounted, setMounted] = useState(false);
   const [tick, setTick] = useState(0); // re-eval contrast on theme change
+  const [userId, setUserId] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // Refs used by the remote-save effect and realtime handlers.
+  const skipNextRemoteSaveRef = useRef(true);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   useEffect(() => {
     const sp = window.localStorage.getItem(PALETTE_STORAGE_KEY);
