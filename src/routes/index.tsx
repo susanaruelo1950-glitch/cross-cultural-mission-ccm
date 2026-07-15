@@ -26,6 +26,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
+import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
 import { useMemo } from "react";
 
 const SOCIAL_IMAGE =
@@ -85,6 +86,12 @@ function Dashboard() {
 
   const prayerLive = usePrayerCount();
   const updatesLive = useMinistryUpdateCount();
+  const updatesList = useMinistryUpdatesList();
+  // Prefer the list length so the badge and /reports can never diverge —
+  // if the list is empty, the badge shows 0 (not a stale head count).
+  const updatesCount = updatesList.data
+    ? updatesList.data.length
+    : (updatesLive.data ?? missionStats.totalReports);
 
   const areaMatches = (a: { region?: string; province?: string; phaseId: string }) => {
     if (filters.phaseId !== ALL && a.phaseId !== filters.phaseId) return false;
@@ -172,7 +179,7 @@ function Dashboard() {
         <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" hash="mission-map" linkLabel="Jump to mission map" />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to church planters list" />
         <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" hash="prayer-list" linkLabel="Jump to prayer requests" />
-        <StatCard label="Updates" value={updatesLive.data ?? missionStats.totalReports} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
+        <StatCard label="Updates" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
       </section>
 
       {/* Empty state when nothing entered */}
