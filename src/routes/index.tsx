@@ -264,49 +264,9 @@ function Dashboard() {
         <StatCard label="Updates" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
       </section>
 
-      {/* Partners — CCM ministry partners. Touch-friendly grid on mobile,
-          3-across on tablets and up. Tap a card to filter the dashboard by
-          that sending partner. */}
-      <section aria-label="Our partners" className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Our Partners</h2>
-          <span className="text-xs font-medium text-secondary">Tap to filter</span>
-        </div>
+      {/* Partners now live inside the hero (above) to maximise dashboard space. */}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {PARTNERS.map((p) => {
-            const active = filters.partnerId === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setFilters({ partnerId: active ? ALL : p.id })}
-                aria-pressed={active}
-                aria-label={`Filter dashboard by ${p.name}`}
-                className={`group flex min-h-[88px] w-full items-center gap-3 rounded-2xl border p-3 text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:flex-col sm:items-center sm:justify-center sm:p-4 sm:text-center ${
-                  active
-                    ? "border-primary bg-primary/5 shadow-lift"
-                    : "border-border/60 bg-card hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lift"
-                }`}
-              >
-                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full p-2 transition-colors ${active ? "bg-primary/10" : "bg-muted group-hover:bg-primary/10"}`}>
-                  <img
-                    src={p.url}
-                    alt={`${p.name} logo`}
-                    loading="lazy"
-                    decoding="async"
-                    className={`h-full w-full object-contain transition-all duration-300 ${active ? "" : "grayscale group-hover:grayscale-0"}`}
-                  />
-                </div>
-                <div className="min-w-0 sm:mt-2">
-                  <div className="font-display text-sm font-semibold leading-tight text-foreground">{p.short}</div>
-                  <div className="line-clamp-2 text-[11px] text-muted-foreground">{p.name}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+
 
       {/* Empty state when nothing entered */}
       {missionaries.length === 0 ? (
