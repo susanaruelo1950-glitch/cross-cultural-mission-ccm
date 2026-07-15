@@ -159,12 +159,30 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Modern fluid base type: 15px on tiny phones → 16px on tablets+. */
+    font-size: clamp(15px, 0.9rem + 0.25vw, 16.5px);
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Prevent iOS auto-inflating text on rotate — keeps our scale honest. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
     font-optical-sizing: auto;
     letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  p, li { text-wrap: pretty; }
+
+  /* Prevent iOS zoom-on-focus by keeping inputs ≥16px on mobile. */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
   }
 }
 
