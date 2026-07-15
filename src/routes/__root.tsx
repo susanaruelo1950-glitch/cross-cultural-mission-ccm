@@ -134,6 +134,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           url: "https://cross-cultural-mission-ccm.lovable.app",
         }),
       },
+      {
+        children:
+          "(function(){try{var k='ccm-theme';var s=localStorage.getItem(k);var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s==='light'||s==='dark')?s:(m?'dark':'light');var r=document.documentElement;if(t==='dark')r.classList.add('dark');r.style.colorScheme=t;}catch(e){}})();",
+      },
     ],
   }),
   shellComponent: RootShell,
