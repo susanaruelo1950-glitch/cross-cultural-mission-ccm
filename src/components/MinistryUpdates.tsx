@@ -369,66 +369,8 @@ function UpdateEditForm({
     });
   }
 
-
-function CollageDateEditor({
-  missionaryId,
-  ids,
-  currentDate,
-}: {
-  missionaryId: string;
-  ids: string[];
-  currentDate: string;
-}) {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(currentDate?.slice(0, 10) ?? "");
-  const save = useMutation({
-    mutationFn: async (newDate: string) => {
-      const { error } = await supabase
-        .from("ministry_updates")
-        .update({ report_date: newDate })
-        .in("id", ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Date updated for photo batch.");
-      qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
-      qc.invalidateQueries({ queryKey: ["ministry_updates"] });
-      setOpen(false);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  if (!open) {
-    return (
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} aria-label="Edit date">
-        <Calendar className="h-4 w-4" />
-      </Button>
-    );
-  }
   return (
-    <div className="flex items-center gap-1">
-      <Input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        className="h-8 w-[9.5rem]"
-      />
-      <Button
-        size="sm"
-        className="rounded-full"
-        disabled={save.isPending || !date}
-        onClick={() => save.mutate(date)}
-      >
-        {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
 
-  return (
     <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
       <div className="space-y-1">
