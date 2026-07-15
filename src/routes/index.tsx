@@ -185,55 +185,14 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Right: Partners panel — logos live inside the hero to maximise space.
-              Tap a logo to filter the dashboard by that sending partner. */}
-          <aside
-            aria-label="Our partners"
-            className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md sm:p-5"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/80">
-                Our Partners in the Mission
-              </h2>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">Tap to filter</span>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {PARTNERS.map((p) => {
-                const active = filters.partnerId === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setFilters({ partnerId: active ? ALL : p.id })}
-                    aria-pressed={active}
-                    aria-label={`Filter dashboard by ${p.name}`}
-                    title={p.name}
-                    className={`group flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-                      active
-                        ? "border-white/70 bg-white/95 text-foreground shadow-lift"
-                        : "border-white/20 bg-white/5 text-white hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/15"
-                    }`}
-                  >
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-full p-2 transition-colors ${active ? "bg-white" : "bg-white/90"}`}>
-                      <img
-                        src={p.url}
-                        alt={`${p.name} logo`}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                    <div className={`font-display text-xs font-semibold leading-tight ${active ? "text-foreground" : "text-white"}`}>
-                      {p.short}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-[11px] leading-snug text-white/70">
-              Partnering churches and schools sending laborers into the harvest.
-            </p>
-          </aside>
+          {/* Right: Partners panel — live from DB, admin-manageable.
+              Responsive grid keeps consistent sizing across breakpoints.
+              A subtle auto-rotating "spotlight" halo drifts through each
+              logo without dots or extra buttons. */}
+          <PartnersPanel
+            activePartnerId={filters.partnerId}
+            onToggle={(id) => setFilters({ partnerId: filters.partnerId === id ? ALL : id })}
+          />
         </div>
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
