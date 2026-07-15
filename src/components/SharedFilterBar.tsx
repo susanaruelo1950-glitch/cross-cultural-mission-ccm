@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
-import { PARTNER_OPTIONS } from "@/lib/partners";
+
 
 /**
  * Region / Province / Phase / Partner filter bar. State is stored in the
@@ -56,7 +56,7 @@ export function SharedFilterBar({
           </Button>
         ) : null}
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Select value={filters.regionId} onValueChange={(v) => setFilters({ regionId: v })}>
           <SelectTrigger aria-label="Filter by region" className="min-h-11">
             <SelectValue placeholder="All regions" />
@@ -82,17 +82,6 @@ export function SharedFilterBar({
           <SelectContent>
             <SelectItem value={ALL}>All phases</SelectItem>
             {phases.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.partnerId} onValueChange={(v) => setFilters({ partnerId: v })}>
-          <SelectTrigger aria-label="Filter by sending partner" className="min-h-11">
-            <SelectValue placeholder="All partners" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All sending partners</SelectItem>
-            {PARTNER_OPTIONS.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.short} — {p.name}</SelectItem>
-            ))}
           </SelectContent>
         </Select>
       </div>
