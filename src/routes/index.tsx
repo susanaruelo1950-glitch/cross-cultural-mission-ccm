@@ -86,6 +86,12 @@ function Dashboard() {
 
   const prayerLive = usePrayerCount();
   const updatesLive = useMinistryUpdateCount();
+  const updatesList = useMinistryUpdatesList();
+  // Prefer the list length so the badge and /reports can never diverge —
+  // if the list is empty, the badge shows 0 (not a stale head count).
+  const updatesCount = updatesList.data
+    ? updatesList.data.length
+    : (updatesLive.data ?? missionStats.totalReports);
 
   const areaMatches = (a: { region?: string; province?: string; phaseId: string }) => {
     if (filters.phaseId !== ALL && a.phaseId !== filters.phaseId) return false;
