@@ -12,11 +12,12 @@ export interface SharedFilters {
   regionId: string;
   provinceId: string;
   phaseId: string;
+  partnerId: string;
 }
 
-const KEY = "ccm.sharedFilters.v1";
+const KEY = "ccm.sharedFilters.v2";
 const EVENT = "ccm-shared-filters-changed";
-const DEFAULT: SharedFilters = { regionId: ALL, provinceId: ALL, phaseId: ALL };
+const DEFAULT: SharedFilters = { regionId: ALL, provinceId: ALL, phaseId: ALL, partnerId: ALL };
 
 function read(): SharedFilters {
   if (typeof window === "undefined") return DEFAULT;
