@@ -418,7 +418,7 @@ function PartnersPanel({
                 aria-pressed={active}
                 aria-label={`Filter dashboard by ${p.full_name}`}
                 title={p.full_name + (p.link_url ? " — ⌘/Ctrl-click to open site" : "")}
-                className={`group relative flex flex-col items-center gap-2 rounded-xl border p-2.5 text-center transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:p-3 ${
+                className={`group relative flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:p-3 min-h-[92px] ${
                   active
                     ? "border-white/70 bg-white/95 text-foreground shadow-lift"
                     : isSpot
@@ -433,7 +433,7 @@ function PartnersPanel({
                   />
                 ) : null}
                 <div
-                  className={`flex aspect-square w-full max-w-[64px] items-center justify-center rounded-full p-2 transition-colors ${
+                  className={`flex aspect-square w-full max-w-[72px] items-center justify-center rounded-full p-2 transition-colors sm:max-w-[64px] ${
                     active ? "bg-white" : "bg-white/90"
                   }`}
                 >
@@ -443,6 +443,8 @@ function PartnersPanel({
                       alt={`${p.full_name} logo`}
                       loading="lazy"
                       decoding="async"
+                      width={72}
+                      height={72}
                       className="h-full w-full object-contain"
                     />
                   ) : (
