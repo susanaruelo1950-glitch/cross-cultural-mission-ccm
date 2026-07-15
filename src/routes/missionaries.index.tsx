@@ -40,6 +40,7 @@ export const Route = createFileRoute("/missionaries/")({
   }),
   validateSearch: (s: Record<string, unknown>) => ({
     q: typeof s.q === "string" ? s.q : undefined,
+    area: typeof s.area === "string" ? s.area : undefined,
   }),
   component: Directory,
 });
