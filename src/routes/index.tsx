@@ -114,8 +114,13 @@ function Dashboard() {
   const areaIdSet = useMemo(() => new Set(filteredAreas.map((a) => a.id)), [filteredAreas]);
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
   const filteredMissionaries = useMemo(
-    () => missionaries.filter((m) => areaIdSet.has(m.areaId)),
-    [missionaries, areaIdSet],
+    () =>
+      missionaries.filter((m) => {
+        if (!areaIdSet.has(m.areaId)) return false;
+        if (filters.partnerId !== ALL && partnerIdFor(m) !== filters.partnerId) return false;
+        return true;
+      }),
+    [missionaries, areaIdSet, filters.partnerId],
   );
 
   const areasByPhase = (id: string) => filteredAreas.filter((a) => a.phaseId === id);
@@ -126,12 +131,34 @@ function Dashboard() {
   }));
   const maxPhase = Math.max(1, ...byPhase.map((b) => b.value));
 
-  const filterActive = filters.regionId !== ALL || filters.provinceId !== ALL || filters.phaseId !== ALL;
+  const filterActive =
+    filters.regionId !== ALL ||
+    filters.provinceId !== ALL ||
+    filters.phaseId !== ALL ||
+    filters.partnerId !== ALL;
   const urgentPrayer = prayerRequests.filter((p) => p.urgent && !p.answered);
   const recentReports = [...reports]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 4);
-  const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
+
+  // Rotating Scripture — cycles every 8s with a soft fade. Seeds from the day
+  // so first paint feels intentional. Pauses on reduced-motion preference.
+  const [verseIdx, setVerseIdx] = useState(() => new Date().getUTCDate() % DASHBOARD_VERSES.length);
+  const [fading, setFading] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const id = window.setInterval(() => {
+      setFading(true);
+      window.setTimeout(() => {
+        setVerseIdx((i) => (i + 1) % DASHBOARD_VERSES.length);
+        setFading(false);
+      }, 400);
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, []);
+  const CURRENT_VERSE = DASHBOARD_VERSES[verseIdx];
 
   return (
     <div className="space-y-8">
