@@ -42,6 +42,7 @@ import { useGlobalRealtime } from "@/hooks/use-global-realtime";
 import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
 type Role = "public" | "any-auth" | "admin";
