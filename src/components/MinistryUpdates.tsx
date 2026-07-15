@@ -494,29 +494,55 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [results, setResults] = useState<FileResult[]>([]);
+
+  function updateAt(i: number, patch: Partial<FileResult>) {
+    setResults((prev) => {
+      const next = prev.slice();
+      next[i] = { ...next[i], ...patch };
+      return next;
+    });
+  }
 
   async function upload(files: FileList | null) {
     if (!files || files.length === 0) return;
+
+    // Build initial per-file result list including invalid ones (marked skipped).
+    const initial: FileResult[] = [];
+    const validIndex: number[] = []; // maps position in `valid` -> index in `initial`
     const valid: File[] = [];
     for (const f of Array.from(files)) {
       const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
-      if (!check.ok) {
-        toast.error(`Skipped ${f.name}: ${check.reason}`);
-        continue;
+      const computedDate = bulkFileDate(f);
+      const base: FileResult = {
+        name: f.name,
+        size: f.size,
+        status: check.ok ? "pending" : "skipped",
+        message: check.ok ? undefined : check.reason,
+        computedDate,
+        computedMonth: monthKey(computedDate),
+      };
+      initial.push(base);
+      if (check.ok) {
+        validIndex.push(initial.length - 1);
+        valid.push(f);
       }
-      valid.push(f);
     }
-    if (valid.length === 0) return;
+    setResults(initial);
+    if (valid.length === 0) {
+      toast.error("No valid photos to upload.");
+      return;
+    }
+
     setBusy(true);
-    setProgress({ done: 0, total: valid.length });
     let successes = 0;
     let failures = 0;
-    let firstError: string | null = null;
 
-    const doOne = async (f: File, i: number) => {
+    const doOne = async (f: File, vIdx: number) => {
+      const rIdx = validIndex[vIdx];
+      updateAt(rIdx, { status: "uploading" });
       try {
-        const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
+        const path = safeStoragePath(missionaryId, f, `bulk-${vIdx}`);
         const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
           cacheControl: "3600",
           upsert: false,
@@ -533,18 +559,16 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
         });
         if (dbErr) throw dbErr;
         successes++;
+        updateAt(rIdx, { status: "success" });
       } catch (err) {
         failures++;
         const msg = err instanceof Error ? err.message : String(err);
-        if (!firstError) firstError = `${f.name}: ${msg}`;
         console.error("bulk ministry update upload failed for", f.name, err);
-      } finally {
-        setProgress((p) => (p ? { done: p.done + 1, total: p.total } : p));
+        updateAt(rIdx, { status: "error", message: msg });
       }
     };
 
     try {
-      // Bounded concurrency — much faster than sequential, safer than unbounded.
       let cursor = 0;
       const workers = Array.from({ length: Math.min(BULK_CONCURRENCY, valid.length) }, async () => {
         while (cursor < valid.length) {
@@ -560,18 +584,15 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
         qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
       }
       if (failures > 0) {
-        toast.error(
-          `${failures} file${failures === 1 ? "" : "s"} failed${firstError ? ` — ${firstError}` : ""}.`,
-        );
+        toast.error(`${failures} file${failures === 1 ? "" : "s"} failed. See details below.`);
       }
     } finally {
       setBusy(false);
-      setProgress(null);
     }
   }
 
   return (
-    <>
+    <div className="w-full">
       <input
         ref={inputRef}
         type="file"
@@ -593,9 +614,16 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
         aria-label="Bulk upload ministry update photos"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Files className="h-4 w-4" />}
-        {busy && progress ? `Uploading ${progress.done}/${progress.total}…` : "Bulk upload photos"}
+        {busy
+          ? `Uploading ${results.filter((r) => r.status === "success" || r.status === "error").length}/${results.filter((r) => r.status !== "skipped").length}…`
+          : "Bulk upload photos"}
       </Button>
-    </>
+      <BulkUploadProgress
+        results={results}
+        onClose={() => setResults([])}
+        title="Ministry photo upload"
+      />
+    </div>
   );
 }
 
