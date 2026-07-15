@@ -220,7 +220,7 @@ function Dashboard() {
       {/* Mission control — filter the entire dashboard by region, province, phase. */}
       <SharedFilterBar
         label="Mission focus"
-        hint="Region · Province · Phase — these filters follow you to the Missionary Directory and AI Assistant."
+        hint="Region · Province · Phase · Sending Partner — these filters follow you to the Missionary Directory and AI Assistant."
       />
 
       {/* Stat scoreboard — the current state of the harvest. */}
