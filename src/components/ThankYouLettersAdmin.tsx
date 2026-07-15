@@ -68,7 +68,7 @@ export function ThankYouLettersAdmin() {
         .select("id, missionary_id, title, message, letter_url, letter_date, sort_order")
         .eq("missionary_id", selectedId)
         .order("sort_order", { ascending: true })
-        .order("letter_date", { ascending: false });
+        .order("letter_date", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
     },
