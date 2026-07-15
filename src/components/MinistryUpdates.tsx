@@ -142,6 +142,14 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
         </div>
       ) : null}
 
+      {isAdmin && updates && updates.length > 0 ? (
+        <OrderVerificationLog
+          items={updates.map((u) => ({ id: u.id, title: u.title, date: u.report_date, created_at: u.created_at }))}
+          dateFieldLabel="report_date"
+          label="Verify month ordering"
+        />
+      ) : null}
+
       <div className="mt-5 space-y-4">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
