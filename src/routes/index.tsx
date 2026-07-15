@@ -273,11 +273,19 @@ function Dashboard() {
                   </div>
                   <ul className="mt-2 space-y-1">
                     {areasByPhase(p.id).map((a) => (
-                      <li key={a.id} className="flex items-center justify-between rounded-lg px-1 py-0.5 hover:bg-accent/50">
-                        <span className="font-medium text-foreground/90">{a.name}</span>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {missionariesByArea(a.id).length}
-                        </span>
+                      <li key={a.id}>
+                        <Link
+                          to="/missionaries"
+                          search={{ area: a.id }}
+                          hash="directory-list"
+                          className="flex items-center justify-between rounded-lg px-2 py-1.5 min-h-11 transition-colors hover:bg-accent focus:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          aria-label={`View missionaries in ${a.name} (${missionariesByArea(a.id).length})`}
+                        >
+                          <span className="font-medium text-foreground/90">{a.name}</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {missionariesByArea(a.id).length}
+                          </span>
+                        </Link>
                       </li>
                     ))}
                     {areasByPhase(p.id).length === 0 ? (
