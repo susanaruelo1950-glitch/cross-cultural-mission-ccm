@@ -36,7 +36,8 @@ interface Letter {
 }
 
 const BUCKET = "thank-you-letters";
-const MAX_MB = 8;
+const MAX_MB = 25;
+const BULK_CONCURRENCY = 4;
 const ACCEPTED = "image/*,application/pdf";
 
 export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
