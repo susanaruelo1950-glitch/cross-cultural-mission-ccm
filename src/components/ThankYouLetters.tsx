@@ -113,6 +113,14 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
 
       {canEdit ? <LetterForm missionaryId={missionaryId} /> : null}
 
+      {isAdmin && letters && letters.length > 0 ? (
+        <OrderVerificationLog
+          items={letters.map((l) => ({ id: l.id, title: l.title, date: l.letter_date, created_at: l.created_at }))}
+          dateFieldLabel="letter_date"
+          label="Verify month ordering"
+        />
+      ) : null}
+
       <div className="mt-5 space-y-4">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
