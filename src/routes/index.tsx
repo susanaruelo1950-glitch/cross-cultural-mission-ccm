@@ -26,6 +26,7 @@ import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
+import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
 import { useMemo } from "react";
 
 const SOCIAL_IMAGE =
