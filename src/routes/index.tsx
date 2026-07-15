@@ -90,7 +90,7 @@ function Dashboard() {
   const phases = dir.phases.length ? dir.phases : seedPhasesData;
   const areas = dir.areas.length ? dir.areas : seedAreasData;
   const { regions, provinces } = dir;
-  const { filters } = useSharedFilters();
+  const { filters, setFilters } = useSharedFilters();
   const regionName = regions.find((r) => r.id === filters.regionId)?.name;
   const provinceName = provinces.find((p) => p.id === filters.provinceId)?.name;
 
