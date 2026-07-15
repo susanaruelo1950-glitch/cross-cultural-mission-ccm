@@ -157,6 +157,14 @@
   }
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @utility card-soft {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
