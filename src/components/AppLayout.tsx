@@ -44,6 +44,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HighContrastToggle } from "@/components/HighContrastToggle";
+import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
 type Role = "public" | "any-auth" | "admin";
@@ -317,6 +318,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <LiveUpdatesIndicator />
             <HighContrastToggle />
+            <ThemeCustomizer />
             <ThemeToggle />
             <NotificationBell />
             <AuthButton />
