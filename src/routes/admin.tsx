@@ -10,6 +10,7 @@ import { ThankYouLettersAdmin } from "@/components/ThankYouLettersAdmin";
 import { AdminHistoryDrawer } from "@/components/AdminHistoryDrawer";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { AnnouncementsManager } from "@/components/AnnouncementsManager";
+import { PartnersManager } from "@/components/PartnersManager";
 import { RealtimeDebugPanel } from "@/components/RealtimeDebugPanel";
 import { PermissionError } from "@/components/PermissionError";
 
@@ -122,6 +123,9 @@ function AdminPage() {
       <ScriptureManager />
 
       <AnnouncementsManager />
+
+      <PartnersManager />
+
 
 
       <ThankYouLettersAdmin />

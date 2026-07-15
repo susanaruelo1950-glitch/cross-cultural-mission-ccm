@@ -28,16 +28,8 @@ import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
 import { useMinistryUpdateCount, usePrayerCount } from "@/hooks/use-live-counts";
 import { useMinistryUpdatesList } from "@/hooks/use-ministry-updates";
 import { useEffect, useMemo, useState } from "react";
-import { PARTNER_OPTIONS, partnerIdFor } from "@/lib/partners";
-import cbcpLogo from "@/assets/cbcp-logo.png.asset.json";
-import igslLogo from "@/assets/igsl-logo.png.asset.json";
-import fclLogo from "@/assets/fcl-logo.png.asset.json";
-
-const PARTNERS = [
-  { id: "cbcp", name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
-  { id: "igsl", name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
-  { id: "fcl", name: "Foundations for Christian Leadership", short: "FCL", url: fclLogo.url },
-];
+import { partnerIdFor } from "@/lib/partners";
+import { usePartners, type Partner } from "@/hooks/use-partners";
 
 const SOCIAL_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp";
@@ -193,55 +185,14 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* Right: Partners panel — logos live inside the hero to maximise space.
-              Tap a logo to filter the dashboard by that sending partner. */}
-          <aside
-            aria-label="Our partners"
-            className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md sm:p-5"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/80">
-                Our Partners in the Mission
-              </h2>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">Tap to filter</span>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {PARTNERS.map((p) => {
-                const active = filters.partnerId === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setFilters({ partnerId: active ? ALL : p.id })}
-                    aria-pressed={active}
-                    aria-label={`Filter dashboard by ${p.name}`}
-                    title={p.name}
-                    className={`group flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-                      active
-                        ? "border-white/70 bg-white/95 text-foreground shadow-lift"
-                        : "border-white/20 bg-white/5 text-white hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/15"
-                    }`}
-                  >
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-full p-2 transition-colors ${active ? "bg-white" : "bg-white/90"}`}>
-                      <img
-                        src={p.url}
-                        alt={`${p.name} logo`}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                    <div className={`font-display text-xs font-semibold leading-tight ${active ? "text-foreground" : "text-white"}`}>
-                      {p.short}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-[11px] leading-snug text-white/70">
-              Partnering churches and schools sending laborers into the harvest.
-            </p>
-          </aside>
+          {/* Right: Partners panel — live from DB, admin-manageable.
+              Responsive grid keeps consistent sizing across breakpoints.
+              A subtle auto-rotating "spotlight" halo drifts through each
+              logo without dots or extra buttons. */}
+          <PartnersPanel
+            activePartnerId={filters.partnerId}
+            onToggle={(id) => setFilters({ partnerId: filters.partnerId === id ? ALL : id })}
+          />
         </div>
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
@@ -390,5 +341,136 @@ function Dashboard() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Live partners panel used inside the dashboard hero. Renders active partners
+ * in a responsive grid that never clips logos (object-contain in a fixed-ratio
+ * tile), and cycles a subtle spotlight halo through the roster every ~2.6s
+ * without pagination dots or extra buttons. Respects reduced-motion.
+ *
+ * Clicking a logo toggles the shared partner filter. If the partner defines a
+ * `link_url`, shift/ctrl/middle click opens the external site; a plain click
+ * still filters — matching the previous behaviour and users' expectations.
+ */
+function PartnersPanel({
+  activePartnerId,
+  onToggle,
+}: {
+  activePartnerId: string;
+  onToggle: (id: string) => void;
+}) {
+  const { data: partners = [], isLoading } = usePartners();
+  const [spotlight, setSpotlight] = useState(0);
+
+  useEffect(() => {
+    if (partners.length < 2) return;
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      setSpotlight((i) => (i + 1) % partners.length);
+    }, 2600);
+    return () => window.clearInterval(id);
+  }, [partners.length]);
+
+  const handleClick = (p: Partner, e: React.MouseEvent) => {
+    if (p.link_url && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+      window.open(p.link_url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    onToggle(p.slug);
+  };
+
+  return (
+    <aside
+      aria-label="Our partners"
+      className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md sm:p-5"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/80">
+          Our Partners in the Mission
+        </h2>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">
+          Tap to filter
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="aspect-[4/5] animate-pulse rounded-xl bg-white/10" />
+          ))}
+        </div>
+      ) : partners.length === 0 ? (
+        <p className="mt-4 text-xs text-white/70">No partners yet.</p>
+      ) : (
+        <div
+          className="mt-4 grid gap-2 sm:gap-3"
+          style={{
+            gridTemplateColumns: `repeat(${Math.min(partners.length, 3)}, minmax(0, 1fr))`,
+          }}
+        >
+          {partners.map((p, i) => {
+            const active = activePartnerId === p.slug;
+            const isSpot = i === spotlight && !active;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={(e) => handleClick(p, e)}
+                aria-pressed={active}
+                aria-label={`Filter dashboard by ${p.full_name}`}
+                title={p.full_name + (p.link_url ? " — ⌘/Ctrl-click to open site" : "")}
+                className={`group relative flex flex-col items-center gap-2 rounded-xl border p-2.5 text-center transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:p-3 ${
+                  active
+                    ? "border-white/70 bg-white/95 text-foreground shadow-lift"
+                    : isSpot
+                    ? "border-white/50 bg-white/20 text-white shadow-lift"
+                    : "border-white/20 bg-white/5 text-white hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/15"
+                }`}
+              >
+                {isSpot ? (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-white/50 [box-shadow:0_0_28px_rgba(255,255,255,0.35)]"
+                  />
+                ) : null}
+                <div
+                  className={`flex aspect-square w-full max-w-[64px] items-center justify-center rounded-full p-2 transition-colors ${
+                    active ? "bg-white" : "bg-white/90"
+                  }`}
+                >
+                  {p.logo_url ? (
+                    <img
+                      src={p.logo_url}
+                      alt={`${p.full_name} logo`}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] font-black text-foreground">
+                      {p.short_name.slice(0, 4)}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`font-display text-[11px] font-semibold leading-tight sm:text-xs ${
+                    active ? "text-foreground" : "text-white"
+                  }`}
+                >
+                  {p.short_name}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px] leading-snug text-white/70">
+        Partnering churches and schools sending laborers into the harvest.
+      </p>
+    </aside>
   );
 }
