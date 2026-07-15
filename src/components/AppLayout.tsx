@@ -284,12 +284,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
           deskOpen && "lg:ml-72",
         )}
       >
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            {/* Mobile menu (Sheet) */}
+        <div className="flex items-center gap-2 px-3 py-2.5 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu">
+                <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label="Open navigation menu">
                   <Menu className="h-5 w-5" aria-hidden />
                 </Button>
               </SheetTrigger>
@@ -298,34 +297,40 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <NavItems onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
-            {/* Desktop sidebar toggle */}
             <Button
               variant="ghost"
               size="icon"
-              className="hidden lg:inline-flex"
+              className="hidden shrink-0 lg:inline-flex"
               onClick={() => setDeskOpen((v) => !v)}
               aria-label={deskOpen ? "Hide sidebar" : "Show sidebar"}
               aria-pressed={!deskOpen}
             >
               <Menu className="h-5 w-5" aria-hidden />
             </Button>
-            <Link to="/" className="flex items-center gap-2 lg:hidden">
-              <img src={ccmLogo.url} alt="CCM logo" className="h-8 w-8 rounded-xl object-cover ring-1 ring-border" />
-              <span className="font-display text-sm font-semibold">Cross-Cultural Mission</span>
+            <Link to="/" className="flex min-w-0 items-center gap-2 lg:hidden">
+              <img src={ccmLogo.url} alt="CCM logo" className="h-8 w-8 shrink-0 rounded-xl object-cover ring-1 ring-border" />
+              <span className="truncate font-display text-sm font-semibold tracking-tight">Cross-Cultural Mission</span>
             </Link>
+            <div className="hidden min-w-0 flex-1 lg:block">
+              <HeaderSearch />
+            </div>
           </div>
-          <HeaderSearch />
-          <div className="flex items-center gap-2">
-            <LiveUpdatesIndicator />
-            <HighContrastToggle />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
+              <LiveUpdatesIndicator />
+              <HighContrastToggle />
+            </div>
             <ThemeCustomizer />
             <ThemeToggle />
             <NotificationBell />
             <AuthButton />
           </div>
         </div>
-        {/* Rotating Scripture of the Day — single, visible on all pages */}
-        <div className="border-t border-border/60 bg-primary/[0.03] px-4 py-2 sm:px-6">
+        {/* Mobile search — full width row so header text no longer wraps. */}
+        <div className="border-t border-border/60 px-3 pb-2 pt-2 lg:hidden">
+          <HeaderSearch />
+        </div>
+        <div className="border-t border-border/60 bg-primary/[0.03] px-3 py-2 sm:px-6">
           <ScriptureOfTheDay compact />
         </div>
       </header>
