@@ -155,78 +155,124 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
             }
           />
         ) : (
-          updates.map((u) => (
-            <article key={u.id} className="rounded-2xl border border-border/60 bg-card p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {new Date(u.report_date).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+          groups.map((g) => {
+            if (g.kind === "collage") {
+              return (
+                <article
+                  key={`collage-${g.report_date}-${g.title}-${g.items[0].id}`}
+                  className="rounded-2xl border border-border/60 bg-card p-4"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {new Date(g.report_date).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <h4 className="font-display text-base font-semibold">
+                        {g.title}{" "}
+                        <span className="text-xs font-normal text-muted-foreground">
+                          · {g.items.length} photos
+                        </span>
+                      </h4>
+                    </div>
                   </div>
-                  <h4 className="font-display text-base font-semibold">{u.title}</h4>
-                </div>
-                {canEdit ? (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingId(editingId === u.id ? null : u.id)}
-                      aria-label="Edit update"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {isAdmin ? (
+                  <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+                    {g.items.map((u) => (
+                      <CollageThumb
+                        key={u.id}
+                        path={u.image_url as string}
+                        title={u.title}
+                        canDelete={isAdmin}
+                        onDelete={() => {
+                          if (confirm("Delete this photo?")) del.mutate(u.id);
+                        }}
+                        onOpen={() => {
+                          const idx = withImages.findIndex((x) => x.id === u.id);
+                          setLightboxIndex(idx >= 0 ? idx : 0);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </article>
+              );
+            }
+            const u = g.update;
+            return (
+              <article key={u.id} className="rounded-2xl border border-border/60 bg-card p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {new Date(u.report_date).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                    <h4 className="font-display text-base font-semibold">{u.title}</h4>
+                  </div>
+                  {canEdit ? (
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Delete this update?")) del.mutate(u.id);
-                        }}
-                        aria-label="Delete update"
+                        onClick={() => setEditingId(editingId === u.id ? null : u.id)}
+                        aria-label="Edit update"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
+                      {isAdmin ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Delete this update?")) del.mutate(u.id);
+                          }}
+                          aria-label="Delete update"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                {editingId === u.id ? (
+                  <UpdateEditForm
+                    update={u}
+                    onClose={() => setEditingId(null)}
+                    onSaved={() => {
+                      setEditingId(null);
+                      qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
+                    }}
+                  />
+                ) : (
+                  <>
+                    {u.image_url ? (
+                      <UpdateImageThumb
+                        path={u.image_url}
+                        title={u.title}
+                        onOpen={() => {
+                          const idx = withImages.findIndex((x) => x.id === u.id);
+                          setLightboxIndex(idx >= 0 ? idx : 0);
+                        }}
+                      />
                     ) : null}
-                  </div>
-                ) : null}
-              </div>
-              {editingId === u.id ? (
-                <UpdateEditForm
-                  update={u}
-                  onClose={() => setEditingId(null)}
-                  onSaved={() => {
-                    setEditingId(null);
-                    qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
-                  }}
-                />
-              ) : (
-                <>
-                  {u.image_url ? (
-                    <UpdateImageThumb
-                      path={u.image_url}
-                      title={u.title}
-                      onOpen={() => {
-                        const idx = withImages.findIndex((x) => x.id === u.id);
-                        setLightboxIndex(idx >= 0 ? idx : 0);
-                      }}
-                    />
-                  ) : null}
-                  {u.summary ? (
-                    <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
-                  ) : null}
-                  {u.body ? (
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-                      {u.body}
-                    </p>
-                  ) : null}
-                </>
-              )}
-            </article>
-          ))
+                    {u.summary ? (
+                      <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
+                    ) : null}
+                    {u.body ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+                        {u.body}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
 
