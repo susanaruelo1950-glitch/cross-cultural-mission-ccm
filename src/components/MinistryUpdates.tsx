@@ -375,40 +375,58 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
     setProgress({ done: 0, total: valid.length });
     let successes = 0;
     let failures = 0;
-    try {
-      for (let i = 0; i < valid.length; i++) {
-        const f = valid[i];
-        try {
-          const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
-          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: f.type || undefined,
-          });
-          if (upErr) throw upErr;
-          const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
-          const report_date = bulkFileDate(f);
-          const { error: dbErr } = await supabase.from("ministry_updates").insert({
-            missionary_id: missionaryId,
-            title,
-            image_url: path,
-            report_date,
-          });
-          if (dbErr) throw dbErr;
-          successes++;
-        } catch (err) {
-          failures++;
-          console.error("bulk ministry update upload failed for", f.name, err);
-        } finally {
-          setProgress({ done: i + 1, total: valid.length });
-        }
+    let firstError: string | null = null;
+
+    const doOne = async (f: File, i: number) => {
+      try {
+        const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: f.type || undefined,
+        });
+        if (upErr) throw upErr;
+        const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
+        const report_date = bulkFileDate(f);
+        const { error: dbErr } = await supabase.from("ministry_updates").insert({
+          missionary_id: missionaryId,
+          title,
+          image_url: path,
+          report_date,
+        });
+        if (dbErr) throw dbErr;
+        successes++;
+      } catch (err) {
+        failures++;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!firstError) firstError = `${f.name}: ${msg}`;
+        console.error("bulk ministry update upload failed for", f.name, err);
+      } finally {
+        setProgress((p) => (p ? { done: p.done + 1, total: p.total } : p));
       }
+    };
+
+    try {
+      // Bounded concurrency — much faster than sequential, safer than unbounded.
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(BULK_CONCURRENCY, valid.length) }, async () => {
+        while (cursor < valid.length) {
+          const i = cursor++;
+          await doOne(valid[i], i);
+        }
+      });
+      await Promise.all(workers);
+
       if (successes > 0) {
-        toast.success(`Uploaded ${successes} update photo${successes === 1 ? "" : "s"}.`);
+        toast.success(`Uploaded ${successes} photo${successes === 1 ? "" : "s"}.`);
         qc.invalidateQueries({ queryKey: ["ministry_updates"] });
         qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
       }
-      if (failures > 0) toast.error(`${failures} file${failures === 1 ? "" : "s"} failed to upload.`);
+      if (failures > 0) {
+        toast.error(
+          `${failures} file${failures === 1 ? "" : "s"} failed${firstError ? ` — ${firstError}` : ""}.`,
+        );
+      }
     } finally {
       setBusy(false);
       setProgress(null);
