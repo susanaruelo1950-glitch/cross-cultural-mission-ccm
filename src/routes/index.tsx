@@ -132,8 +132,6 @@ function Dashboard() {
     .slice(0, 4);
   const TODAYS_VERSE = DASHBOARD_VERSES[new Date().getUTCDate() % DASHBOARD_VERSES.length];
 
-
-
   return (
     <div className="space-y-8">
       <h1 className="sr-only">Cross-Cultural Mission — Church Planting Dashboard</h1>
@@ -141,28 +139,22 @@ function Dashboard() {
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />
 
-      {/* Cross-surface filter bar (region · province · phase) — syncs with the
-          Missionary Directory and AI Assistant scope. */}
-      <SharedFilterBar
-        label="Dashboard filters"
-        hint="Region · Province · Phase — filters follow you to the Missionary Directory and AI Assistant."
-      />
-
-
-      {/* Rotating Scripture of the Day — replaces the old Mission Snapshot */}
+      {/* Scripture of the Day — a warm, commanding mission call. */}
       <section
         aria-label="Scripture of the day"
         className="relative overflow-hidden rounded-3xl gradient-mission p-6 text-white shadow-lift sm:p-10"
       >
         <div className="relative z-10 grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest backdrop-blur">
               <Sparkles className="h-3.5 w-3.5" aria-hidden /> Scripture of the Day
             </div>
-            <blockquote className="mt-4 font-display text-2xl font-semibold leading-tight sm:text-4xl">
+            <blockquote className="mt-4 font-display text-2xl font-semibold italic leading-tight sm:text-4xl">
               "{TODAYS_VERSE.text}"
             </blockquote>
-            <div className="mt-3 text-sm font-medium text-white/80">— {TODAYS_VERSE.ref}</div>
+            <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/80">
+              — {TODAYS_VERSE.ref}
+            </div>
             <p className="mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
               Every people group. Every area. Every prayer — for the glory of Christ.
             </p>
@@ -179,10 +171,14 @@ function Dashboard() {
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
       </section>
 
+      {/* Mission control — filter the entire dashboard by region, province, phase. */}
+      <SharedFilterBar
+        label="Mission focus"
+        hint="Region · Province · Phase — these filters follow you to the Missionary Directory and AI Assistant."
+      />
 
-
-      {/* Stat grid — reflects the shared filter when active. */}
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
+      {/* Stat scoreboard — the current state of the harvest. */}
+      <section aria-label="Mission statistics" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard label={filterActive ? "Missionaries (filtered)" : "Missionaries"} value={filterActive ? filteredMissionaries.length : missionStats.totalMissionaries} icon={Users} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to missionary directory list" />
         <StatCard label="Phases" value={missionStats.totalPhases} icon={Layers} tone="secondary" to="/phases" hash="phases-list" linkLabel="Jump to phases and areas" />
         <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" hash="mission-map" linkLabel="Jump to mission map" />
@@ -194,8 +190,8 @@ function Dashboard() {
       {/* Partners — CCM ministry partners (horizontal scroller, monochrome logos) */}
       <section aria-label="Our partners" className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Our Partners</h2>
-          <span className="text-xs font-medium text-primary">In partnership</span>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Our Partners</h2>
+          <span className="text-xs font-medium text-secondary">In partnership</span>
         </div>
 
         <div className="scrollbar-hide -mx-2 flex gap-3 overflow-x-auto px-2 pb-4 pt-1">
@@ -235,14 +231,14 @@ function Dashboard() {
         />
       ) : null}
 
-      {/* Phases breakdown */}
+      {/* Phases & Areas breakdown */}
       {phases.length > 0 ? (
         <section className="grid gap-6 lg:grid-cols-3">
           <Card className="card-soft p-6 lg:col-span-2">
-            <h2 className="font-display text-xl font-semibold">Missionaries per Phase</h2>
-            <p className="text-sm text-muted-foreground">How your team is distributed across the phases.</p>
+            <h2 className="font-display text-xl font-semibold tracking-tight">Missionaries per Phase</h2>
+            <p className="text-sm text-muted-foreground">How your team is distributed across the harvest phases.</p>
             <div className="mt-5 space-y-4">
-              {byPhase.map((b) => (
+              {byPhase.map((b, i) => (
                 <div key={b.name}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
                     <span className="font-medium">{b.name}</span>
@@ -250,7 +246,7 @@ function Dashboard() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-primary transition-all"
+                      className={i === 1 ? "h-full rounded-full bg-secondary transition-all" : "h-full rounded-full bg-primary transition-all"}
                       style={{ width: `${(b.value / maxPhase) * 100}%` }}
                     />
                   </div>
@@ -262,7 +258,7 @@ function Dashboard() {
           <Card className="card-soft overflow-hidden p-6">
             <div className="flex items-baseline justify-between">
               <h2 className="font-display text-xl font-semibold tracking-tight">Areas</h2>
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">By phase</span>
+              <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">By phase</span>
             </div>
             <p className="text-sm text-muted-foreground">Grouped and counted from the live directory.</p>
             <ul className="mt-4 space-y-4 text-sm">
@@ -296,16 +292,15 @@ function Dashboard() {
               ) : null}
             </ul>
           </Card>
-
         </section>
       ) : null}
 
-      {/* Activity */}
+      {/* Activity feed */}
       {(recentReports.length > 0 || urgentPrayer.length > 0) ? (
         <section className="grid gap-6 lg:grid-cols-2">
           <Card className="card-soft p-6">
             <div className="mb-4 flex items-baseline justify-between">
-              <h2 className="font-display text-xl font-semibold">Latest Reports</h2>
+              <h2 className="font-display text-xl font-semibold tracking-tight">Latest Reports</h2>
               <Link to="/reports" className="text-sm font-medium text-primary hover:underline">View all</Link>
             </div>
             {recentReports.length === 0 ? (
@@ -313,7 +308,7 @@ function Dashboard() {
             ) : (
               <ul className="space-y-3">
                 {recentReports.map((r) => (
-                  <li key={r.id} className="rounded-xl border border-border p-3">
+                  <li key={r.id} className="rounded-xl border border-border p-3 transition-colors hover:bg-accent/30">
                     <div className="font-medium">{r.title}</div>
                     <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{r.summary}</p>
                     <span className="text-xs text-muted-foreground">{r.date}</span>
@@ -324,7 +319,7 @@ function Dashboard() {
           </Card>
           <Card className="card-soft p-6">
             <div className="mb-4 flex items-baseline justify-between">
-              <h2 className="font-display text-xl font-semibold">Urgent Prayer</h2>
+              <h2 className="font-display text-xl font-semibold tracking-tight">Urgent Prayer</h2>
               <Link to="/prayer" className="text-sm font-medium text-primary hover:underline">Open Prayer Center</Link>
             </div>
             {urgentPrayer.length === 0 ? (
@@ -332,7 +327,7 @@ function Dashboard() {
             ) : (
               <ul className="space-y-3">
                 {urgentPrayer.map((p) => (
-                  <li key={p.id} className="rounded-xl border border-border p-3">
+                  <li key={p.id} className="rounded-xl border border-border p-3 transition-colors hover:bg-accent/30">
                     <div className="font-medium">{p.title}</div>
                     <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{p.detail}</p>
                   </li>
