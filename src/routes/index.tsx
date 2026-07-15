@@ -35,7 +35,7 @@ import fclLogo from "@/assets/fcl-logo.png.asset.json";
 const PARTNERS = [
   { name: "Christian Bible Church of the Philippines", short: "CBCP", url: cbcpLogo.url },
   { name: "International Graduate School of Leadership", short: "IGSL", url: igslLogo.url },
-  { name: "Filipino Church Leaders (FCL)", short: "FCL", url: fclLogo.url },
+  { name: "Foundations for Christian Leadership", short: "FCL", url: fclLogo.url },
 ];
 
 const SOCIAL_IMAGE =
