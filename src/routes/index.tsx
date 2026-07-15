@@ -383,11 +383,11 @@ function PartnersPanel({
       aria-label="Our partners"
       className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md sm:p-5"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/80">
-          Our Partners in the Mission
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">
+          Our Partners
         </h2>
-        <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">
+        <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.16em] text-white/60">
           Tap to filter
         </span>
       </div>
