@@ -289,24 +289,30 @@ export function ThemeCustomizer() {
         align="end"
         className="w-[24rem] max-w-[calc(100vw-1.5rem)] max-h-[85vh] overflow-y-auto p-4"
       >
-        <div className="mb-3 flex items-center justify-between">
-          <div>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h3 className="font-display text-base font-semibold">Personalize</h3>
-            <p className="text-xs text-muted-foreground">
-              Colors, custom hex, and fonts. Applies everywhere.
+            <p className="truncate text-xs text-muted-foreground">
+              {userId
+                ? "Synced to your profile — follows you on every device."
+                : "Sign in to sync across devices."}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={reset}
-            className="h-8 gap-1 text-xs"
-            title="Reset to defaults"
-          >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-            Reset
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <SyncPill userId={userId} status={syncStatus} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="h-8 gap-1 text-xs"
+              title="Reset to defaults"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              Reset
+            </Button>
+          </div>
         </div>
+
 
         <Tabs defaultValue={custom ? "custom" : "palettes"}>
           <TabsList className="grid w-full grid-cols-3">
