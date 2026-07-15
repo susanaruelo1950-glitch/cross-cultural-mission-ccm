@@ -40,14 +40,25 @@ function ReportsPage() {
     const list: LiveUpdate[] = Array.isArray(data) ? data : [];
     const map = new Map<string, { key: string; label: string; items: LiveUpdate[] }>();
     for (const u of list) {
-
       const dateSrc = u.report_date ?? u.created_at;
       const key = monthKey(dateSrc);
       const label = key === "0000-00" ? "Undated" : monthLabel(key);
       if (!map.has(key)) map.set(key, { key, label, items: [] });
       map.get(key)!.items.push(u);
     }
-    return Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
+    // Sort months newest → oldest (July 2026 top, February 2026 bottom).
+    // Within each month, sort by report_date desc, then created_at desc
+    // so a mis-ordered payload can never surface an older item on top.
+    const groups = Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
+    for (const g of groups) {
+      g.items.sort((a, b) => {
+        const ad = a.report_date ?? a.created_at.slice(0, 10);
+        const bd = b.report_date ?? b.created_at.slice(0, 10);
+        if (ad !== bd) return bd.localeCompare(ad);
+        return b.created_at.localeCompare(a.created_at);
+      });
+    }
+    return groups;
   }, [data]);
 
   useHashScroll(grouped.length);

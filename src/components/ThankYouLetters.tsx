@@ -54,7 +54,7 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
         .from("thank_you_letters")
         .select("*")
         .eq("missionary_id", missionaryId)
-        .order("letter_date", { ascending: false })
+        .order("letter_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
