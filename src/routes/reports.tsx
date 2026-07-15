@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useMinistryUpdatesList, type LiveUpdate } from "@/hooks/use-ministry-updates";
 
 import { FileText, ImageIcon, Loader2 } from "lucide-react";
@@ -8,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import { supabase } from "@/integrations/supabase/client";
 import { getMissionary } from "@/lib/mission-data";
 import { useHashScroll } from "@/hooks/use-hash-scroll";
 import { monthKey, monthLabel } from "@/lib/month-key";
@@ -35,37 +33,14 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
-interface LiveUpdate {
-  id: string;
-  missionary_id: string;
-  title: string;
-  summary: string | null;
-  body: string | null;
-  image_url: string | null;
-  report_date: string | null;
-  created_at: string;
-}
-
 function ReportsPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["ministry_updates"],
-    queryFn: async (): Promise<LiveUpdate[]> => {
-      const { data, error } = await supabase
-        .from("ministry_updates")
-        .select("id, missionary_id, title, summary, body, image_url, report_date, created_at")
-        .order("report_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data ?? [];
-    },
-    staleTime: 30_000,
-  });
+  const { data, isLoading } = useMinistryUpdatesList();
 
   const grouped = useMemo(() => {
-    const list = data ?? [];
+    const list: LiveUpdate[] = Array.isArray(data) ? data : [];
     const map = new Map<string, { key: string; label: string; items: LiveUpdate[] }>();
     for (const u of list) {
+
       const dateSrc = u.report_date ?? u.created_at;
       const key = monthKey(dateSrc);
       const label = key === "0000-00" ? "Undated" : monthLabel(key);
