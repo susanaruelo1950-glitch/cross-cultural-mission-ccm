@@ -369,6 +369,28 @@ function UpdateEditForm({
     });
   }
 
+  return (
+
+    <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Report date (edit to reorder)</Label>
+        <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
+      </div>
+      <Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Short summary" maxLength={280} />
+      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Full update" className="min-h-[120px]" maxLength={10000} />
+      <div className="flex gap-2">
+        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+        </Button>
+        <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
+          <X className="h-4 w-4" /> Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 function CollageDateEditor({
   missionaryId,
@@ -427,28 +449,6 @@ function CollageDateEditor({
     </div>
   );
 }
-
-  return (
-    <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Report date (edit to reorder)</Label>
-        <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
-      </div>
-      <Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Short summary" maxLength={280} />
-      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Full update" className="min-h-[120px]" maxLength={10000} />
-      <div className="flex gap-2">
-        <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
-          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
-        </Button>
-        <Button size="sm" variant="ghost" className="rounded-full" onClick={onClose}>
-          <X className="h-4 w-4" /> Cancel
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 
 
 function UpdateImageThumb({
