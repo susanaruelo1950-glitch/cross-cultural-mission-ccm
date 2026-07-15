@@ -312,20 +312,28 @@ function UpdateEditForm({
   const [title, setTitle] = useState(update.title);
   const [summary, setSummary] = useState(update.summary ?? "");
   const [body, setBody] = useState(update.body ?? "");
+  const [reportDate, setReportDate] = useState(update.report_date?.slice(0, 10) ?? "");
 
   const key = ["ministry_updates", update.missionary_id] as const;
 
   const save = useMutation({
-    mutationFn: async (patch: { title: string; summary: string | null; body: string | null }) => {
+    mutationFn: async (patch: { title: string; summary: string | null; body: string | null; report_date: string }) => {
       const { error } = await supabase.from("ministry_updates").update(patch).eq("id", update.id);
       if (error) throw error;
     },
     onMutate: async (patch) => {
       await qc.cancelQueries({ queryKey: key });
       const previous = qc.getQueryData<Update[] | undefined>(key);
-      qc.setQueryData<Update[] | undefined>(key, (prev) =>
-        prev?.map((u) => (u.id === update.id ? { ...u, ...patch } : u)),
-      );
+      qc.setQueryData<Update[] | undefined>(key, (prev) => {
+        const next = prev?.map((u) => (u.id === update.id ? { ...u, ...patch } : u));
+        // Re-sort so date edits reorder immediately in the UI.
+        return next?.slice().sort((a, b) => {
+          const da = a.report_date ?? "";
+          const db = b.report_date ?? "";
+          if (da !== db) return db.localeCompare(da);
+          return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+        });
+      });
       return { previous };
     },
     onError: (err, _v, ctx) => {
@@ -336,21 +344,30 @@ function UpdateEditForm({
       toast.success("Update saved.");
       onSaved();
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ["ministry_updates"] });
+    },
   });
 
   function submit() {
     if (!title.trim()) return toast.error("Title is required.");
+    if (!reportDate) return toast.error("Report date is required.");
     save.mutate({
       title: title.trim(),
       summary: summary.trim() || null,
       body: body.trim() || null,
+      report_date: reportDate,
     });
   }
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} />
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Report date (edit to reorder)</Label>
+        <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
+      </div>
       <Input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Short summary" maxLength={280} />
       <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Full update" className="min-h-[120px]" maxLength={10000} />
       <div className="flex gap-2">
@@ -364,6 +381,7 @@ function UpdateEditForm({
     </div>
   );
 }
+
 
 
 function UpdateImageThumb({
