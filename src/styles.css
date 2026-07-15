@@ -273,10 +273,25 @@ textarea {
   border-radius: 8px;
 }
 
-/* Ensure minimum 44x44 tap targets on primary interactive shells (mobile). */
+/* Ensure minimum 44x44 tap targets on primary interactive shells (mobile).
+ * Also widen icon-only buttons so they're comfortable to tap. */
 @media (max-width: 640px) {
   :where(button, [role="button"], a.btn, .tap-target) {
     min-height: 44px;
+  }
+  :where(button, [role="button"]).size-icon,
+  :where(button, [role="button"])[data-icon-only="true"] {
+    min-width: 44px;
+  }
+  /* Roomier spacing between stacked interactive rows on small screens. */
+  :where([data-mobile-stack]) > * + * { margin-top: 0.625rem; }
+}
+
+/* Content-visibility hint for off-screen sections — cheap perf win on mobile. */
+@media (max-width: 640px) {
+  :where([data-cv-auto]) {
+    content-visibility: auto;
+    contain-intrinsic-size: 480px;
   }
 }
 
