@@ -35,7 +35,8 @@ interface Update {
 }
 
 const BUCKET = "ministry-updates";
-const MAX_MB = 15;
+const MAX_MB = 25;
+const BULK_CONCURRENCY = 4;
 
 export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   const { canEdit, isAdmin } = useAuth();
@@ -88,6 +89,38 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
     [updates],
   );
 
+  // Group consecutive photo-only updates that share the same (title, report_date)
+  // — these come from a bulk upload and should render as one collage tile.
+  type Group =
+    | { kind: "single"; update: Update }
+    | { kind: "collage"; title: string; report_date: string; items: Update[] };
+  const groups = useMemo<Group[]>(() => {
+    const out: Group[] = [];
+    for (const u of updates ?? []) {
+      const isPhotoOnly = !!u.image_url && !u.summary && !u.body;
+      const prev = out[out.length - 1];
+      if (
+        isPhotoOnly &&
+        prev &&
+        prev.kind === "collage" &&
+        prev.title === u.title &&
+        prev.report_date === u.report_date
+      ) {
+        prev.items.push(u);
+      } else if (isPhotoOnly) {
+        out.push({ kind: "collage", title: u.title, report_date: u.report_date, items: [u] });
+      } else {
+        out.push({ kind: "single", update: u });
+      }
+    }
+    // Collapse single-item collages back into a single card for a cleaner layout.
+    return out.map((g) =>
+      g.kind === "collage" && g.items.length === 1
+        ? ({ kind: "single", update: g.items[0] } as Group)
+        : g,
+    );
+  }, [updates]);
+
   return (
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -122,78 +155,124 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
             }
           />
         ) : (
-          updates.map((u) => (
-            <article key={u.id} className="rounded-2xl border border-border/60 bg-card p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {new Date(u.report_date).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+          groups.map((g) => {
+            if (g.kind === "collage") {
+              return (
+                <article
+                  key={`collage-${g.report_date}-${g.title}-${g.items[0].id}`}
+                  className="rounded-2xl border border-border/60 bg-card p-4"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {new Date(g.report_date).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <h4 className="font-display text-base font-semibold">
+                        {g.title}{" "}
+                        <span className="text-xs font-normal text-muted-foreground">
+                          · {g.items.length} photos
+                        </span>
+                      </h4>
+                    </div>
                   </div>
-                  <h4 className="font-display text-base font-semibold">{u.title}</h4>
-                </div>
-                {canEdit ? (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingId(editingId === u.id ? null : u.id)}
-                      aria-label="Edit update"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {isAdmin ? (
+                  <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+                    {g.items.map((u) => (
+                      <CollageThumb
+                        key={u.id}
+                        path={u.image_url as string}
+                        title={u.title}
+                        canDelete={isAdmin}
+                        onDelete={() => {
+                          if (confirm("Delete this photo?")) del.mutate(u.id);
+                        }}
+                        onOpen={() => {
+                          const idx = withImages.findIndex((x) => x.id === u.id);
+                          setLightboxIndex(idx >= 0 ? idx : 0);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </article>
+              );
+            }
+            const u = g.update;
+            return (
+              <article key={u.id} className="rounded-2xl border border-border/60 bg-card p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {new Date(u.report_date).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                    <h4 className="font-display text-base font-semibold">{u.title}</h4>
+                  </div>
+                  {canEdit ? (
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Delete this update?")) del.mutate(u.id);
-                        }}
-                        aria-label="Delete update"
+                        onClick={() => setEditingId(editingId === u.id ? null : u.id)}
+                        aria-label="Edit update"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
+                      {isAdmin ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Delete this update?")) del.mutate(u.id);
+                          }}
+                          aria-label="Delete update"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                {editingId === u.id ? (
+                  <UpdateEditForm
+                    update={u}
+                    onClose={() => setEditingId(null)}
+                    onSaved={() => {
+                      setEditingId(null);
+                      qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
+                    }}
+                  />
+                ) : (
+                  <>
+                    {u.image_url ? (
+                      <UpdateImageThumb
+                        path={u.image_url}
+                        title={u.title}
+                        onOpen={() => {
+                          const idx = withImages.findIndex((x) => x.id === u.id);
+                          setLightboxIndex(idx >= 0 ? idx : 0);
+                        }}
+                      />
                     ) : null}
-                  </div>
-                ) : null}
-              </div>
-              {editingId === u.id ? (
-                <UpdateEditForm
-                  update={u}
-                  onClose={() => setEditingId(null)}
-                  onSaved={() => {
-                    setEditingId(null);
-                    qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
-                  }}
-                />
-              ) : (
-                <>
-                  {u.image_url ? (
-                    <UpdateImageThumb
-                      path={u.image_url}
-                      title={u.title}
-                      onOpen={() => {
-                        const idx = withImages.findIndex((x) => x.id === u.id);
-                        setLightboxIndex(idx >= 0 ? idx : 0);
-                      }}
-                    />
-                  ) : null}
-                  {u.summary ? (
-                    <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
-                  ) : null}
-                  {u.body ? (
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-                      {u.body}
-                    </p>
-                  ) : null}
-                </>
-              )}
-            </article>
-          ))
+                    {u.summary ? (
+                      <p className="mt-3 text-sm font-medium text-foreground/90">{u.summary}</p>
+                    ) : null}
+                    {u.body ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+                        {u.body}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
 
@@ -312,6 +391,62 @@ function UpdateImageThumb({
 }
 
 /**
+ * Square collage tile — clickable thumbnail with an optional admin delete button
+ * that shows on hover / focus. Used to render bulk-uploaded photo batches.
+ */
+function CollageThumb({
+  path,
+  title,
+  canDelete,
+  onOpen,
+  onDelete,
+}: {
+  path: string;
+  title: string;
+  canDelete: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const { data: url, isLoading } = useSignedUrl(BUCKET, path);
+  return (
+    <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
+      {isLoading || !url ? (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label={`View full photo: ${title}`}
+        >
+          <img
+            src={url}
+            alt={title}
+            className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        </button>
+      )}
+      {canDelete ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute right-1 top-1 rounded-full bg-background/80 p-1 text-destructive opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          aria-label="Delete photo"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Signs every ministry-update image in parallel and shows them in a gallery
  * lightbox with prev/next navigation.
  */
@@ -374,40 +509,58 @@ function BulkUpdateUpload({ missionaryId }: { missionaryId: string }) {
     setProgress({ done: 0, total: valid.length });
     let successes = 0;
     let failures = 0;
-    try {
-      for (let i = 0; i < valid.length; i++) {
-        const f = valid[i];
-        try {
-          const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
-          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: f.type || undefined,
-          });
-          if (upErr) throw upErr;
-          const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
-          const report_date = bulkFileDate(f);
-          const { error: dbErr } = await supabase.from("ministry_updates").insert({
-            missionary_id: missionaryId,
-            title,
-            image_url: path,
-            report_date,
-          });
-          if (dbErr) throw dbErr;
-          successes++;
-        } catch (err) {
-          failures++;
-          console.error("bulk ministry update upload failed for", f.name, err);
-        } finally {
-          setProgress({ done: i + 1, total: valid.length });
-        }
+    let firstError: string | null = null;
+
+    const doOne = async (f: File, i: number) => {
+      try {
+        const path = safeStoragePath(missionaryId, f, `bulk-${i}`);
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: f.type || undefined,
+        });
+        if (upErr) throw upErr;
+        const title = f.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Ministry update photo";
+        const report_date = bulkFileDate(f);
+        const { error: dbErr } = await supabase.from("ministry_updates").insert({
+          missionary_id: missionaryId,
+          title,
+          image_url: path,
+          report_date,
+        });
+        if (dbErr) throw dbErr;
+        successes++;
+      } catch (err) {
+        failures++;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!firstError) firstError = `${f.name}: ${msg}`;
+        console.error("bulk ministry update upload failed for", f.name, err);
+      } finally {
+        setProgress((p) => (p ? { done: p.done + 1, total: p.total } : p));
       }
+    };
+
+    try {
+      // Bounded concurrency — much faster than sequential, safer than unbounded.
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(BULK_CONCURRENCY, valid.length) }, async () => {
+        while (cursor < valid.length) {
+          const i = cursor++;
+          await doOne(valid[i], i);
+        }
+      });
+      await Promise.all(workers);
+
       if (successes > 0) {
-        toast.success(`Uploaded ${successes} update photo${successes === 1 ? "" : "s"}.`);
+        toast.success(`Uploaded ${successes} photo${successes === 1 ? "" : "s"}.`);
         qc.invalidateQueries({ queryKey: ["ministry_updates"] });
         qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
       }
-      if (failures > 0) toast.error(`${failures} file${failures === 1 ? "" : "s"} failed to upload.`);
+      if (failures > 0) {
+        toast.error(
+          `${failures} file${failures === 1 ? "" : "s"} failed${firstError ? ` — ${firstError}` : ""}.`,
+        );
+      }
     } finally {
       setBusy(false);
       setProgress(null);
