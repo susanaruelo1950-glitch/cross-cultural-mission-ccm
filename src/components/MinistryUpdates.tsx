@@ -35,7 +35,8 @@ interface Update {
 }
 
 const BUCKET = "ministry-updates";
-const MAX_MB = 15;
+const MAX_MB = 25;
+const BULK_CONCURRENCY = 4;
 
 export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
   const { canEdit, isAdmin } = useAuth();
