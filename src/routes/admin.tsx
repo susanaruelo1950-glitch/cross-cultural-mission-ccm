@@ -135,6 +135,8 @@ function AdminPage() {
 
       <AdminActivityLog />
 
+      <BackupToDrivePanel />
+
       <RealtimeDebugPanel />
 
       <Card className="card-soft p-6">
