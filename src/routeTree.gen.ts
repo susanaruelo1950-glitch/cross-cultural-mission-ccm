@@ -22,6 +22,7 @@ import { Route as MapRouteImport } from './routes/map'
 import { Route as ManageRouteImport } from './routes/manage'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as BrilliantRouteImport } from './routes/brilliant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -100,6 +101,11 @@ const ImportRoute = ImportRouteImport.update({
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrilliantRoute = BrilliantRouteImport.update({
+  id: '/brilliant',
+  path: '/brilliant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/brilliant': typeof BrilliantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/brilliant': typeof BrilliantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/brilliant': typeof BrilliantRoute
   '/documents': typeof DocumentsRoute
   '/import': typeof ImportRoute
   '/manage': typeof ManageRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/auth'
+    | '/brilliant'
     | '/documents'
     | '/import'
     | '/manage'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/auth'
+    | '/brilliant'
     | '/documents'
     | '/import'
     | '/manage'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/auth'
+    | '/brilliant'
     | '/documents'
     | '/import'
     | '/manage'
@@ -359,6 +371,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
+  BrilliantRoute: typeof BrilliantRoute
   DocumentsRoute: typeof DocumentsRoute
   ImportRoute: typeof ImportRoute
   ManageRoute: typeof ManageRoute
@@ -470,6 +483,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brilliant': {
+      id: '/brilliant'
+      path: '/brilliant'
+      fullPath: '/brilliant'
+      preLoaderRoute: typeof BrilliantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -605,6 +625,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
+  BrilliantRoute: BrilliantRoute,
   DocumentsRoute: DocumentsRoute,
   ImportRoute: ImportRoute,
   ManageRoute: ManageRoute,
