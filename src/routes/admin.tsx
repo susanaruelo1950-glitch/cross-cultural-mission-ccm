@@ -13,6 +13,7 @@ import { AnnouncementsManager } from "@/components/AnnouncementsManager";
 import { PartnersManager } from "@/components/PartnersManager";
 import { RealtimeDebugPanel } from "@/components/RealtimeDebugPanel";
 import { PermissionError } from "@/components/PermissionError";
+import { BackupToDrivePanel } from "@/components/BackupToDrivePanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
