@@ -93,15 +93,15 @@ export const createBackupToDrive = createServerFn({ method: "POST" })
   .inputValidator((data: { includeStorage?: boolean; includeAuthUsers?: boolean }) => data)
   .handler(async ({ data, context }) => {
     // Authorize: caller must be admin
-    const { data: isAdmin, error: roleErr } = await (context.supabase.rpc as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ data: boolean | null; error: { message: string } | null }>)("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
+    const { data: adminRow, error: roleErr } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
     if (roleErr) throw new Error(`Role check failed: ${roleErr.message}`);
-    if (!isAdmin) throw new Error("Forbidden: admin only");
+    if (!adminRow) throw new Error("Forbidden: admin only");
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
