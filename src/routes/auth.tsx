@@ -33,6 +33,14 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const goNext = () => {
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      window.location.assign(next);
+    } else {
+      navigate({ to: "/" });
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,9 +49,10 @@ function AuthPage() {
   useEffect(() => {
     // Redirect if already signed in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate({ to: "/" });
+      if (session) goNext();
     });
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function signIn(e: FormEvent) {
     e.preventDefault();
@@ -52,13 +61,13 @@ function AuthPage() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome back.");
-    navigate({ to: "/" });
+    goNext();
   }
 
   async function signUp(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const redirectTo = `${window.location.origin}/`;
+    const redirectTo = next ? `${window.location.origin}${next}` : `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -67,13 +76,14 @@ function AuthPage() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Account created — check your email if confirmation is required.");
-    navigate({ to: "/" });
+    goNext();
   }
 
   async function google() {
     setBusy(true);
+    const redirectUri = next ? `${window.location.origin}${next}` : window.location.origin;
     const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: redirectUri,
     });
     if (res.error) {
       setBusy(false);
@@ -83,7 +93,7 @@ function AuthPage() {
     if (res.redirected) return; // browser is navigating away
     setBusy(false);
     toast.success("Signed in with Google.");
-    navigate({ to: "/" });
+    goNext();
   }
 
   return (
