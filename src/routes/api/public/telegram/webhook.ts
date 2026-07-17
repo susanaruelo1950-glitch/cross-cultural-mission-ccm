@@ -120,20 +120,28 @@ async function askAI(system: string, ctx: unknown, question: string) {
 
 async function ensureUser(chatId: number, username?: string, firstName?: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin.from("telegram_users" as never).select("*").eq("chat_id", chatId).maybeSingle();
+  const db = supabaseAdmin as unknown as {
+    from: (t: string) => {
+      select: (c: string) => { eq: (k: string, v: unknown) => { maybeSingle: () => Promise<{ data: { chat_id: number; is_admin: boolean } | null }> } };
+      insert: (row: Record<string, unknown>) => Promise<unknown>;
+      update: (row: Record<string, unknown>) => { eq: (k: string, v: unknown) => Promise<unknown> };
+    };
+  };
+  const { data } = await db.from("telegram_users").select("*").eq("chat_id", chatId).maybeSingle();
   if (!data) {
-    await supabaseAdmin.from("telegram_users" as never).insert({ chat_id: chatId, username, first_name: firstName });
-    return { chat_id: chatId, is_admin: false } as { chat_id: number; is_admin: boolean };
+    await db.from("telegram_users").insert({ chat_id: chatId, username, first_name: firstName });
+    return { chat_id: chatId, is_admin: false };
   }
-  await supabaseAdmin.from("telegram_users" as never).update({ last_seen_at: new Date().toISOString(), username, first_name: firstName }).eq("chat_id", chatId);
-  return data as { chat_id: number; is_admin: boolean };
+  await db.from("telegram_users").update({ last_seen_at: new Date().toISOString(), username, first_name: firstName }).eq("chat_id", chatId);
+  return data;
 }
 
 async function claimAdmin(chatId: number, passcode: string): Promise<boolean> {
   const expected = process.env.TELEGRAM_ADMIN_PASSCODE;
   if (!expected || passcode.trim() !== expected) return false;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.from("telegram_users" as never).update({ is_admin: true }).eq("chat_id", chatId);
+  const db = supabaseAdmin as unknown as { from: (t: string) => { update: (row: Record<string, unknown>) => { eq: (k: string, v: unknown) => Promise<unknown> } } };
+  await db.from("telegram_users").update({ is_admin: true }).eq("chat_id", chatId);
   return true;
 }
 
