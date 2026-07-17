@@ -138,6 +138,8 @@ function AdminPage() {
 
       <BackupToDrivePanel />
 
+      <BackupToGithubPanel />
+
       <RealtimeDebugPanel />
 
       <Card className="card-soft p-6">
