@@ -11,7 +11,8 @@ const AskInput = z.object({
     .default([]),
 });
 
-import { CODEBASE, fileIndex, selectRelevantFiles } from "./brilliant-codebase";
+// Codebase module is server-only (loaded dynamically inside the handler)
+// so the raw source bundle doesn't ship to the browser.
 
 
 const SYSTEM = `You are the CCM BRILLIANT AGENT — an exclusive expert-level assistant for admins and mission coordinators of the Cross-Cultural Mission (CCM) app.
