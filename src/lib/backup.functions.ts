@@ -93,7 +93,10 @@ export const createBackupToDrive = createServerFn({ method: "POST" })
   .inputValidator((data: { includeStorage?: boolean; includeAuthUsers?: boolean }) => data)
   .handler(async ({ data, context }) => {
     // Authorize: caller must be admin
-    const { data: isAdmin, error: roleErr } = await context.supabase.rpc("has_role", {
+    const { data: isAdmin, error: roleErr } = await (context.supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: boolean | null; error: { message: string } | null }>)("has_role", {
       _user_id: context.userId,
       _role: "admin",
     });
