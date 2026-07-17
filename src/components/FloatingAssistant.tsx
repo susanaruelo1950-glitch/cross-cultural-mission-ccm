@@ -179,6 +179,24 @@ function formatWhen(ts: number) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function encodeShare(c: Conversation): string {
+  const payload = JSON.stringify({ t: c.title, m: c.messages, g: c.tags ?? [] });
+  const b64 = btoa(unescape(encodeURIComponent(payload)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeShare(s: string): { title: string; messages: Message[]; tags: string[] } | null {
+  try {
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const json = decodeURIComponent(escape(atob(b64 + pad)));
+    const p = JSON.parse(json) as { t?: string; m?: Message[]; g?: string[] };
+    if (!p || !Array.isArray(p.m)) return null;
+    return { title: typeof p.t === "string" ? p.t : "Shared conversation", messages: p.m, tags: Array.isArray(p.g) ? p.g : [] };
+  } catch {
+    return null;
+  }
+}
+
 export function FloatingAssistant() {
   useDataStore();
   const ask = useServerFn(askAssistant);
