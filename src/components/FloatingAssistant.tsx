@@ -20,6 +20,8 @@ interface Conversation {
   title: string;
   updatedAt: number;
   messages: Message[];
+  pinned?: boolean;
+  tags?: string[];
 }
 
 const STORAGE_POS = "ccm-fab-pos";
