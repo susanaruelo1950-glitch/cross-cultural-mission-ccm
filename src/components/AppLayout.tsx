@@ -88,11 +88,15 @@ function useActive() {
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useActive();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isCoordinator } = useAuth();
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
       {nav
-        .filter((item) => item.role !== "admin" || isAdmin)
+        .filter((item) => {
+          if (item.role === "admin") return isAdmin;
+          if (item.role === "admin-or-coord") return isAdmin || isCoordinator;
+          return true;
+        })
         .map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
