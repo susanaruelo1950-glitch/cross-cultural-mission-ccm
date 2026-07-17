@@ -130,6 +130,7 @@ export const askBrilliant = createServerFn({ method: "POST" })
       ctx.recentContentVersions = contentVersions.data ?? [];
     }
 
+    const { CODEBASE, fileIndex, selectRelevantFiles } = await import("./brilliant-codebase.server");
 
     // Build codebase context: full file index (paths only) + relevant files
     // selected from the current question and recent history.
