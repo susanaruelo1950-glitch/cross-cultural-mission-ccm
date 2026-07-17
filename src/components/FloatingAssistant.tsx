@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
-import { Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2 } from "lucide-react";
+import {
+  Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2,
+  History, Plus, Search, Trash2, ArrowLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -12,10 +15,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDataStore } from "@/hooks/use-data-store";
 
 interface Message { role: "user" | "assistant"; content: string }
+interface Conversation {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: Message[];
+}
 
 const STORAGE_POS = "ccm-fab-pos";
-const STORAGE_MSGS = "ccm-fab-msgs";
+const STORAGE_MSGS = "ccm-fab-msgs"; // legacy — migrated on load
 const STORAGE_SIZE = "ccm-fab-size";
+const STORAGE_CONVOS = "ccm-fab-convos";
+const STORAGE_ACTIVE = "ccm-fab-active";
 const FAB_SIZE = 56;
 const EDGE_PAD = 12;
 
@@ -35,6 +46,49 @@ const WELCOME: Message = {
   content:
     "Hi there! 👋 I'm **Grace**, your CCM mission assistant. I can help you find missionaries, phases, areas, ministry reports, prayer requests, thank-you letters, and announcements. What would you like to know?",
 };
+
+function newId() {
+  return `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function titleFrom(messages: Message[]): string {
+  const firstUser = messages.find((m) => m.role === "user");
+  if (firstUser) return firstUser.content.trim().slice(0, 60);
+  return "New conversation";
+}
+
+function makeConversation(messages: Message[] = [WELCOME]): Conversation {
+  return { id: newId(), title: titleFrom(messages), updatedAt: Date.now(), messages };
+}
+
+function loadConversations(): { convos: Conversation[]; activeId: string } {
+  if (typeof window === "undefined") {
+    const c = makeConversation();
+    return { convos: [c], activeId: c.id };
+  }
+  try {
+    const raw = window.localStorage.getItem(STORAGE_CONVOS);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Conversation[];
+      if (Array.isArray(parsed) && parsed.length) {
+        const activeRaw = window.localStorage.getItem(STORAGE_ACTIVE) ?? "";
+        const activeId = parsed.some((c) => c.id === activeRaw) ? activeRaw : parsed[0].id;
+        return { convos: parsed, activeId };
+      }
+    }
+    // Migrate legacy single-thread
+    const legacy = window.localStorage.getItem(STORAGE_MSGS);
+    if (legacy) {
+      const msgs = JSON.parse(legacy) as Message[];
+      if (Array.isArray(msgs) && msgs.length) {
+        const c = makeConversation(msgs);
+        return { convos: [c], activeId: c.id };
+      }
+    }
+  } catch { /* noop */ }
+  const c = makeConversation();
+  return { convos: [c], activeId: c.id };
+}
 
 async function buildContext() {
   const phases = allPhases().map((p) => ({ id: p.id, name: p.name, order: p.order }));
@@ -113,12 +167,24 @@ function readSafeArea() {
   return out;
 }
 
+function formatWhen(ts: number) {
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const diffDays = Math.floor((now.getTime() - ts) / 86400000);
+  if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 export function FloatingAssistant() {
   useDataStore();
   const ask = useServerFn(askAssistant);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [search, setSearch] = useState("");
   const [size, setSize] = useState<PanelSize>(() => {
     if (typeof window === "undefined") return "regular";
     try {
@@ -127,17 +193,13 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return "regular";
   });
-  const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window === "undefined") return [WELCOME];
-    try {
-      const raw = window.localStorage.getItem(STORAGE_MSGS);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Message[];
-        if (Array.isArray(parsed) && parsed.length) return parsed;
-      }
-    } catch { /* noop */ }
-    return [WELCOME];
-  });
+
+  const initial = useMemo(loadConversations, []);
+  const [conversations, setConversations] = useState<Conversation[]>(initial.convos);
+  const [activeId, setActiveId] = useState<string>(initial.activeId);
+
+  const activeConvo = conversations.find((c) => c.id === activeId) ?? conversations[0];
+  const messages = activeConvo?.messages ?? [WELCOME];
 
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 24, y: 96 });
   const [dragging, setDragging] = useState(false);
@@ -163,7 +225,6 @@ export function FloatingAssistant() {
     return clampWith(targetX, y, s, v);
   }
 
-  // Init + resize / orientation handling.
   useEffect(() => {
     const sync = () => {
       const s = readSafeArea();
@@ -179,7 +240,6 @@ export function FloatingAssistant() {
             base = p;
           }
         } catch { /* noop */ }
-        // Default: bottom-right if no saved position.
         if (base.x === 24 && base.y === 96) {
           base = { x: v.w - FAB_SIZE - EDGE_PAD - s.right, y: v.h - FAB_SIZE - 96 - s.bottom };
         }
@@ -196,10 +256,17 @@ export function FloatingAssistant() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist conversations + active id.
   useEffect(() => {
-    try { window.localStorage.setItem(STORAGE_MSGS, JSON.stringify(messages.slice(-40))); } catch { /* noop */ }
+    try { window.localStorage.setItem(STORAGE_CONVOS, JSON.stringify(conversations)); } catch { /* noop */ }
+  }, [conversations]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_ACTIVE, activeId); } catch { /* noop */ }
+  }, [activeId]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, open]);
+  }, [messages, open, view]);
 
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_SIZE, size); } catch { /* noop */ }
@@ -232,34 +299,95 @@ export function FloatingAssistant() {
     try { window.localStorage.setItem(STORAGE_POS, JSON.stringify(snapped)); } catch { /* noop */ }
   }
 
+  function updateActive(updater: (c: Conversation) => Conversation) {
+    setConversations((prev) => prev.map((c) => (c.id === activeId ? updater(c) : c)));
+  }
+
+  function startNewConversation() {
+    const c = makeConversation();
+    setConversations((prev) => [c, ...prev]);
+    setActiveId(c.id);
+    setView("chat");
+    setInput("");
+  }
+
+  function openConversation(id: string) {
+    setActiveId(id);
+    setView("chat");
+  }
+
+  function deleteConversation(id: string) {
+    setConversations((prev) => {
+      const filtered = prev.filter((c) => c.id !== id);
+      if (filtered.length === 0) {
+        const c = makeConversation();
+        setActiveId(c.id);
+        return [c];
+      }
+      if (id === activeId) setActiveId(filtered[0].id);
+      return filtered;
+    });
+  }
+
+  function clearAllHistory() {
+    if (typeof window !== "undefined" && !window.confirm("Delete all conversations? This cannot be undone.")) return;
+    const c = makeConversation();
+    setConversations([c]);
+    setActiveId(c.id);
+    setView("chat");
+    try { window.localStorage.removeItem(STORAGE_MSGS); } catch { /* noop */ }
+  }
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
     setInput("");
-    const next: Message[] = [...messages, { role: "user", content: q }];
-    setMessages(next);
+    const nextMessages: Message[] = [...messages, { role: "user", content: q }];
+    updateActive((c) => ({
+      ...c,
+      messages: nextMessages,
+      title: c.messages.some((m) => m.role === "user") ? c.title : q.slice(0, 60),
+      updatedAt: Date.now(),
+    }));
     setBusy(true);
     try {
       const context = await buildContext();
       const { reply } = await ask({
         data: {
           question: q,
-          history: next.slice(0, -1).map((m) => ({ role: m.role, content: m.content })).slice(-12),
+          history: nextMessages.slice(0, -1).map((m) => ({ role: m.role, content: m.content })).slice(-12),
           context,
         },
       });
-      setMessages((m) => [...m, { role: "assistant", content: reply || "(no reply)" }]);
+      updateActive((c) => ({
+        ...c,
+        messages: [...nextMessages, { role: "assistant", content: reply || "(no reply)" }],
+        updatedAt: Date.now(),
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI request failed";
       toast.error(msg);
-      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${msg}` }]);
+      updateActive((c) => ({
+        ...c,
+        messages: [...nextMessages, { role: "assistant", content: `⚠️ ${msg}` }],
+        updatedAt: Date.now(),
+      }));
     } finally {
       setBusy(false);
     }
   }
 
+  const filteredConversations = useMemo(() => {
+    const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+    const q = search.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((c) => {
+      if (c.title.toLowerCase().includes(q)) return true;
+      return c.messages.some((m) => m.content.toLowerCase().includes(q));
+    });
+  }, [conversations, search]);
+
   const panelStyle = useMemo<React.CSSProperties>(() => {
-    // Mobile: bottom-sheet spanning full width, adjustable height.
     if (isMobile) {
       const heightPct = size === "compact" ? 0.45 : size === "regular" ? 0.72 : 0.95;
       const height = Math.round((vp.h - safe.top - safe.bottom) * heightPct);
@@ -270,7 +398,6 @@ export function FloatingAssistant() {
         height,
       };
     }
-    // Desktop: floating panel anchored near the FAB.
     const width = size === "compact" ? 340 : size === "regular" ? 400 : 480;
     const height = size === "compact" ? 440 : size === "regular" ? 560 : 680;
     const w = Math.min(width, vp.w - 16 - safe.left - safe.right);
@@ -314,97 +441,202 @@ export function FloatingAssistant() {
           aria-label="AI Mission Assistant"
           style={panelStyle}
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-lift",
-            isMobile ? "rounded-2xl" : "rounded-2xl",
+            "fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-lift rounded-2xl",
           )}
         >
           <header className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full gradient-mission text-white">
-              <Sparkles className="h-4 w-4" />
-            </div>
+            {view === "history" ? (
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setView("chat")} aria-label="Back to chat">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full gradient-mission text-white">
+                <Sparkles className="h-4 w-4" />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">Grace · Mission Assistant</div>
+              <div className="truncate text-sm font-semibold">
+                {view === "history" ? "Conversation History" : "Grace · Mission Assistant"}
+              </div>
               <div className="truncate text-[11px] text-muted-foreground">
-                {isMobile ? "Tap resize to change height" : "Grounded in live CCM data · drag me anywhere"}
+                {view === "history"
+                  ? `${conversations.length} conversation${conversations.length === 1 ? "" : "s"}`
+                  : isMobile ? "Tap resize to change height" : "Grounded in live CCM data · drag me anywhere"}
               </div>
             </div>
-            <GripVertical className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:inline-block" aria-hidden />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={cycleSize}
-              aria-label={`Resize (${size})`}
-              title={`Size: ${size}`}
-            >
-              {size === "large" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
+            {view === "chat" ? (
+              <>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={startNewConversation} aria-label="New conversation" title="New conversation">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setView("history")} aria-label="Show history" title="History">
+                  <History className="h-4 w-4" />
+                </Button>
+                <GripVertical className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:inline-block" aria-hidden />
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={cycleSize} aria-label={`Resize (${size})`} title={`Size: ${size}`}>
+                  {size === "large" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="ghost" size="icon"
+                className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                onClick={clearAllHistory}
+                aria-label="Clear all history"
+                title="Clear all history"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setOpen(false)} aria-label="Minimize">
               <Minus className="h-4 w-4" />
             </Button>
           </header>
 
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
-            {messages.map((m, i) => (
-              <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-soft",
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
-                  )}
+          {view === "history" ? (
+            <>
+              <div className="border-b border-border p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search past conversations…"
+                    className="h-9 rounded-full pl-9 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {filteredConversations.length === 0 ? (
+                  <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
+                    {search ? "No conversations match your search." : "No conversations yet."}
+                  </div>
+                ) : (
+                  <ul className="space-y-1">
+                    {filteredConversations.map((c) => {
+                      const lastMsg = [...c.messages].reverse().find((m) => m.role !== "assistant" || c.messages.length > 1);
+                      const preview = (lastMsg?.content ?? "").replace(/\s+/g, " ").slice(0, 90);
+                      const isActive = c.id === activeId;
+                      return (
+                        <li key={c.id}>
+                          <div
+                            className={cn(
+                              "group flex items-start gap-2 rounded-xl border border-transparent p-2 text-left transition-colors",
+                              "hover:bg-accent",
+                              isActive ? "border-border bg-accent/60" : "",
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openConversation(c.id)}
+                              className="min-w-0 flex-1 text-left"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate text-sm font-medium">{c.title || "Untitled"}</span>
+                                <span className="shrink-0 text-[10px] text-muted-foreground">{formatWhen(c.updatedAt)}</span>
+                              </div>
+                              {preview ? (
+                                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{preview}</div>
+                              ) : null}
+                              <div className="mt-0.5 text-[10px] text-muted-foreground">
+                                {c.messages.length} message{c.messages.length === 1 ? "" : "s"}
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteConversation(c.id)}
+                              className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                              aria-label={`Delete "${c.title}"`}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+              <div className="flex items-center gap-2 border-t border-border bg-background p-2">
+                <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={startNewConversation}>
+                  <Plus className="mr-1 h-4 w-4" /> New conversation
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={clearAllHistory}
                 >
-                  {m.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                  Clear all
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
+                {messages.map((m, i) => (
+                  <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-soft",
+                        m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
+                      )}
+                    >
+                      {m.role === "assistant" ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
+                          <ReactMarkdown>{m.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  )}
-                </div>
+                  </div>
+                ))}
+                {busy ? (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
+                      <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Thinking…
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ))}
-            {busy ? (
-              <div className="flex justify-start">
-                <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
-                  <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> Thinking…
-                </div>
-              </div>
-            ) : null}
-          </div>
 
-          {messages.length <= 1 ? (
-            <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => send(s)}
+              {messages.length <= 1 ? (
+                <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => send(s)}
+                      disabled={busy}
+                      className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-50"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <form
+                className="flex items-center gap-2 border-t border-border bg-background p-2"
+                style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
+                onSubmit={(e) => { e.preventDefault(); send(input); }}
+              >
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask about missionaries, prayer, reports…"
+                  className="h-10 rounded-full text-base sm:h-9 sm:text-sm"
                   disabled={busy}
-                  className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-50"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <form
-            className="flex items-center gap-2 border-t border-border bg-background p-2"
-            style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
-            onSubmit={(e) => { e.preventDefault(); send(input); }}
-          >
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about missionaries, prayer, reports…"
-              className="h-10 rounded-full text-base sm:h-9 sm:text-sm"
-              disabled={busy}
-              autoFocus
-            />
-            <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9" disabled={busy || !input.trim()} aria-label="Send">
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+                  autoFocus
+                />
+                <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9" disabled={busy || !input.trim()} aria-label="Send">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       ) : null}
     </>
