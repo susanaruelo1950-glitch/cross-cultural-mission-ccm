@@ -70,6 +70,7 @@ const nav: readonly NavItem[] = [
   { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
   { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
   { to: "/assistant", label: "AI Assistant", icon: Sparkles },
+  { to: "/brilliant", label: "Brilliant Agent", icon: Wand2, role: "admin-or-coord" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
 ];
 
