@@ -47,7 +47,7 @@ import { HighContrastToggle } from "@/components/HighContrastToggle";
 import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
-type Role = "public" | "any-auth" | "admin";
+type Role = "public" | "any-auth" | "admin" | "admin-or-coord";
 type NavItem = {
   to: string;
   label: string;
@@ -70,6 +70,7 @@ const nav: readonly NavItem[] = [
   { to: "/manage", label: "Manage", icon: UserPlus, role: "admin" },
   { to: "/import", label: "Import / Export", icon: Upload, role: "admin" },
   { to: "/assistant", label: "AI Assistant", icon: Sparkles },
+  { to: "/brilliant", label: "Brilliant Agent", icon: Wand2, role: "admin-or-coord" },
   { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
 ];
 
@@ -87,11 +88,15 @@ function useActive() {
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useActive();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isCoordinator } = useAuth();
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
       {nav
-        .filter((item) => item.role !== "admin" || isAdmin)
+        .filter((item) => {
+          if (item.role === "admin") return isAdmin;
+          if (item.role === "admin-or-coord") return isAdmin || isCoordinator;
+          return true;
+        })
         .map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
