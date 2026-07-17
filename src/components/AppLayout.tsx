@@ -47,7 +47,7 @@ import { HighContrastToggle } from "@/components/HighContrastToggle";
 import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import ccmLogo from "@/assets/ccm-logo.png.asset.json";
 
-type Role = "public" | "any-auth" | "admin";
+type Role = "public" | "any-auth" | "admin" | "admin-or-coord";
 type NavItem = {
   to: string;
   label: string;
