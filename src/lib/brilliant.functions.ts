@@ -129,8 +129,37 @@ export const askBrilliant = createServerFn({ method: "POST" })
       ctx.recentContentVersions = contentVersions.data ?? [];
     }
 
+
+    // Build codebase context: full file index (paths only) + relevant files
+    // selected from the current question and recent history.
+    const searchText = [data.question, ...data.history.slice(-4).map((m) => m.content)].join("\n");
+    const relevant = selectRelevantFiles(searchText, 60_000);
+    const idx = fileIndex();
+    const codeSystem =
+      `\n\n--- CODEBASE INDEX (${idx.length} files) ---\n` +
+      idx.map((f) => `${f.path} (${f.lines}L)`).join("\n") +
+      `\n\n--- RELEVANT SOURCE FILES ---\n` +
+      relevant.map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join("\n\n") +
+      `\n\nYou can request any other file by name — the user can paste it, or you can name it in your answer and it will be attached next turn.`;
+
+    // If the user's question explicitly names a file path present in CODEBASE, force-attach it.
+    const explicit: string[] = [];
+    for (const path of Object.keys(CODEBASE)) {
+      const rel = path.replace(/^\//, "");
+      if (data.question.includes(rel) && !relevant.find((r) => r.path === rel)) {
+        explicit.push(`### ${rel}\n\`\`\`\n${CODEBASE[path].slice(0, 12_000)}\n\`\`\``);
+        if (explicit.length >= 3) break;
+      }
+    }
+    const explicitBlock = explicit.length ? `\n\n--- EXPLICITLY REQUESTED FILES ---\n${explicit.join("\n\n")}` : "";
+
+    const systemContent =
+      `${SYSTEM}\n\nToday: ${new Date().toISOString().slice(0, 10)}\n\nApp context (JSON):\n${JSON.stringify(ctx).slice(0, 70_000)}` +
+      codeSystem +
+      explicitBlock;
+
     const messages = [
-      { role: "system", content: `${SYSTEM}\n\nToday: ${new Date().toISOString().slice(0, 10)}\n\nApp context (JSON):\n${JSON.stringify(ctx).slice(0, 90_000)}` },
+      { role: "system", content: systemContent },
       ...data.history,
       { role: "user", content: data.question },
     ];
@@ -148,5 +177,10 @@ export const askBrilliant = createServerFn({ method: "POST" })
     }
     const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
-    return { reply, sourcesUsed: Object.keys(ctx).filter((k) => k !== "generatedAt" && k !== "viewer") };
+    return {
+      reply,
+      sourcesUsed: Object.keys(ctx).filter((k) => k !== "generatedAt" && k !== "viewer"),
+      codeFilesAttached: relevant.map((r) => r.path),
+    };
   });
+
