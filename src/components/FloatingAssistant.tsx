@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
 import {
   Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2,
-  History, Plus, Search, Trash2, ArrowLeft,
+  History, Plus, Search, Trash2, ArrowLeft, Pin, PinOff, Share2, Tag as TagIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ interface Conversation {
   title: string;
   updatedAt: number;
   messages: Message[];
+  pinned?: boolean;
+  tags?: string[];
 }
 
 const STORAGE_POS = "ccm-fab-pos";
@@ -177,6 +179,24 @@ function formatWhen(ts: number) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function encodeShare(c: Conversation): string {
+  const payload = JSON.stringify({ t: c.title, m: c.messages, g: c.tags ?? [] });
+  const b64 = btoa(unescape(encodeURIComponent(payload)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeShare(s: string): { title: string; messages: Message[]; tags: string[] } | null {
+  try {
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    const json = decodeURIComponent(escape(atob(b64 + pad)));
+    const p = JSON.parse(json) as { t?: string; m?: Message[]; g?: string[] };
+    if (!p || !Array.isArray(p.m)) return null;
+    return { title: typeof p.t === "string" ? p.t : "Shared conversation", messages: p.m, tags: Array.isArray(p.g) ? p.g : [] };
+  } catch {
+    return null;
+  }
+}
+
 export function FloatingAssistant() {
   useDataStore();
   const ask = useServerFn(askAssistant);
@@ -185,6 +205,7 @@ export function FloatingAssistant() {
   const [input, setInput] = useState("");
   const [view, setView] = useState<"chat" | "history">("chat");
   const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [size, setSize] = useState<PanelSize>(() => {
     if (typeof window === "undefined") return "regular";
     try {
@@ -338,6 +359,74 @@ export function FloatingAssistant() {
     try { window.localStorage.removeItem(STORAGE_MSGS); } catch { /* noop */ }
   }
 
+  function togglePin(id: string) {
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)));
+  }
+
+  function editTags(id: string) {
+    if (typeof window === "undefined") return;
+    const target = conversations.find((c) => c.id === id);
+    if (!target) return;
+    const current = (target.tags ?? []).join(", ");
+    const next = window.prompt(
+      "Tags (comma-separated). Examples: prayer, kidapawan, phase-2",
+      current,
+    );
+    if (next === null) return;
+    const tags = Array.from(
+      new Set(
+        next.split(",").map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0 && t.length <= 24),
+      ),
+    ).slice(0, 8);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, tags } : c)));
+  }
+
+  async function shareConversation(id: string) {
+    const target = conversations.find((c) => c.id === id);
+    if (!target || typeof window === "undefined") return;
+    try {
+      const encoded = encodeShare(target);
+      const url = `${window.location.origin}${window.location.pathname}#grace=${encoded}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied — open on any device to reopen this conversation.");
+      } else {
+        window.prompt("Copy this share link:", url);
+      }
+    } catch {
+      toast.error("Couldn't create share link.");
+    }
+  }
+
+  // Import a shared conversation from URL hash on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    const match = hash.match(/#grace=([^&]+)/);
+    if (!match) return;
+    const decoded = decodeShare(match[1]);
+    // Clear hash immediately so refresh doesn't re-import.
+    try {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } catch { /* noop */ }
+    if (!decoded) {
+      toast.error("Shared conversation link is invalid.");
+      return;
+    }
+    const imported: Conversation = {
+      id: newId(),
+      title: decoded.title || "Shared conversation",
+      updatedAt: Date.now(),
+      messages: decoded.messages,
+      tags: decoded.tags,
+    };
+    setConversations((prev) => [imported, ...prev]);
+    setActiveId(imported.id);
+    setOpen(true);
+    setView("chat");
+    toast.success("Shared conversation loaded.");
+  }, []);
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
@@ -377,15 +466,28 @@ export function FloatingAssistant() {
     }
   }
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of conversations) for (const t of c.tags ?? []) set.add(t);
+    return Array.from(set).sort();
+  }, [conversations]);
+
   const filteredConversations = useMemo(() => {
-    const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+    const sorted = [...conversations].sort((a, b) => {
+      const ap = a.pinned ? 1 : 0;
+      const bp = b.pinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return b.updatedAt - a.updatedAt;
+    });
     const q = search.trim().toLowerCase();
-    if (!q) return sorted;
     return sorted.filter((c) => {
+      if (activeTag && !(c.tags ?? []).includes(activeTag)) return false;
+      if (!q) return true;
       if (c.title.toLowerCase().includes(q)) return true;
+      if ((c.tags ?? []).some((t) => t.includes(q))) return true;
       return c.messages.some((m) => m.content.toLowerCase().includes(q));
     });
-  }, [conversations, search]);
+  }, [conversations, search, activeTag]);
 
   const panelStyle = useMemo<React.CSSProperties>(() => {
     if (isMobile) {
@@ -495,21 +597,48 @@ export function FloatingAssistant() {
 
           {view === "history" ? (
             <>
-              <div className="border-b border-border p-2">
+              <div className="border-b border-border p-2 space-y-2">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search past conversations…"
+                    placeholder="Search title, tag, or message…"
                     className="h-9 rounded-full pl-9 text-sm"
                   />
                 </div>
+                {allTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTag(null)}
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                        activeTag === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-accent",
+                      )}
+                    >
+                      All
+                    </button>
+                    {allTags.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setActiveTag(activeTag === t ? null : t)}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                          activeTag === t ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-accent",
+                        )}
+                      >
+                        #{t}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 {filteredConversations.length === 0 ? (
                   <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
-                    {search ? "No conversations match your search." : "No conversations yet."}
+                    {search || activeTag ? "No conversations match your filters." : "No conversations yet."}
                   </div>
                 ) : (
                   <ul className="space-y-1">
@@ -521,7 +650,7 @@ export function FloatingAssistant() {
                         <li key={c.id}>
                           <div
                             className={cn(
-                              "group flex items-start gap-2 rounded-xl border border-transparent p-2 text-left transition-colors",
+                              "group flex items-start gap-1 rounded-xl border border-transparent p-2 text-left transition-colors",
                               "hover:bg-accent",
                               isActive ? "border-border bg-accent/60" : "",
                             )}
@@ -531,26 +660,59 @@ export function FloatingAssistant() {
                               onClick={() => openConversation(c.id)}
                               className="min-w-0 flex-1 text-left"
                             >
-                              <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                {c.pinned ? <Pin className="h-3 w-3 shrink-0 text-primary" aria-hidden /> : null}
                                 <span className="truncate text-sm font-medium">{c.title || "Untitled"}</span>
-                                <span className="shrink-0 text-[10px] text-muted-foreground">{formatWhen(c.updatedAt)}</span>
+                                <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{formatWhen(c.updatedAt)}</span>
                               </div>
                               {preview ? (
                                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{preview}</div>
                               ) : null}
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">
-                                {c.messages.length} message{c.messages.length === 1 ? "" : "s"}
+                              <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                                <span>{c.messages.length} msg{c.messages.length === 1 ? "" : "s"}</span>
+                                {(c.tags ?? []).map((t) => (
+                                  <span key={t} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">#{t}</span>
+                                ))}
                               </div>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteConversation(c.id)}
-                              className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
-                              aria-label={`Delete "${c.title}"`}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex shrink-0 flex-col gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => togglePin(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                aria-label={c.pinned ? "Unpin" : "Pin"}
+                                title={c.pinned ? "Unpin" : "Pin to top"}
+                              >
+                                {c.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => editTags(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label="Edit tags"
+                                title="Edit tags"
+                              >
+                                <TagIcon className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => shareConversation(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label="Copy share link"
+                                title="Copy share link"
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteConversation(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                aria-label={`Delete "${c.title}"`}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </li>
                       );
@@ -558,6 +720,7 @@ export function FloatingAssistant() {
                   </ul>
                 )}
               </div>
+
               <div className="flex items-center gap-2 border-t border-border bg-background p-2">
                 <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={startNewConversation}>
                   <Plus className="mr-1 h-4 w-4" /> New conversation
