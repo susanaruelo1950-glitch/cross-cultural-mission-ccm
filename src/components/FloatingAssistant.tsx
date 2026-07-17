@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
-import { Sparkles, Send, X, Loader2, Minus, GripVertical } from "lucide-react";
+import { Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -15,6 +15,12 @@ interface Message { role: "user" | "assistant"; content: string }
 
 const STORAGE_POS = "ccm-fab-pos";
 const STORAGE_MSGS = "ccm-fab-msgs";
+const STORAGE_SIZE = "ccm-fab-size";
+const FAB_SIZE = 56;
+const EDGE_PAD = 12;
+
+type PanelSize = "compact" | "regular" | "large";
+const SIZE_ORDER: PanelSize[] = ["compact", "regular", "large"];
 
 const SUGGESTIONS = [
   "Who are the missionaries in Kidapawan?",
@@ -86,12 +92,41 @@ async function buildContext() {
   };
 }
 
+/** Read env(safe-area-inset-*) values from CSS custom properties on <html>. */
+function readSafeArea() {
+  if (typeof window === "undefined") return { top: 0, right: 0, bottom: 0, left: 0 };
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;" +
+    "--sat:env(safe-area-inset-top);--sar:env(safe-area-inset-right);" +
+    "--sab:env(safe-area-inset-bottom);--sal:env(safe-area-inset-left);";
+  document.body.appendChild(probe);
+  const cs = getComputedStyle(probe);
+  const parse = (v: string) => (v.endsWith("px") ? parseFloat(v) : 0) || 0;
+  const out = {
+    top: parse(cs.getPropertyValue("--sat")),
+    right: parse(cs.getPropertyValue("--sar")),
+    bottom: parse(cs.getPropertyValue("--sab")),
+    left: parse(cs.getPropertyValue("--sal")),
+  };
+  probe.remove();
+  return out;
+}
+
 export function FloatingAssistant() {
   useDataStore();
   const ask = useServerFn(askAssistant);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
+  const [size, setSize] = useState<PanelSize>(() => {
+    if (typeof window === "undefined") return "regular";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_SIZE);
+      if (raw && SIZE_ORDER.includes(raw as PanelSize)) return raw as PanelSize;
+    } catch { /* noop */ }
+    return "regular";
+  });
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === "undefined") return [WELCOME];
     try {
@@ -104,23 +139,61 @@ export function FloatingAssistant() {
     return [WELCOME];
   });
 
-  // Position: bottom-right by default, persisted, draggable.
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 24, y: 96 });
+  const [dragging, setDragging] = useState(false);
+  const [safe, setSafe] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
+  const [vp, setVp] = useState({ w: 1024, h: 768 });
   const dragRef = useRef<{ dx: number; dy: number; moved: boolean } | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Initialize position after mount (avoid SSR window access).
+  const isMobile = vp.w < 640;
+
+  function clampWith(x: number, y: number, s = safe, v = vp) {
+    const minX = EDGE_PAD + s.left;
+    const minY = EDGE_PAD + s.top;
+    const maxX = v.w - FAB_SIZE - EDGE_PAD - s.right;
+    const maxY = v.h - FAB_SIZE - EDGE_PAD - s.bottom;
+    return { x: Math.min(Math.max(minX, x), Math.max(minX, maxX)), y: Math.min(Math.max(minY, y), Math.max(minY, maxY)) };
+  }
+
+  function snapToEdge(x: number, y: number, s = safe, v = vp) {
+    const mid = (v.w - FAB_SIZE) / 2;
+    const targetX = x < mid ? EDGE_PAD + s.left : v.w - FAB_SIZE - EDGE_PAD - s.right;
+    return clampWith(targetX, y, s, v);
+  }
+
+  // Init + resize / orientation handling.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_POS);
-      if (raw) {
-        const p = JSON.parse(raw) as { x: number; y: number };
-        setPos(clampPos(p.x, p.y));
-        return;
-      }
-    } catch { /* noop */ }
-    setPos({ x: window.innerWidth - 80, y: window.innerHeight - 180 });
+    const sync = () => {
+      const s = readSafeArea();
+      const v = { w: window.innerWidth, h: window.innerHeight };
+      setSafe(s);
+      setVp(v);
+      setPos((prev) => {
+        let base = prev;
+        try {
+          const raw = window.localStorage.getItem(STORAGE_POS);
+          if (raw && prev.x === 24 && prev.y === 96) {
+            const p = JSON.parse(raw) as { x: number; y: number };
+            base = p;
+          }
+        } catch { /* noop */ }
+        // Default: bottom-right if no saved position.
+        if (base.x === 24 && base.y === 96) {
+          base = { x: v.w - FAB_SIZE - EDGE_PAD - s.right, y: v.h - FAB_SIZE - 96 - s.bottom };
+        }
+        return snapToEdge(base.x, base.y, s, v);
+      });
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -128,23 +201,20 @@ export function FloatingAssistant() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open]);
 
-  function clampPos(x: number, y: number) {
-    if (typeof window === "undefined") return { x, y };
-    const size = 56;
-    const maxX = window.innerWidth - size - 8;
-    const maxY = window.innerHeight - size - 8;
-    return { x: Math.min(Math.max(8, x), maxX), y: Math.min(Math.max(8, y), maxY) };
-  }
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_SIZE, size); } catch { /* noop */ }
+  }, [size]);
 
   function onPointerDown(e: React.PointerEvent) {
     const rect = btnRef.current?.getBoundingClientRect();
     if (!rect) return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top, moved: false };
+    setDragging(true);
   }
   function onPointerMove(e: React.PointerEvent) {
     if (!dragRef.current) return;
-    const next = clampPos(e.clientX - dragRef.current.dx, e.clientY - dragRef.current.dy);
+    const next = clampWith(e.clientX - dragRef.current.dx, e.clientY - dragRef.current.dy);
     if (Math.abs(next.x - pos.x) + Math.abs(next.y - pos.y) > 3) dragRef.current.moved = true;
     setPos(next);
   }
@@ -152,11 +222,14 @@ export function FloatingAssistant() {
     const d = dragRef.current;
     dragRef.current = null;
     (e.target as Element).releasePointerCapture?.(e.pointerId);
+    setDragging(false);
     if (d && !d.moved) {
       setOpen((o) => !o);
-    } else {
-      try { window.localStorage.setItem(STORAGE_POS, JSON.stringify(pos)); } catch { /* noop */ }
+      return;
     }
+    const snapped = snapToEdge(pos.x, pos.y);
+    setPos(snapped);
+    try { window.localStorage.setItem(STORAGE_POS, JSON.stringify(snapped)); } catch { /* noop */ }
   }
 
   async function send(text: string) {
@@ -185,18 +258,34 @@ export function FloatingAssistant() {
     }
   }
 
-  // Panel anchored near the FAB, but clamped inside viewport.
-  const panelStyle = useMemo(() => {
-    if (typeof window === "undefined") return { left: 24, top: 96 };
-    const width = Math.min(400, window.innerWidth - 24);
-    const height = Math.min(560, window.innerHeight - 120);
-    let left = pos.x + 64;
-    let top = pos.y - height + 56;
-    if (left + width > window.innerWidth - 8) left = Math.max(8, pos.x - width - 8);
-    if (top < 8) top = 8;
-    if (top + height > window.innerHeight - 8) top = window.innerHeight - height - 8;
-    return { left, top, width, height };
-  }, [pos, open]);
+  const panelStyle = useMemo<React.CSSProperties>(() => {
+    // Mobile: bottom-sheet spanning full width, adjustable height.
+    if (isMobile) {
+      const heightPct = size === "compact" ? 0.45 : size === "regular" ? 0.72 : 0.95;
+      const height = Math.round((vp.h - safe.top - safe.bottom) * heightPct);
+      return {
+        left: EDGE_PAD + safe.left,
+        right: EDGE_PAD + safe.right,
+        bottom: EDGE_PAD + safe.bottom,
+        height,
+      };
+    }
+    // Desktop: floating panel anchored near the FAB.
+    const width = size === "compact" ? 340 : size === "regular" ? 400 : 480;
+    const height = size === "compact" ? 440 : size === "regular" ? 560 : 680;
+    const w = Math.min(width, vp.w - 16 - safe.left - safe.right);
+    const h = Math.min(height, vp.h - 16 - safe.top - safe.bottom);
+    let left = pos.x + FAB_SIZE + 8;
+    let top = pos.y - h + FAB_SIZE;
+    if (left + w > vp.w - EDGE_PAD - safe.right) left = Math.max(EDGE_PAD + safe.left, pos.x - w - 8);
+    if (top < EDGE_PAD + safe.top) top = EDGE_PAD + safe.top;
+    if (top + h > vp.h - EDGE_PAD - safe.bottom) top = vp.h - h - EDGE_PAD - safe.bottom;
+    return { left, top, width: w, height: h };
+  }, [pos, size, vp, safe, isMobile]);
+
+  function cycleSize() {
+    setSize((s) => SIZE_ORDER[(SIZE_ORDER.indexOf(s) + 1) % SIZE_ORDER.length]);
+  }
 
   return (
     <>
@@ -207,10 +296,11 @@ export function FloatingAssistant() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        style={{ left: pos.x, top: pos.y }}
+        style={{ left: pos.x, top: pos.y, width: FAB_SIZE, height: FAB_SIZE }}
         className={cn(
-          "fixed z-50 grid h-14 w-14 place-items-center rounded-full text-white shadow-lift touch-none select-none",
-          "gradient-mission active:scale-95 transition-transform",
+          "fixed z-50 grid place-items-center rounded-full text-white shadow-lift touch-none select-none",
+          "gradient-mission active:scale-95",
+          dragging ? "transition-none cursor-grabbing" : "transition-all duration-200 cursor-grab",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}
       >
@@ -223,20 +313,33 @@ export function FloatingAssistant() {
           role="dialog"
           aria-label="AI Mission Assistant"
           style={panelStyle}
-          className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lift"
+          className={cn(
+            "fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-lift",
+            isMobile ? "rounded-2xl" : "rounded-2xl",
+          )}
         >
           <header className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
-            <div className="grid h-8 w-8 place-items-center rounded-full gradient-mission text-white">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full gradient-mission text-white">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">Grace · Mission Assistant</div>
               <div className="truncate text-[11px] text-muted-foreground">
-                Grounded in live CCM data · drag me anywhere
+                {isMobile ? "Tap resize to change height" : "Grounded in live CCM data · drag me anywhere"}
               </div>
             </div>
-            <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden />
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)} aria-label="Minimize">
+            <GripVertical className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:inline-block" aria-hidden />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={cycleSize}
+              aria-label={`Resize (${size})`}
+              title={`Size: ${size}`}
+            >
+              {size === "large" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setOpen(false)} aria-label="Minimize">
               <Minus className="h-4 w-4" />
             </Button>
           </header>
@@ -287,17 +390,18 @@ export function FloatingAssistant() {
 
           <form
             className="flex items-center gap-2 border-t border-border bg-background p-2"
+            style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
             onSubmit={(e) => { e.preventDefault(); send(input); }}
           >
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about missionaries, prayer, reports…"
-              className="h-9 rounded-full"
+              className="h-10 rounded-full text-base sm:h-9 sm:text-sm"
               disabled={busy}
               autoFocus
             />
-            <Button type="submit" size="icon" className="h-9 w-9 shrink-0 rounded-full" disabled={busy || !input.trim()} aria-label="Send">
+            <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9" disabled={busy || !input.trim()} aria-label="Send">
               <Send className="h-4 w-4" />
             </Button>
           </form>
