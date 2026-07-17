@@ -597,21 +597,48 @@ export function FloatingAssistant() {
 
           {view === "history" ? (
             <>
-              <div className="border-b border-border p-2">
+              <div className="border-b border-border p-2 space-y-2">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search past conversations…"
+                    placeholder="Search title, tag, or message…"
                     className="h-9 rounded-full pl-9 text-sm"
                   />
                 </div>
+                {allTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTag(null)}
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                        activeTag === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-accent",
+                      )}
+                    >
+                      All
+                    </button>
+                    {allTags.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setActiveTag(activeTag === t ? null : t)}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                          activeTag === t ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-accent",
+                        )}
+                      >
+                        #{t}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 {filteredConversations.length === 0 ? (
                   <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
-                    {search ? "No conversations match your search." : "No conversations yet."}
+                    {search || activeTag ? "No conversations match your filters." : "No conversations yet."}
                   </div>
                 ) : (
                   <ul className="space-y-1">
@@ -623,7 +650,7 @@ export function FloatingAssistant() {
                         <li key={c.id}>
                           <div
                             className={cn(
-                              "group flex items-start gap-2 rounded-xl border border-transparent p-2 text-left transition-colors",
+                              "group flex items-start gap-1 rounded-xl border border-transparent p-2 text-left transition-colors",
                               "hover:bg-accent",
                               isActive ? "border-border bg-accent/60" : "",
                             )}
@@ -633,26 +660,59 @@ export function FloatingAssistant() {
                               onClick={() => openConversation(c.id)}
                               className="min-w-0 flex-1 text-left"
                             >
-                              <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                {c.pinned ? <Pin className="h-3 w-3 shrink-0 text-primary" aria-hidden /> : null}
                                 <span className="truncate text-sm font-medium">{c.title || "Untitled"}</span>
-                                <span className="shrink-0 text-[10px] text-muted-foreground">{formatWhen(c.updatedAt)}</span>
+                                <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{formatWhen(c.updatedAt)}</span>
                               </div>
                               {preview ? (
                                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{preview}</div>
                               ) : null}
-                              <div className="mt-0.5 text-[10px] text-muted-foreground">
-                                {c.messages.length} message{c.messages.length === 1 ? "" : "s"}
+                              <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                                <span>{c.messages.length} msg{c.messages.length === 1 ? "" : "s"}</span>
+                                {(c.tags ?? []).map((t) => (
+                                  <span key={t} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">#{t}</span>
+                                ))}
                               </div>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteConversation(c.id)}
-                              className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
-                              aria-label={`Delete "${c.title}"`}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex shrink-0 flex-col gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => togglePin(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                aria-label={c.pinned ? "Unpin" : "Pin"}
+                                title={c.pinned ? "Unpin" : "Pin to top"}
+                              >
+                                {c.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => editTags(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label="Edit tags"
+                                title="Edit tags"
+                              >
+                                <TagIcon className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => shareConversation(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label="Copy share link"
+                                title="Copy share link"
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteConversation(c.id)}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                aria-label={`Delete "${c.title}"`}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </li>
                       );
@@ -660,6 +720,7 @@ export function FloatingAssistant() {
                   </ul>
                 )}
               </div>
+
               <div className="flex items-center gap-2 border-t border-border bg-background p-2">
                 <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={startNewConversation}>
                   <Plus className="mr-1 h-4 w-4" /> New conversation
