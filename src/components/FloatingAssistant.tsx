@@ -466,15 +466,28 @@ export function FloatingAssistant() {
     }
   }
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of conversations) for (const t of c.tags ?? []) set.add(t);
+    return Array.from(set).sort();
+  }, [conversations]);
+
   const filteredConversations = useMemo(() => {
-    const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+    const sorted = [...conversations].sort((a, b) => {
+      const ap = a.pinned ? 1 : 0;
+      const bp = b.pinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return b.updatedAt - a.updatedAt;
+    });
     const q = search.trim().toLowerCase();
-    if (!q) return sorted;
     return sorted.filter((c) => {
+      if (activeTag && !(c.tags ?? []).includes(activeTag)) return false;
+      if (!q) return true;
       if (c.title.toLowerCase().includes(q)) return true;
+      if ((c.tags ?? []).some((t) => t.includes(q))) return true;
       return c.messages.some((m) => m.content.toLowerCase().includes(q));
     });
-  }, [conversations, search]);
+  }, [conversations, search, activeTag]);
 
   const panelStyle = useMemo<React.CSSProperties>(() => {
     if (isMobile) {
