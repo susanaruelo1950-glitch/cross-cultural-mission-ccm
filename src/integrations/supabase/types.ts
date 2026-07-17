@@ -603,6 +603,33 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_users: {
+        Row: {
+          chat_id: number
+          created_at: string
+          first_name: string | null
+          is_admin: boolean
+          last_seen_at: string
+          username: string | null
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          first_name?: string | null
+          is_admin?: boolean
+          last_seen_at?: string
+          username?: string | null
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          first_name?: string | null
+          is_admin?: boolean
+          last_seen_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       thank_you_letters: {
         Row: {
           created_at: string
