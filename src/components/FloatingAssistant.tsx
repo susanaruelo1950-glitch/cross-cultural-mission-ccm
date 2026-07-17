@@ -359,6 +359,74 @@ export function FloatingAssistant() {
     try { window.localStorage.removeItem(STORAGE_MSGS); } catch { /* noop */ }
   }
 
+  function togglePin(id: string) {
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)));
+  }
+
+  function editTags(id: string) {
+    if (typeof window === "undefined") return;
+    const target = conversations.find((c) => c.id === id);
+    if (!target) return;
+    const current = (target.tags ?? []).join(", ");
+    const next = window.prompt(
+      "Tags (comma-separated). Examples: prayer, kidapawan, phase-2",
+      current,
+    );
+    if (next === null) return;
+    const tags = Array.from(
+      new Set(
+        next.split(",").map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0 && t.length <= 24),
+      ),
+    ).slice(0, 8);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, tags } : c)));
+  }
+
+  async function shareConversation(id: string) {
+    const target = conversations.find((c) => c.id === id);
+    if (!target || typeof window === "undefined") return;
+    try {
+      const encoded = encodeShare(target);
+      const url = `${window.location.origin}${window.location.pathname}#grace=${encoded}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied — open on any device to reopen this conversation.");
+      } else {
+        window.prompt("Copy this share link:", url);
+      }
+    } catch {
+      toast.error("Couldn't create share link.");
+    }
+  }
+
+  // Import a shared conversation from URL hash on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    const match = hash.match(/#grace=([^&]+)/);
+    if (!match) return;
+    const decoded = decodeShare(match[1]);
+    // Clear hash immediately so refresh doesn't re-import.
+    try {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } catch { /* noop */ }
+    if (!decoded) {
+      toast.error("Shared conversation link is invalid.");
+      return;
+    }
+    const imported: Conversation = {
+      id: newId(),
+      title: decoded.title || "Shared conversation",
+      updatedAt: Date.now(),
+      messages: decoded.messages,
+      tags: decoded.tags,
+    };
+    setConversations((prev) => [imported, ...prev]);
+    setActiveId(imported.id);
+    setOpen(true);
+    setView("chat");
+    toast.success("Shared conversation loaded.");
+  }, []);
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
