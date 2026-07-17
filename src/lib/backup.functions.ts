@@ -133,8 +133,9 @@ export const createBackupToDrive = createServerFn({ method: "POST" })
         let from = 0;
         // eslint-disable-next-line no-constant-condition
         while (true) {
-          const { data: page, error } = await supabaseAdmin
-            .from(t as string)
+          const { data: page, error } = await (supabaseAdmin.from as unknown as (
+            table: string,
+          ) => ReturnType<typeof supabaseAdmin.from>)(t)
             .select("*")
             .range(from, from + pageSize - 1);
           if (error) throw error;
