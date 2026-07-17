@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
 import {
   Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2,
-  History, Plus, Search, Trash2, ArrowLeft,
+  History, Plus, Search, Trash2, ArrowLeft, Pin, PinOff, Share2, Tag as TagIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
