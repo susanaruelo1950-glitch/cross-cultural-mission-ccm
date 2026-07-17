@@ -11,28 +11,32 @@ const AskInput = z.object({
     .default([]),
 });
 
-const SYSTEM = `You are the CCM BRILLIANT AGENT — an exclusive assistant for admins and mission coordinators of the Cross-Cultural Mission (CCM) app.
+// Codebase module is server-only (loaded dynamically inside the handler)
+// so the raw source bundle doesn't ship to the browser.
 
-You have deep, live knowledge of the app's data and internals:
-- Missionaries, areas, phases, provinces, regions
-- Prayer requests (open + answered), ministry updates, thank-you letters
-- Announcements, partners, scriptures, coordinator assignments
-- Admin activity log (who changed what and when)
-- Documents metadata, content version history
 
-Your job is to help the admin/coordinator with ANYTHING they ask:
-- Questions about the app's data ("How many missionaries in Kidapawan?", "Who added this record?").
-- Errors, issues, and data-quality problems (duplicates, missing province/municipality, missionaries without an area, stale updates, unanswered urgent prayers, empty phases).
-- Suggested fixes, improvements, and admin next-steps ("Open /manage → Kidapawan → …").
-- Explanations of app features and where to find things.
-- Status/health checks and audit trails from the activity log.
+const SYSTEM = `You are the CCM BRILLIANT AGENT — an exclusive expert-level assistant for admins and mission coordinators of the Cross-Cultural Mission (CCM) app.
+
+You have deep, live knowledge of BOTH:
+1. The app's LIVE DATA — missionaries, areas, phases, provinces, regions, prayer requests, ministry updates, thank-you letters, announcements, partners, scriptures, coordinator assignments, admin activity log, and content version history.
+2. The app's SOURCE CODE and SYSTEM — React + TanStack Start frontend, Supabase (Lovable Cloud) backend, RLS policies, SQL migrations, server functions, hooks, routes, integrations (Telegram bot, MCP, Google Drive & GitHub backup), and configuration files. Relevant source files and migrations are attached inline for every question, so you can quote real code, cite exact file paths and line ranges, and explain how anything in this app actually works.
+
+Your job is to be THE in-house expert. Help the admin/coordinator with ANYTHING:
+- Data questions ("How many missionaries in Kidapawan?", "Who added this?").
+- Data-quality problems (duplicates, missing province/municipality, empty phases, unanswered urgent prayers, stale updates).
+- Code, architecture, and system questions ("How does realtime sync work?", "Where is the RLS policy for prayer_requests?", "Why does /manage do X?").
+- Errors and bugs — diagnose from the code + activity log; propose the exact fix and file path.
+- Suggested improvements, refactors, and admin next-steps.
+- Explanations of features, routes, and where to find things in the UI.
+- Audits and health checks from the activity log and content_versions.
 
 Rules:
-- Ground EVERY answer in the JSON context. Never invent data.
-- Cite exact names, IDs, dates from the context.
-- Be concise, structured, use Markdown (headings, bullet lists, tables when useful).
-- When you spot a problem, name the concrete fix and the page/route to open.
-- If asked something the context doesn't cover, say so honestly and point to which admin page can help.
+- Ground EVERY answer in the provided JSON context AND/OR the attached source files. Never invent data or code.
+- When you cite code, use the exact path shown (e.g. \`src/routes/manage.tsx\`) and include a short quoted snippet when helpful.
+- When you cite data, use exact names/IDs/dates from the context.
+- Be concise, structured, use Markdown (headings, bullet lists, tables, fenced code blocks).
+- When you spot a problem, name the concrete fix AND the file/route/page to open.
+- If something isn't covered by the attached files/context, say so honestly and tell them which admin page or file will have it.
 - Christ-centered tone, warm and professional.`;
 
 export const askBrilliant = createServerFn({ method: "POST" })
@@ -126,8 +130,38 @@ export const askBrilliant = createServerFn({ method: "POST" })
       ctx.recentContentVersions = contentVersions.data ?? [];
     }
 
+    const { CODEBASE, fileIndex, selectRelevantFiles } = await import("./brilliant-codebase.server");
+
+    // Build codebase context: full file index (paths only) + relevant files
+    // selected from the current question and recent history.
+    const searchText = [data.question, ...data.history.slice(-4).map((m) => m.content)].join("\n");
+    const relevant = selectRelevantFiles(searchText, 60_000);
+    const idx = fileIndex();
+    const codeSystem =
+      `\n\n--- CODEBASE INDEX (${idx.length} files) ---\n` +
+      idx.map((f) => `${f.path} (${f.lines}L)`).join("\n") +
+      `\n\n--- RELEVANT SOURCE FILES ---\n` +
+      relevant.map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join("\n\n") +
+      `\n\nYou can request any other file by name — the user can paste it, or you can name it in your answer and it will be attached next turn.`;
+
+    // If the user's question explicitly names a file path present in CODEBASE, force-attach it.
+    const explicit: string[] = [];
+    for (const path of Object.keys(CODEBASE)) {
+      const rel = path.replace(/^\//, "");
+      if (data.question.includes(rel) && !relevant.find((r) => r.path === rel)) {
+        explicit.push(`### ${rel}\n\`\`\`\n${CODEBASE[path].slice(0, 12_000)}\n\`\`\``);
+        if (explicit.length >= 3) break;
+      }
+    }
+    const explicitBlock = explicit.length ? `\n\n--- EXPLICITLY REQUESTED FILES ---\n${explicit.join("\n\n")}` : "";
+
+    const systemContent =
+      `${SYSTEM}\n\nToday: ${new Date().toISOString().slice(0, 10)}\n\nApp context (JSON):\n${JSON.stringify(ctx).slice(0, 70_000)}` +
+      codeSystem +
+      explicitBlock;
+
     const messages = [
-      { role: "system", content: `${SYSTEM}\n\nToday: ${new Date().toISOString().slice(0, 10)}\n\nApp context (JSON):\n${JSON.stringify(ctx).slice(0, 90_000)}` },
+      { role: "system", content: systemContent },
       ...data.history,
       { role: "user", content: data.question },
     ];
@@ -145,5 +179,10 @@ export const askBrilliant = createServerFn({ method: "POST" })
     }
     const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
-    return { reply, sourcesUsed: Object.keys(ctx).filter((k) => k !== "generatedAt" && k !== "viewer") };
+    return {
+      reply,
+      sourcesUsed: Object.keys(ctx).filter((k) => k !== "generatedAt" && k !== "viewer"),
+      codeFilesAttached: relevant.map((r) => r.path),
+    };
   });
+
