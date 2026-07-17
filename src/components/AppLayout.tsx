@@ -353,6 +353,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </main>
 
       <MobileBottomNav />
+      <FloatingAssistant />
       <Toaster position="top-center" />
     </div>
   );
