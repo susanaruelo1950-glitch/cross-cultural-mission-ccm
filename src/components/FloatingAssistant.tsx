@@ -205,6 +205,7 @@ export function FloatingAssistant() {
   const [input, setInput] = useState("");
   const [view, setView] = useState<"chat" | "history">("chat");
   const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [size, setSize] = useState<PanelSize>(() => {
     if (typeof window === "undefined") return "regular";
     try {
