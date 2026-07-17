@@ -46,36 +46,49 @@ async function sendMessage(chatId: number, text: string) {
 
 async function buildContext(isAdmin: boolean) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [missionaries, areas, phases, prayers, updates, letters, anns, activity] = await Promise.all([
-    supabaseAdmin.from("missionaries" as never).select("id,full_name,church,area_id,status,province,municipality").limit(500),
-    supabaseAdmin.from("areas" as never).select("id,name,phase_id,region,province").limit(200),
-    supabaseAdmin.from("phases" as never).select("id,name,phase_order").limit(50),
-    supabaseAdmin.from("prayer_requests_db").select("title,detail,urgent,answered,missionary_id,created_at").eq("answered", false).order("created_at", { ascending: false }).limit(30),
-    supabaseAdmin.from("ministry_updates").select("title,summary,report_date,missionary_id").order("report_date", { ascending: false, nullsFirst: false }).limit(20),
-    supabaseAdmin.from("thank_you_letters").select("title,message,letter_date,missionary_id").order("letter_date", { ascending: false, nullsFirst: false }).limit(10),
-    supabaseAdmin.from("announcements").select("title,body,publish_at,expires_at,published").eq("published", true).order("publish_at", { ascending: false }).limit(10),
+  const { seedMissionaries, seedAreas, seedPhases } = await import("@/lib/mission-data");
+  const db = supabaseAdmin as unknown as {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (k: string, v: unknown) => { order: (k: string, o?: unknown) => { limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null }> } };
+        order: (k: string, o?: unknown) => { limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null }> };
+        limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null }>;
+      };
+    };
+  };
+
+  const [prayers, updates, letters, anns, activity] = await Promise.all([
+    db.from("prayer_requests_db").select("title,detail,urgent,answered,missionary_id,created_at").eq("answered", false).order("created_at", { ascending: false }).limit(30),
+    db.from("ministry_updates").select("title,summary,report_date,missionary_id").order("report_date", { ascending: false, nullsFirst: false }).limit(20),
+    db.from("thank_you_letters").select("title,message,letter_date,missionary_id").order("letter_date", { ascending: false, nullsFirst: false }).limit(10),
+    db.from("announcements").select("title,body,publish_at,expires_at,published").eq("published", true).order("publish_at", { ascending: false }).limit(10),
     isAdmin
-      ? supabaseAdmin.from("activity_logs" as never).select("action,entity_type,entity_id,user_email,created_at,changes").order("created_at", { ascending: false }).limit(40)
+      ? db.from("activity_log").select("action,entity_type,entity_id,user_email,changes,created_at").order("created_at", { ascending: false }).limit(40)
       : Promise.resolve({ data: null }),
   ]);
+
+  const missionaries = seedMissionaries.map((m) => ({
+    id: m.id, name: m.fullName, church: m.church, areaId: m.areaId,
+    status: m.status, ministryFocus: m.ministryFocus, province: m.province, municipality: m.municipality,
+  }));
 
   const ctx: Record<string, unknown> = {
     generatedAt: new Date().toISOString(),
     counts: {
-      missionaries: missionaries.data?.length ?? 0,
-      areas: areas.data?.length ?? 0,
-      phases: phases.data?.length ?? 0,
+      missionaries: missionaries.length,
+      areas: seedAreas.length,
+      phases: seedPhases.length,
       openPrayerRequests: prayers.data?.length ?? 0,
       recentUpdates: updates.data?.length ?? 0,
       recentLetters: letters.data?.length ?? 0,
       announcements: anns.data?.length ?? 0,
     },
-    phases: phases.data ?? [],
-    areas: areas.data ?? [],
-    missionaries: missionaries.data ?? [],
+    phases: seedPhases.map((p) => ({ id: p.id, name: p.name, order: p.order })),
+    areas: seedAreas.map((a) => ({ id: a.id, name: a.name, phaseId: a.phaseId, region: a.region, province: a.province })),
+    missionaries,
     openPrayerRequests: prayers.data ?? [],
     recentUpdates: updates.data ?? [],
-    recentLetters: (letters.data ?? []).map((l) => ({ ...l, message: (l.message ?? "").slice(0, 240) })),
+    recentLetters: (letters.data ?? []).map((l) => ({ ...l, message: String(l.message ?? "").slice(0, 240) })),
     announcements: anns.data ?? [],
   };
   if (isAdmin) ctx.recentActivity = activity.data ?? [];
