@@ -347,6 +347,8 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
   const [open, setOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
+  const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
 
   async function fileToDataUrl(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -360,41 +362,41 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
   async function runOcr(f: File) {
     setOcrBusy(true);
     setOcrNote(null);
+    setOcrSuggestions([]);
+    setOcrOverall(null);
     try {
       const imageDataUrl = await fileToDataUrl(f);
       const { ocrReceipt } = await import("@/lib/ocr-receipt.functions");
       const result = await ocrReceipt({ data: { imageDataUrl } });
-      const filled: string[] = [];
-      // Only prefill empty fields so the admin's typing is never overwritten.
-      if (result.date && !receiptDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        setReceiptDate(result.date);
-        filled.push("date");
-      } else if (result.date && receiptDate === new Date().toISOString().slice(0, 10)) {
-        // The default is "today" — replace it with the OCR-detected date.
-        setReceiptDate(result.date);
-        filled.push("date");
+      setOcrOverall(result.confidence);
+      const next: OcrSuggestion[] = [];
+      if (result.date) {
+        next.push({ key: "date", label: "Receipt date", value: result.date, confidence: result.fieldConfidence.date });
       }
-      if (result.amount != null && !amount.trim()) {
-        setAmount(String(result.amount));
-        filled.push("amount");
+      if (result.amount != null) {
+        next.push({
+          key: "amount",
+          label: "Amount",
+          value: String(result.amount),
+          confidence: result.fieldConfidence.amount,
+        });
       }
-      if (result.currency && (!currency.trim() || currency === "PHP")) {
-        setCurrency(result.currency);
-        if (result.currency !== "PHP") filled.push("currency");
+      if (result.currency) {
+        next.push({
+          key: "currency",
+          label: "Currency",
+          value: result.currency,
+          confidence: result.fieldConfidence.currency,
+        });
       }
-      if (result.title && !title.trim()) {
-        setTitle(result.title);
-        filled.push("title");
+      if (result.title) {
+        next.push({ key: "title", label: "Title", value: result.title, confidence: result.fieldConfidence.title });
       }
-      if (filled.length > 0) {
-        setOcrNote(
-          `Autofilled ${filled.join(", ")}${
-            result.confidence ? ` (${result.confidence} confidence)` : ""
-          }. Please review before posting.`,
-        );
-        toast.success("Receipt fields autofilled from image.");
-      } else {
+      setOcrSuggestions(next);
+      if (next.length === 0) {
         setOcrNote("Couldn't read the receipt clearly — please fill the fields manually.");
+      } else {
+        setOcrNote("Review each detected field, then choose Use, Edit, or Dismiss. Nothing is applied automatically.");
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "OCR failed.";
@@ -404,11 +406,21 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
     }
   }
 
+  function applyOcrValue(key: string, value: string) {
+    if (key === "date") setReceiptDate(value);
+    else if (key === "amount") setAmount(value);
+    else if (key === "currency") setCurrency(value.toUpperCase());
+    else if (key === "title") setTitle(value);
+    setOcrSuggestions((prev) => prev.filter((s) => s.key !== key));
+  }
+
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
       setOcrNote(null);
+      setOcrSuggestions([]);
+      setOcrOverall(null);
       return;
     }
     const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
@@ -420,6 +432,7 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
     setPreviewUrl(URL.createObjectURL(f));
     void runOcr(f);
   }
+
 
 
   async function submit(e: FormEvent) {
