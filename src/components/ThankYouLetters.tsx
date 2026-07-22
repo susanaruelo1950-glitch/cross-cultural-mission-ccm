@@ -273,6 +273,7 @@ function LetterEditForm({
   const qc = useQueryClient();
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
+  const [letterDate, setLetterDate] = useState(letter.letter_date?.slice(0, 10) ?? "");
 
   const keys = [
     ["thank_you_letters", letter.missionary_id],
@@ -280,7 +281,7 @@ function LetterEditForm({
   ] as const;
 
   const save = useMutation({
-    mutationFn: async (patch: { title: string; message: string | null }) => {
+    mutationFn: async (patch: { title: string; message: string | null; letter_date: string }) => {
       const { error } = await supabase
         .from("thank_you_letters")
         .update(patch)
@@ -314,12 +315,24 @@ function LetterEditForm({
 
   function submit() {
     if (!title.trim()) return toast.error("Title is required.");
-    save.mutate({ title: title.trim(), message: message.trim() || null });
+    if (!letterDate || !/^\d{4}-\d{2}-\d{2}$/.test(letterDate)) {
+      return toast.error("Please enter a valid letter date.");
+    }
+    save.mutate({ title: title.trim(), message: message.trim() || null, letter_date: letterDate });
   }
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+      <div className="grid gap-1.5">
+        <Label htmlFor={`tyl-inline-date-${letter.id}`} className="text-xs">Letter date</Label>
+        <Input
+          id={`tyl-inline-date-${letter.id}`}
+          type="date"
+          value={letterDate}
+          onChange={(e) => setLetterDate(e.target.value)}
+        />
+      </div>
       <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
       <div className="flex gap-2">
         <Button size="sm" className="rounded-full" disabled={save.isPending} onClick={submit}>
@@ -332,6 +345,7 @@ function LetterEditForm({
     </div>
   );
 }
+
 
 
 function LetterAttachment({
