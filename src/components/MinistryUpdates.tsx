@@ -183,7 +183,17 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
             }
           />
         ) : (
-          groups.map((g) => {
+          groupsByYear.map(([year, yearGroups]) => (
+          <details key={year} open={year === latestYear} className="group rounded-2xl border border-border/60 bg-card/40">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-4 py-3 hover:bg-muted/40">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-lg font-semibold">{year}</span>
+                <span className="text-xs text-muted-foreground">{yearGroups.length} {yearGroups.length === 1 ? "entry" : "entries"}</span>
+              </div>
+              <span className="text-xs text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div className="space-y-4 p-3 pt-1">
+          {yearGroups.map((g) => {
             if (g.kind === "collage") {
               return (
                 <article
