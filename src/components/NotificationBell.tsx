@@ -38,11 +38,20 @@ function fallbackHref(table: Notif["table"]): string {
   return "/missionaries";
 }
 
+function currentMonthKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function inCurrentMonth(iso: string): boolean {
+  return typeof iso === "string" && iso.slice(0, 7) === currentMonthKey();
+}
 function loadStore(): Notif[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
-    return raw ? (JSON.parse(raw) as Notif[]) : [];
+    const list = raw ? (JSON.parse(raw) as Notif[]) : [];
+    // Auto-reset: drop anything from a prior month so notifications can't
+    // pile up indefinitely — the bell starts fresh at the top of each month.
+    return list.filter((n) => inCurrentMonth(n.at));
   } catch {
     return [];
   }
