@@ -22,7 +22,7 @@ interface Props {
   missionaryName: string;
 }
 
-interface Receipt {
+interface ReceiptRow {
   id: string;
   missionary_id: string;
   title: string;
@@ -59,7 +59,7 @@ export function SupportReceipts({ missionaryId, missionaryName }: Props) {
 
   const { data: receipts, isLoading } = useQuery({
     queryKey: ["support_receipts", missionaryId],
-    queryFn: async (): Promise<Receipt[]> => {
+    queryFn: async (): Promise<ReceiptRow[]> => {
       const { data, error } = await supabase
         .from("support_receipts")
         .select("*")
@@ -67,7 +67,7 @@ export function SupportReceipts({ missionaryId, missionaryName }: Props) {
         .order("receipt_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Receipt[];
+      return (data ?? []) as ReceiptRow[];
     },
   });
 
@@ -106,7 +106,7 @@ export function SupportReceipts({ missionaryId, missionaryName }: Props) {
 
   // Group by year so the timeline collapses into per-year sections, matching Ministry Updates.
   const receiptsByYear = useMemo(() => {
-    const map = new Map<string, Receipt[]>();
+    const map = new Map<string, ReceiptRow[]>();
     for (const r of receipts ?? []) {
       const year = r.receipt_date && /^\d{4}/.test(r.receipt_date) ? r.receipt_date.slice(0, 4) : "Undated";
       if (!map.has(year)) map.set(year, []);
@@ -521,7 +521,7 @@ function ReceiptEditForm({
   onClose,
   onSaved,
 }: {
-  receipt: Receipt;
+  receipt: ReceiptRow;
   onClose: () => void;
   onSaved: () => void;
 }) {
