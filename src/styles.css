@@ -204,7 +204,7 @@
 @utility gradient-mission {
   background-image: linear-gradient(135deg,
     var(--color-primary) 0%,
-    oklch(0.35 0.06 155) 100%);
+    oklch(0.22 0.08 255) 100%);
 }
 
 /* News-ticker marquee — right-to-left, pauses on hover, respects reduced motion. */
