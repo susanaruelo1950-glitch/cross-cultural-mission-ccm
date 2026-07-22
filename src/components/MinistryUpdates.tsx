@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { createDisplayUrl } from "@/lib/storage-signed";
 
-import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files } from "lucide-react";
+import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,6 +20,8 @@ import { bulkFileDate } from "@/lib/parse-filename-date";
 import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProgress";
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
+import { ocrMinistryUpdate } from "@/lib/ocr-update.functions";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 interface Props {
   missionaryId: string;
@@ -755,15 +758,110 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
+  const [reportDate, setReportDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
+  const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
+  const runOcr = useServerFn(ocrMinistryUpdate);
+
+  function readAsDataUrl(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error ?? new Error("Failed to read file."));
+      r.readAsDataURL(f);
+    });
+  }
+
+  async function tryOcr(f: File) {
+    if (!f.type.startsWith("image/")) return;
+    setOcrStatus("running");
+    setOcrNote(null);
+    setOcrSuggestions([]);
+    setOcrOverall(null);
+    try {
+      const dataUrl = await readAsDataUrl(f);
+      const result = await runOcr({ data: { imageDataUrl: dataUrl, filenameHint: f.name } });
+      // Fall back to a filename-derived date if the model didn't return one.
+      const detectedDate = result.date ?? bulkFileDate(f) ?? null;
+      let detectedTitle = result.title;
+      if (!detectedTitle && detectedDate) {
+        const d = new Date(`${detectedDate}T00:00:00Z`);
+        if (!Number.isNaN(d.getTime())) {
+          const monthName = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+          detectedTitle = `Month of ${monthName} ${d.getUTCFullYear()}`;
+        }
+      }
+      setOcrOverall(result.confidence);
+      const next: OcrSuggestion[] = [];
+      if (detectedDate) {
+        next.push({
+          key: "report_date",
+          label: "Report date",
+          value: detectedDate,
+          confidence: result.fieldConfidence.date ?? (result.date ? result.confidence : "medium"),
+        });
+      }
+      if (detectedTitle) {
+        next.push({
+          key: "title",
+          label: "Title (monthly heading)",
+          value: detectedTitle,
+          confidence: result.fieldConfidence.title ?? result.fieldConfidence.date ?? result.confidence,
+        });
+      }
+      if (result.summary) {
+        next.push({
+          key: "summary",
+          label: "Short summary",
+          value: result.summary,
+          confidence: result.fieldConfidence.summary,
+        });
+      }
+      if (result.body) {
+        next.push({
+          key: "body",
+          label: "Notes / full update",
+          value: result.body,
+          confidence: result.fieldConfidence.body,
+          multiline: true,
+        });
+      }
+      setOcrSuggestions(next);
+      setOcrStatus("done");
+      if (next.length === 0) {
+        setOcrNote("Couldn't confidently read this photo — please fill in the fields manually.");
+      } else {
+        setOcrNote("Please review each detected field, then choose Use, Edit, or Dismiss. Nothing is applied automatically.");
+      }
+    } catch (err) {
+      console.error("Ministry update OCR failed", err);
+      setOcrStatus("error");
+      setOcrNote(err instanceof Error ? err.message : "OCR failed. Please fill in fields manually.");
+    }
+  }
+
+  function applyOcrValue(key: string, value: string) {
+    if (key === "report_date") setReportDate(value);
+    else if (key === "title") setTitle(value);
+    else if (key === "summary") setSummary(value);
+    else if (key === "body") setBody(value);
+    setOcrSuggestions((prev) => prev.filter((s) => s.key !== key));
+  }
 
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
+      setOcrStatus("idle");
+      setOcrNote(null);
+      setOcrSuggestions([]);
+      setOcrOverall(null);
       return;
     }
     const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
@@ -773,6 +871,7 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
     }
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
+    void tryOcr(f);
   }
 
   async function submit(e: FormEvent) {
@@ -796,19 +895,29 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
         image_path = path;
       }
 
-
-      const { error } = await supabase.from("ministry_updates").insert({
+      const insertPayload: {
+        missionary_id: string;
+        title: string;
+        summary: string | null;
+        body: string | null;
+        image_url: string | null;
+        report_date?: string;
+      } = {
         missionary_id: missionaryId,
         title: title.trim(),
         summary: summary.trim() || null,
         body: body.trim() || null,
         image_url: image_path,
-      });
+      };
+      if (reportDate) insertPayload.report_date = reportDate;
+
+      const { error } = await supabase.from("ministry_updates").insert(insertPayload);
       if (error) throw error;
       toast.success("Update posted.");
       setTitle("");
       setSummary("");
       setBody("");
+      setReportDate("");
       pickFile(null);
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["ministry_updates", missionaryId] });
@@ -840,7 +949,24 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
     >
       <div className="grid gap-1.5">
         <Label htmlFor="mu-title">Title *</Label>
-        <Input id="mu-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <Input
+          id="mu-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder='e.g. "Month of January 2026"'
+          required
+          maxLength={200}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="mu-date">Report date</Label>
+        <Input
+          id="mu-date"
+          type="date"
+          value={reportDate}
+          onChange={(e) => setReportDate(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+        />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="mu-summary">Short summary</Label>
@@ -849,6 +975,7 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           placeholder="One-line highlight (optional)"
+          maxLength={280}
         />
       </div>
       <div className="grid gap-1.5">
@@ -859,11 +986,15 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
           onChange={(e) => setBody(e.target.value)}
           placeholder="Attendance, baptisms, testimonies, prayer requests, challenges…"
           className="min-h-[140px]"
+          maxLength={10000}
         />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="mu-photo" className="flex items-center gap-1.5">
           <ImagePlus className="h-4 w-4" /> Photo (optional, max {MAX_MB} MB)
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <Sparkles className="h-3 w-3" /> AI-assisted — review each field before applying
+          </span>
         </Label>
         <Input
           id="mu-photo"
@@ -890,6 +1021,31 @@ function UpdateForm({ missionaryId }: { missionaryId: string }) {
             </Button>
           </div>
         ) : null}
+        {ocrStatus === "running" ? (
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Reading photo with AI…
+          </div>
+        ) : null}
+        {ocrStatus === "error" && ocrNote ? (
+          <div className="mt-1 rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
+            <div className="flex items-start gap-1.5">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{ocrNote}</span>
+            </div>
+          </div>
+        ) : (
+          <OcrReviewPanel
+            overallConfidence={ocrOverall}
+            suggestions={ocrSuggestions}
+            note={ocrNote}
+            onAccept={(key, value) => applyOcrValue(key, value)}
+            onDismiss={(key) => setOcrSuggestions((prev) => prev.filter((s) => s.key !== key))}
+            onAcceptAll={() => {
+              for (const s of ocrSuggestions) applyOcrValue(s.key, s.value);
+            }}
+            onDismissAll={() => setOcrSuggestions([])}
+          />
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy} className="rounded-full">
