@@ -1,9 +1,10 @@
 import { useMemo, useState, useRef, type FormEvent } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { createDisplayUrl } from "@/lib/storage-signed";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
-import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save } from "lucide-react";
+import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +21,7 @@ import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
 import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProgress";
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
+import { ocrLetter } from "@/lib/ocr-letter.functions";
 
 
 interface Props {
