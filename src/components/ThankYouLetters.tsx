@@ -1,9 +1,10 @@
 import { useMemo, useState, useRef, type FormEvent } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { createDisplayUrl } from "@/lib/storage-signed";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
-import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save } from "lucide-react";
+import { Loader2, Plus, FileUp, Trash2, Calendar, X, Mail, Download, FileText, ExternalLink, Files, Pencil, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +21,7 @@ import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
 import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProgress";
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
+import { ocrLetter } from "@/lib/ocr-letter.functions";
 
 
 interface Props {
@@ -447,15 +449,70 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [letterDate, setLetterDate] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const runOcr = useServerFn(ocrLetter);
+
+  function readAsDataUrl(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error ?? new Error("Failed to read file."));
+      r.readAsDataURL(f);
+    });
+  }
+
+  async function tryOcr(f: File) {
+    if (!f.type.startsWith("image/")) return;
+    setOcrStatus("running");
+    setOcrNote(null);
+    try {
+      const dataUrl = await readAsDataUrl(f);
+      const result = await runOcr({ data: { imageDataUrl: dataUrl } });
+      const filled: string[] = [];
+      setTitle((prev) => {
+        if (prev.trim()) return prev;
+        if (result.title) { filled.push("title"); return result.title; }
+        if (result.recipient) { filled.push("title"); return `Thank you to ${result.recipient}`; }
+        return prev;
+      });
+      setMessage((prev) => {
+        if (prev.trim()) return prev;
+        if (result.message) { filled.push("message"); return result.message; }
+        return prev;
+      });
+      setLetterDate((prev) => {
+        if (prev) return prev;
+        if (result.date) { filled.push("date"); return result.date; }
+        return prev;
+      });
+      setOcrStatus("done");
+      if (filled.length > 0) {
+        const parts = [`Auto-filled ${filled.join(", ")} from the letter image — please review before posting.`];
+        if (result.amounts) parts.push(`Amounts detected: ${result.amounts}.`);
+        if (result.recipient) parts.push(`Addressed to: ${result.recipient}.`);
+        setOcrNote(parts.join(" "));
+      } else {
+        setOcrNote("Couldn't confidently read this letter — please fill in the fields manually.");
+      }
+    } catch (err) {
+      console.error("Letter OCR failed", err);
+      setOcrStatus("error");
+      setOcrNote(err instanceof Error ? err.message : "OCR failed. Please fill in fields manually.");
+    }
+  }
 
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
+      setOcrStatus("idle");
+      setOcrNote(null);
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
@@ -465,6 +522,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     }
     setFile(f);
     setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+    void tryOcr(f);
   }
 
   async function submit(e: FormEvent) {
@@ -488,16 +546,26 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         letter_path = path;
       }
 
-      const { error } = await supabase.from("thank_you_letters").insert({
+      const insertPayload: {
+        missionary_id: string;
+        title: string;
+        message: string | null;
+        letter_url: string | null;
+        letter_date?: string;
+      } = {
         missionary_id: missionaryId,
         title: title.trim(),
         message: message.trim() || null,
         letter_url: letter_path,
-      });
+      };
+      if (letterDate) insertPayload.letter_date = letterDate;
+
+      const { error } = await supabase.from("thank_you_letters").insert(insertPayload);
       if (error) throw error;
       toast.success("Thank you letter posted.");
       setTitle("");
       setMessage("");
+      setLetterDate("");
       pickFile(null);
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
@@ -512,6 +580,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       setBusy(false);
     }
   }
+
 
   if (!open) {
     return (
@@ -542,6 +611,16 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         />
       </div>
       <div className="grid gap-1.5">
+        <Label htmlFor="tyl-date">Letter date</Label>
+        <Input
+          id="tyl-date"
+          type="date"
+          value={letterDate}
+          onChange={(e) => setLetterDate(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+        />
+      </div>
+      <div className="grid gap-1.5">
         <Label htmlFor="tyl-message">Message</Label>
         <Textarea
           id="tyl-message"
@@ -555,6 +634,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       <div className="grid gap-1.5">
         <Label htmlFor="tyl-file" className="flex items-center gap-1.5">
           <FileUp className="h-4 w-4" /> Attach letter (JPG, PNG, WebP, GIF, or PDF · max {MAX_MB} MB)
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <Sparkles className="h-3 w-3" /> Auto-reads image letters
+          </span>
         </Label>
         <Input
           id="tyl-file"
@@ -580,7 +662,28 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             </Button>
           </div>
         ) : null}
+        {ocrStatus === "running" ? (
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Reading letter with AI…
+          </div>
+        ) : null}
+        {ocrNote ? (
+          <div
+            className={
+              "mt-1 rounded-lg border px-2.5 py-1.5 text-xs " +
+              (ocrStatus === "error"
+                ? "border-destructive/40 bg-destructive/5 text-destructive"
+                : "border-primary/30 bg-primary/5 text-foreground/80")
+            }
+          >
+            <div className="flex items-start gap-1.5">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+              <span>{ocrNote}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
+
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy} className="rounded-full">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
