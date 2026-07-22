@@ -449,15 +449,70 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [letterDate, setLetterDate] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const runOcr = useServerFn(ocrLetter);
+
+  function readAsDataUrl(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error ?? new Error("Failed to read file."));
+      r.readAsDataURL(f);
+    });
+  }
+
+  async function tryOcr(f: File) {
+    if (!f.type.startsWith("image/")) return;
+    setOcrStatus("running");
+    setOcrNote(null);
+    try {
+      const dataUrl = await readAsDataUrl(f);
+      const result = await runOcr({ data: { imageDataUrl: dataUrl } });
+      const filled: string[] = [];
+      setTitle((prev) => {
+        if (prev.trim()) return prev;
+        if (result.title) { filled.push("title"); return result.title; }
+        if (result.recipient) { filled.push("title"); return `Thank you to ${result.recipient}`; }
+        return prev;
+      });
+      setMessage((prev) => {
+        if (prev.trim()) return prev;
+        if (result.message) { filled.push("message"); return result.message; }
+        return prev;
+      });
+      setLetterDate((prev) => {
+        if (prev) return prev;
+        if (result.date) { filled.push("date"); return result.date; }
+        return prev;
+      });
+      setOcrStatus("done");
+      if (filled.length > 0) {
+        const parts = [`Auto-filled ${filled.join(", ")} from the letter image — please review before posting.`];
+        if (result.amounts) parts.push(`Amounts detected: ${result.amounts}.`);
+        if (result.recipient) parts.push(`Addressed to: ${result.recipient}.`);
+        setOcrNote(parts.join(" "));
+      } else {
+        setOcrNote("Couldn't confidently read this letter — please fill in the fields manually.");
+      }
+    } catch (err) {
+      console.error("Letter OCR failed", err);
+      setOcrStatus("error");
+      setOcrNote(err instanceof Error ? err.message : "OCR failed. Please fill in fields manually.");
+    }
+  }
 
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
+      setOcrStatus("idle");
+      setOcrNote(null);
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
@@ -467,6 +522,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     }
     setFile(f);
     setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+    void tryOcr(f);
   }
 
   async function submit(e: FormEvent) {
@@ -490,16 +546,26 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         letter_path = path;
       }
 
-      const { error } = await supabase.from("thank_you_letters").insert({
+      const insertPayload: {
+        missionary_id: string;
+        title: string;
+        message: string | null;
+        letter_url: string | null;
+        letter_date?: string;
+      } = {
         missionary_id: missionaryId,
         title: title.trim(),
         message: message.trim() || null,
         letter_url: letter_path,
-      });
+      };
+      if (letterDate) insertPayload.letter_date = letterDate;
+
+      const { error } = await supabase.from("thank_you_letters").insert(insertPayload);
       if (error) throw error;
       toast.success("Thank you letter posted.");
       setTitle("");
       setMessage("");
+      setLetterDate("");
       pickFile(null);
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
@@ -514,6 +580,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       setBusy(false);
     }
   }
+
 
   if (!open) {
     return (
