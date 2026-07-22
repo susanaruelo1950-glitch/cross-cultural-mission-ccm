@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Handshake, Loader2, Pencil, Plus, Save, Trash2, X, Eye, EyeOff, ArrowUp, ArrowDown } from "lucide-react";
+import { Handshake, Loader2, Pencil, Plus, Save, Trash2, X, Eye, EyeOff, ArrowUp, ArrowDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type { Partner } from "@/hooks/use-partners";
+
+const LOGO_BUCKET = "partner-logos";
+const MAX_LOGO_MB = 3;
+const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10; // 10 years
+
 
 const KEY = ["partners", "admin"] as const;
 
@@ -219,14 +224,10 @@ function PartnerForm({
         <Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} />
       </div>
       <div className="sm:col-span-2">
-        <Label>Logo URL</Label>
-        <Input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…/logo.png" />
-        {logo ? (
-          <div className="mt-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-border">
-            <img src={logo} alt="Logo preview" className="h-full w-full object-contain p-1" />
-          </div>
-        ) : null}
+        <Label>Logo</Label>
+        <LogoUploader value={logo} onChange={setLogo} slugHint={slug || slugify(short) || "partner"} />
       </div>
+
       <div className="sm:col-span-2">
         <Label>Link URL (optional)</Label>
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />
@@ -246,3 +247,90 @@ function PartnerForm({
     </form>
   );
 }
+
+function LogoUploader({
+  value, onChange, slugHint,
+}: { value: string; onChange: (v: string) => void; slugHint: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file (PNG, JPG, SVG, WebP).");
+      return;
+    }
+    if (file.size > MAX_LOGO_MB * 1024 * 1024) {
+      toast.error(`Logo is too large. Please use a file under ${MAX_LOGO_MB} MB.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${slugHint || "partner"}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(LOGO_BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type || undefined });
+      if (upErr) throw upErr;
+      const { data, error: signErr } = await supabase.storage
+        .from(LOGO_BUCKET)
+        .createSignedUrl(path, SIGNED_URL_TTL);
+      if (signErr || !data?.signedUrl) throw signErr ?? new Error("Could not sign logo URL.");
+      onChange(data.signedUrl);
+      toast.success("Logo uploaded.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Upload failed.";
+      toast.error(/permission|row-level|not authorized/i.test(msg)
+        ? "You don't have permission to upload partner logos."
+        : msg);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+          }}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          className="rounded-full"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {busy ? "Uploading…" : value ? "Replace logo" : "Upload logo"}
+        </Button>
+        {value ? (
+          <Button type="button" variant="ghost" className="rounded-full" onClick={() => onChange("")}>
+            <X className="h-4 w-4" /> Remove
+          </Button>
+        ) : null}
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="…or paste a logo URL (https://…/logo.png)"
+      />
+      {value ? (
+        <div className="mt-1 flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-border">
+          <img src={value} alt="Logo preview" className="h-full w-full object-contain p-1" />
+        </div>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Upload up to {MAX_LOGO_MB} MB. PNG or SVG with a transparent background looks best.
+      </p>
+    </div>
+  );
+}
+
