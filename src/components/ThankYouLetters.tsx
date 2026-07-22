@@ -710,21 +710,26 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             <Loader2 className="h-3 w-3 animate-spin" /> Reading letter with AI…
           </div>
         ) : null}
-        {ocrNote ? (
-          <div
-            className={
-              "mt-1 rounded-lg border px-2.5 py-1.5 text-xs " +
-              (ocrStatus === "error"
-                ? "border-destructive/40 bg-destructive/5 text-destructive"
-                : "border-primary/30 bg-primary/5 text-foreground/80")
-            }
-          >
+        {ocrStatus === "error" && ocrNote ? (
+          <div className="mt-1 rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
             <div className="flex items-start gap-1.5">
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
               <span>{ocrNote}</span>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <OcrReviewPanel
+            overallConfidence={ocrOverall}
+            suggestions={ocrSuggestions}
+            note={ocrNote}
+            onAccept={(key, value) => applyOcrValue(key, value)}
+            onDismiss={(key) => setOcrSuggestions((prev) => prev.filter((s) => s.key !== key))}
+            onAcceptAll={() => {
+              for (const s of ocrSuggestions) applyOcrValue(s.key, s.value);
+            }}
+            onDismissAll={() => setOcrSuggestions([])}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
