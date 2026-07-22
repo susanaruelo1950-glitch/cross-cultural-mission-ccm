@@ -564,6 +564,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       setOcrNote(null);
       setOcrSuggestions([]);
       setOcrOverall(null);
+      setDetectedRecipient(null);
+      setDetectedRecipientConf(null);
+
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
