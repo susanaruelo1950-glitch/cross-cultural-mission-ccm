@@ -611,6 +611,16 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         />
       </div>
       <div className="grid gap-1.5">
+        <Label htmlFor="tyl-date">Letter date</Label>
+        <Input
+          id="tyl-date"
+          type="date"
+          value={letterDate}
+          onChange={(e) => setLetterDate(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+        />
+      </div>
+      <div className="grid gap-1.5">
         <Label htmlFor="tyl-message">Message</Label>
         <Textarea
           id="tyl-message"
@@ -624,6 +634,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       <div className="grid gap-1.5">
         <Label htmlFor="tyl-file" className="flex items-center gap-1.5">
           <FileUp className="h-4 w-4" /> Attach letter (JPG, PNG, WebP, GIF, or PDF · max {MAX_MB} MB)
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <Sparkles className="h-3 w-3" /> Auto-reads image letters
+          </span>
         </Label>
         <Input
           id="tyl-file"
@@ -649,7 +662,28 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             </Button>
           </div>
         ) : null}
+        {ocrStatus === "running" ? (
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Reading letter with AI…
+          </div>
+        ) : null}
+        {ocrNote ? (
+          <div
+            className={
+              "mt-1 rounded-lg border px-2.5 py-1.5 text-xs " +
+              (ocrStatus === "error"
+                ? "border-destructive/40 bg-destructive/5 text-destructive"
+                : "border-primary/30 bg-primary/5 text-foreground/80")
+            }
+          >
+            <div className="flex items-start gap-1.5">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+              <span>{ocrNote}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
+
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy} className="rounded-full">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
