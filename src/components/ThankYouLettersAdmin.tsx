@@ -292,13 +292,22 @@ function SortableLetterRow({
           {editing ? (
             <div className="space-y-2">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+              <div className="grid gap-1.5">
+                <Label htmlFor={`tyl-date-${letter.id}`} className="text-xs">Letter date</Label>
+                <Input
+                  id={`tyl-date-${letter.id}`}
+                  type="date"
+                  value={letterDate}
+                  onChange={(e) => setLetterDate(e.target.value)}
+                />
+              </div>
               <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
               <div className="flex gap-2">
                 <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save
                 </Button>
-                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => { setEditing(false); setTitle(letter.title); setMessage(letter.message ?? ""); }}>
+                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => { setEditing(false); setTitle(letter.title); setMessage(letter.message ?? ""); setLetterDate(letter.letter_date?.slice(0, 10) ?? ""); }}>
                   <X className="h-4 w-4" /> Cancel
                 </Button>
               </div>
