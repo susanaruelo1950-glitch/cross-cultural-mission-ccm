@@ -8,6 +8,8 @@ const OcrInput = z.object({
     .refine((s) => s.startsWith("data:image/"), "Must be a data:image/... URL"),
 });
 
+export type OcrFieldConfidence = "high" | "medium" | "low" | null;
+
 export interface LetterOcrResult {
   date: string | null; // ISO YYYY-MM-DD
   recipient: string | null; // "Dear ___" — partner/supporter name
@@ -15,6 +17,13 @@ export interface LetterOcrResult {
   message: string | null; // extracted body / summary
   amounts: string | null; // any monetary figures detected, joined
   confidence: "high" | "medium" | "low" | null;
+  fieldConfidence: {
+    date: OcrFieldConfidence;
+    recipient: OcrFieldConfidence;
+    title: OcrFieldConfidence;
+    message: OcrFieldConfidence;
+    amounts: OcrFieldConfidence;
+  };
   raw: string | null;
 }
 
@@ -24,19 +33,27 @@ const SYSTEM = `You extract structured data from a photo of a handwritten or typ
 
 Schema:
 {
-  "date": "YYYY-MM-DD" or null,        // the letter's written date, not "printed on"
-  "recipient": string or null,         // the person/church/family the letter is addressed to (from "Dear ___,")
-  "title": string or null,             // 4-10 words, e.g. "Thank you to Grace Family — July 2026"
-  "message": string or null,           // full transcribed body text, preserving line breaks; up to ~1500 chars
-  "amounts": string or null,           // any monetary figures mentioned (e.g. "PHP 5,000; USD 100"), or null
+  "date": "YYYY-MM-DD" or null,
+  "recipient": string or null,
+  "title": string or null,
+  "message": string or null,
+  "amounts": string or null,
   "confidence": "high"|"medium"|"low",
-  "raw": string                        // 1-3 lines of key text you actually read
+  "fieldConfidence": {
+    "date": "high"|"medium"|"low"|null,
+    "recipient": "high"|"medium"|"low"|null,
+    "title": "high"|"medium"|"low"|null,
+    "message": "high"|"medium"|"low"|null,
+    "amounts": "high"|"medium"|"low"|null
+  },
+  "raw": string
 }
 
 Rules:
 - Convert dates like "22/07/2026", "Jul 22, 2026", "22 Jul 2026" to ISO. Assume the current year only when a year is missing.
-- If handwriting is unclear, still try to transcribe the message but lower confidence.
-- If a field is unreadable, set it to null. Never invent names, dates, or amounts.`;
+- If handwriting is unclear, still try to transcribe the message but lower its fieldConfidence.
+- If a field is unreadable, set both its value AND its fieldConfidence to null.
+- Rate fieldConfidence honestly: "high" only when clearly read, "low" when guessed. Never invent names, dates, or amounts.`;
 
 export const ocrLetter = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => OcrInput.parse(input))
