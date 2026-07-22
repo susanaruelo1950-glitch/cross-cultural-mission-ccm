@@ -126,6 +126,7 @@ export function NotificationBell() {
     }
     window.addEventListener("storage", onStorage);
     return () => {
+      clearInterval(pruneTimer);
       window.removeEventListener("gc-realtime-change", onChange);
       window.removeEventListener("storage", onStorage);
     };
