@@ -108,7 +108,15 @@ export const ocrReceipt = createServerFn({ method: "POST" })
     try {
       parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
     } catch {
-      return { date: null, amount: null, currency: null, title: null, confidence: "low", raw: text || null };
+      return {
+        date: null,
+        amount: null,
+        currency: null,
+        title: null,
+        confidence: "low",
+        fieldConfidence: { date: null, amount: null, currency: null, title: null },
+        raw: text || null,
+      };
     }
 
     const dateRaw = typeof parsed.date === "string" ? parsed.date : null;
@@ -130,11 +138,24 @@ export const ocrReceipt = createServerFn({ method: "POST" })
     const title =
       typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim().slice(0, 120) : null;
 
+    const asConf = (v: unknown): OcrFieldConfidence =>
+      v === "high" || v === "medium" || v === "low" ? v : null;
+
     const conf = parsed.confidence;
-    const confidence: ReceiptOcrResult["confidence"] =
-      conf === "high" || conf === "medium" || conf === "low" ? conf : null;
+    const confidence: ReceiptOcrResult["confidence"] = asConf(conf);
+
+    const fcRaw =
+      parsed.fieldConfidence && typeof parsed.fieldConfidence === "object"
+        ? (parsed.fieldConfidence as Record<string, unknown>)
+        : {};
+    const fieldConfidence: ReceiptOcrResult["fieldConfidence"] = {
+      date: date == null ? null : asConf(fcRaw.date) ?? confidence,
+      amount: amount == null ? null : asConf(fcRaw.amount) ?? confidence,
+      currency: currency == null ? null : asConf(fcRaw.currency) ?? confidence,
+      title: title == null ? null : asConf(fcRaw.title) ?? confidence,
+    };
 
     const raw = typeof parsed.raw === "string" ? parsed.raw.slice(0, 500) : null;
 
-    return { date, amount, currency, title, confidence, raw };
+    return { date, amount, currency, title, confidence, fieldConfidence, raw };
   });
