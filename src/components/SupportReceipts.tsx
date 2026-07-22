@@ -345,11 +345,70 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+
+  async function fileToDataUrl(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error ?? new Error("Failed to read image"));
+      r.readAsDataURL(f);
+    });
+  }
+
+  async function runOcr(f: File) {
+    setOcrBusy(true);
+    setOcrNote(null);
+    try {
+      const imageDataUrl = await fileToDataUrl(f);
+      const { ocrReceipt } = await import("@/lib/ocr-receipt.functions");
+      const result = await ocrReceipt({ data: { imageDataUrl } });
+      const filled: string[] = [];
+      // Only prefill empty fields so the admin's typing is never overwritten.
+      if (result.date && !receiptDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        setReceiptDate(result.date);
+        filled.push("date");
+      } else if (result.date && receiptDate === new Date().toISOString().slice(0, 10)) {
+        // The default is "today" — replace it with the OCR-detected date.
+        setReceiptDate(result.date);
+        filled.push("date");
+      }
+      if (result.amount != null && !amount.trim()) {
+        setAmount(String(result.amount));
+        filled.push("amount");
+      }
+      if (result.currency && (!currency.trim() || currency === "PHP")) {
+        setCurrency(result.currency);
+        if (result.currency !== "PHP") filled.push("currency");
+      }
+      if (result.title && !title.trim()) {
+        setTitle(result.title);
+        filled.push("title");
+      }
+      if (filled.length > 0) {
+        setOcrNote(
+          `Autofilled ${filled.join(", ")}${
+            result.confidence ? ` (${result.confidence} confidence)` : ""
+          }. Please review before posting.`,
+        );
+        toast.success("Receipt fields autofilled from image.");
+      } else {
+        setOcrNote("Couldn't read the receipt clearly — please fill the fields manually.");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "OCR failed.";
+      setOcrNote(`OCR failed: ${msg}`);
+    } finally {
+      setOcrBusy(false);
+    }
+  }
 
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
+      setOcrNote(null);
       return;
     }
     const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
@@ -359,7 +418,9 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
     }
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
+    void runOcr(f);
   }
+
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -480,6 +541,7 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
       <div className="grid gap-1.5">
         <Label htmlFor="sr-photo" className="flex items-center gap-1.5">
           <ImagePlus className="h-4 w-4" /> Receipt photo (optional, max {MAX_MB} MB)
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">— we'll auto-read the date &amp; amount</span>
         </Label>
         <Input
           id="sr-photo"
@@ -487,6 +549,14 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
           accept="image/*"
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
         />
+        {ocrBusy ? (
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading receipt with AI…
+          </div>
+        ) : null}
+        {ocrNote ? (
+          <p className="mt-1 text-xs text-muted-foreground">{ocrNote}</p>
+        ) : null}
         {previewUrl ? (
           <div className="relative mt-1 w-fit">
             <img src={previewUrl} alt="" className="max-h-48 rounded-xl object-contain bg-muted/40" />
