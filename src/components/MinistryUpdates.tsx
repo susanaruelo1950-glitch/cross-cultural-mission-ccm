@@ -124,6 +124,23 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
     );
   }, [updates]);
 
+  // Group everything by year so the timeline collapses into per-year sections.
+  const groupsByYear = useMemo(() => {
+    const map = new Map<string, Group[]>();
+    for (const g of groups) {
+      const date = g.kind === "collage" ? g.report_date : g.update.report_date;
+      const year = date && /^\d{4}/.test(date) ? date.slice(0, 4) : "Undated";
+      if (!map.has(year)) map.set(year, []);
+      map.get(year)!.push(g);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === "Undated") return 1;
+      if (b[0] === "Undated") return -1;
+      return b[0].localeCompare(a[0]);
+    });
+  }, [groups]);
+  const latestYear = groupsByYear[0]?.[0];
+
   return (
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -166,7 +183,17 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
             }
           />
         ) : (
-          groups.map((g) => {
+          groupsByYear.map(([year, yearGroups]) => (
+          <details key={year} open={year === latestYear} className="group rounded-2xl border border-border/60 bg-card/40">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-4 py-3 hover:bg-muted/40">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-lg font-semibold">{year}</span>
+                <span className="text-xs text-muted-foreground">{yearGroups.length} {yearGroups.length === 1 ? "entry" : "entries"}</span>
+              </div>
+              <span className="text-xs text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div className="space-y-4 p-3 pt-1">
+          {yearGroups.map((g) => {
             if (g.kind === "collage") {
               return (
                 <article
@@ -291,7 +318,10 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                 )}
               </article>
             );
-          })
+          })}
+            </div>
+          </details>
+          ))
         )}
       </div>
 
