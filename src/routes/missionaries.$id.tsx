@@ -29,6 +29,7 @@ import {
 } from "@/lib/mission-data";
 import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
+import { SupportReceipts } from "@/components/SupportReceipts";
 import { ThankYouLetters } from "@/components/ThankYouLetters";
 import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
 import { MissionaryCoverUpload } from "@/components/MissionaryCoverUpload";
