@@ -52,7 +52,7 @@ export const Route = createFileRoute("/missionaries/$id")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Missionary — Cross-Cultural Mission" },
+          { title: "Missionary — Cross-Cultural Ministry" },
           { property: "og:url", content: url },
         ],
         links: [{ rel: "canonical", href: url }],
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/missionaries/$id")({
               "@type": "Person",
               name: m.fullName,
               description: desc,
-              affiliation: { "@type": "Organization", name: m.church || "Cross-Cultural Mission" },
+              affiliation: { "@type": "Organization", name: m.church || "Cross-Cultural Ministry" },
               image: m.cover || undefined,
               url,
             },

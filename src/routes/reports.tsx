@@ -14,14 +14,14 @@ import { monthKey, monthLabel } from "@/lib/month-key";
 export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
-      { title: "Ministry Reports — Cross-Cultural Mission" },
-      { name: "description", content: "Live feed of every ministry update submitted by Cross-Cultural Mission church planter pastors." },
-      { property: "og:title", content: "Ministry Reports — Cross-Cultural Mission" },
-      { property: "og:description", content: "Live feed of every ministry update submitted by Cross-Cultural Mission church planter pastors." },
+      { title: "Ministry Reports — Cross-Cultural Ministry" },
+      { name: "description", content: "Live feed of every ministry update submitted by Cross-Cultural Ministry church planter pastors." },
+      { property: "og:title", content: "Ministry Reports — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Live feed of every ministry update submitted by Cross-Cultural Ministry church planter pastors." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/reports" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "Ministry Reports — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Live feed of every ministry update submitted by Cross-Cultural Mission church planter pastors." },
+      { name: "twitter:title", content: "Ministry Reports — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "Live feed of every ministry update submitted by Cross-Cultural Ministry church planter pastors." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/reports" }],

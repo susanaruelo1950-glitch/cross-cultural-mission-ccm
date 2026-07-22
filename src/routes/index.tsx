@@ -37,22 +37,22 @@ const SOCIAL_IMAGE =
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cross-Cultural Mission — Church Planting Dashboard" },
+      { title: "Cross-Cultural Ministry — Church Planting Dashboard" },
       {
         name: "description",
         content:
-          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Mission.",
+          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Ministry.",
       },
-      { property: "og:title", content: "Cross-Cultural Mission — Church Planting Dashboard" },
+      { property: "og:title", content: "Cross-Cultural Ministry — Church Planting Dashboard" },
       {
         property: "og:description",
         content:
-          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Mission.",
+          "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Ministry.",
       },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/" },
       { property: "og:image", content: SOCIAL_IMAGE },
-      { name: "twitter:title", content: "Cross-Cultural Mission — Church Planting Dashboard" },
-      { name: "twitter:description", content: "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Mission." },
+      { name: "twitter:title", content: "Cross-Cultural Ministry — Church Planting Dashboard" },
+      { name: "twitter:description", content: "Live snapshot of church planter pastors, phases, areas, prayer requests, and ministry reports from Cross-Cultural Ministry." },
       { name: "twitter:image", content: SOCIAL_IMAGE },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/" }],
@@ -154,7 +154,7 @@ function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="sr-only">Cross-Cultural Mission — Church Planting Dashboard</h1>
+      <h1 className="sr-only">Cross-Cultural Ministry — Church Planting Dashboard</h1>
 
       {/* Rolling news / announcements banner (admin-managed via /admin) */}
       <NewsTicker />

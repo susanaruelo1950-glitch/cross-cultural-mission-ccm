@@ -14,7 +14,7 @@ export const Route = createFileRoute("/brilliant")({
   head: () => ({
     meta: [
       { title: "Brilliant Agent — CCM Admin" },
-      { name: "description", content: "Exclusive admin/coordinator agent for Cross-Cultural Mission — ask anything about the app." },
+      { name: "description", content: "Exclusive admin/coordinator agent for Cross-Cultural Ministry — ask anything about the app." },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

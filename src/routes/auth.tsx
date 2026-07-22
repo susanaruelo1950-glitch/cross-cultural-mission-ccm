@@ -16,14 +16,14 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign in — Cross-Cultural Mission" },
-      { name: "description", content: "Sign in or create an account to manage Cross-Cultural Mission missionaries and prayer." },
-      { property: "og:title", content: "Sign in — Cross-Cultural Mission" },
-      { property: "og:description", content: "Sign in or create an account to manage Cross-Cultural Mission missionaries and prayer." },
+      { title: "Sign in — Cross-Cultural Ministry" },
+      { name: "description", content: "Sign in or create an account to manage Cross-Cultural Ministry missionaries and prayer." },
+      { property: "og:title", content: "Sign in — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Sign in or create an account to manage Cross-Cultural Ministry missionaries and prayer." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/auth" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "Sign in — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Sign in or create an account to manage Cross-Cultural Mission missionaries and prayer." },
+      { name: "twitter:title", content: "Sign in — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "Sign in or create an account to manage Cross-Cultural Ministry missionaries and prayer." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/auth" }],
@@ -112,7 +112,7 @@ function AuthPage() {
             <Cross className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-semibold">Cross-Cultural Mission</h1>
+            <h1 className="font-display text-2xl font-semibold">Cross-Cultural Ministry</h1>
             <p className="text-sm text-muted-foreground">Sign in to manage & pray</p>
           </div>
         </div>

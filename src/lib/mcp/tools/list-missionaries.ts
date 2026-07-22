@@ -6,7 +6,7 @@ export default defineTool({
   name: "list_missionaries",
   title: "List missionaries",
   description:
-    "List missionaries in the Cross-Cultural Mission directory. Optionally filter by area, province, or a name search string.",
+    "List missionaries in the Cross-Cultural Ministry directory. Optionally filter by area, province, or a name search string.",
   inputSchema: {
     search: z.string().optional().describe("Case-insensitive name/church search."),
     area_id: z.string().optional().describe("Filter by area id."),

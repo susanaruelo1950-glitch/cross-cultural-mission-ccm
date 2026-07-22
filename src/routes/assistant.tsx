@@ -32,10 +32,10 @@ interface Filters { regionId: string; provinceId: string; phaseId: string }
 export const Route = createFileRoute("/assistant")({
   head: () => ({
     meta: [
-      { title: "AI Mission Assistant — Cross-Cultural Mission" },
-      { name: "description", content: "Ask questions grounded in Cross-Cultural Mission data — missionaries, reports, prayer." },
-      { property: "og:title", content: "AI Mission Assistant — Cross-Cultural Mission" },
-      { property: "og:description", content: "Ask questions grounded in Cross-Cultural Mission data — missionaries, reports, prayer." },
+      { title: "AI Mission Assistant — Cross-Cultural Ministry" },
+      { name: "description", content: "Ask questions grounded in Cross-Cultural Ministry data — missionaries, reports, prayer." },
+      { property: "og:title", content: "AI Mission Assistant — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Ask questions grounded in Cross-Cultural Ministry data — missionaries, reports, prayer." },
     ],
   }),
   component: Assistant,
@@ -237,7 +237,7 @@ function Assistant() {
     {
       role: "assistant",
       content:
-        "Hi! I'm your Cross-Cultural Mission assistant. I know the current directory, prayer requests, reports, and upcoming events. Ask me anything.",
+        "Hi! I'm your Cross-Cultural Ministry assistant. I know the current directory, prayer requests, reports, and upcoming events. Ask me anything.",
     },
   ]);
   const [input, setInput] = useState("");

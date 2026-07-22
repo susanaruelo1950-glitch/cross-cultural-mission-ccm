@@ -127,12 +127,12 @@ function Brand() {
     <Link to="/" className="flex items-center gap-3 px-4 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
       <img
         src={ccmLogo.url}
-        alt="Cross-Cultural Mission logo"
+        alt="Cross-Cultural Ministry logo"
         className="h-11 w-11 shrink-0 rounded-2xl object-cover shadow-soft ring-1 ring-border"
       />
       <div className="min-w-0">
         <div className="font-display text-lg font-semibold leading-tight text-sidebar-foreground">
-          Cross-Cultural Mission
+          Cross-Cultural Ministry
         </div>
         <div className="truncate text-xs text-muted-foreground">CCM · Mission Management</div>
       </div>
@@ -315,7 +315,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </Button>
             <Link to="/" className="flex min-w-0 items-center gap-2 lg:hidden">
               <img src={ccmLogo.url} alt="CCM logo" className="h-8 w-8 shrink-0 rounded-xl object-cover ring-1 ring-border" />
-              <span className="truncate font-display text-sm font-semibold tracking-tight">Cross-Cultural Mission</span>
+              <span className="truncate font-display text-sm font-semibold tracking-tight">Cross-Cultural Ministry</span>
             </Link>
             <div className="hidden min-w-0 flex-1 lg:block">
               <HeaderSearch />

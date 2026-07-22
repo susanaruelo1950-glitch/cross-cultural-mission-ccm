@@ -26,11 +26,11 @@ import { PermissionError } from "@/components/PermissionError";
 export const Route = createFileRoute("/admin/activity")({
   head: () => ({
     meta: [
-      { title: "Activity Log — Admin — Cross-Cultural Mission" },
+      { title: "Activity Log — Admin — Cross-Cultural Ministry" },
       {
         name: "description",
         content:
-          "Full audit trail of missionary, letter, update, and prayer changes across the Cross-Cultural Mission app.",
+          "Full audit trail of missionary, letter, update, and prayer changes across the Cross-Cultural Ministry app.",
       },
     ],
   }),

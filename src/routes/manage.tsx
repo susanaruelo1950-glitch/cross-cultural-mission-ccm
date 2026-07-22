@@ -61,14 +61,14 @@ import { useDirectory } from "@/hooks/use-directory";
 export const Route = createFileRoute("/manage")({
   head: () => ({
     meta: [
-      { title: "Manage Missionaries — Cross-Cultural Mission" },
-      { name: "description", content: "Add, edit, and manage Cross-Cultural Mission church planter pastors and their assignments." },
-      { property: "og:title", content: "Manage Missionaries — Cross-Cultural Mission" },
-      { property: "og:description", content: "Add, edit, and manage Cross-Cultural Mission church planter pastors and their assignments." },
+      { title: "Manage Missionaries — Cross-Cultural Ministry" },
+      { name: "description", content: "Add, edit, and manage Cross-Cultural Ministry church planter pastors and their assignments." },
+      { property: "og:title", content: "Manage Missionaries — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Add, edit, and manage Cross-Cultural Ministry church planter pastors and their assignments." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/manage" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "Manage Missionaries — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Add, edit, and manage Cross-Cultural Mission church planter pastors and their assignments." },
+      { name: "twitter:title", content: "Manage Missionaries — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "Add, edit, and manage Cross-Cultural Ministry church planter pastors and their assignments." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/manage" }],

@@ -13,13 +13,13 @@
     "server": {
       "name": "cross-cultural-mission-mcp",
       "version": "0.1.0",
-      "title": "Cross-Cultural Mission"
+      "title": "Cross-Cultural Ministry"
     },
     "tools": [
       {
         "name": "list_missionaries",
         "title": "List missionaries",
-        "description": "List missionaries in the Cross-Cultural Mission directory. Optionally filter by area, province, or a name search string.",
+        "description": "List missionaries in the Cross-Cultural Ministry directory. Optionally filter by area, province, or a name search string.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

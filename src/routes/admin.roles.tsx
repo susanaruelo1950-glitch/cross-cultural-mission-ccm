@@ -15,8 +15,8 @@ import { logActivity } from "@/lib/activity-log";
 export const Route = createFileRoute("/admin/roles")({
   head: () => ({
     meta: [
-      { title: "Role Management — Admin — Cross-Cultural Mission" },
-      { name: "description", content: "Grant or revoke admin permissions for Cross-Cultural Mission users." },
+      { title: "Role Management — Admin — Cross-Cultural Ministry" },
+      { name: "description", content: "Grant or revoke admin permissions for Cross-Cultural Ministry users." },
     ],
   }),
   component: RolesPage,
