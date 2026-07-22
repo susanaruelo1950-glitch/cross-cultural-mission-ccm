@@ -97,24 +97,23 @@ export function useGlobalRealtime() {
 
     // Debounce buffer — coalesces bursts (e.g. bulk import, poor network
     // buffering many events at once) into a single invalidation per table.
-    const pending = new Map<string, RealtimeChangeDetail>();
+    // Per-row events are still dispatched immediately so the notification
+    // bell never drops an INSERT during a burst.
+    const pending = new Set<string>();
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
     const FLUSH_MS = 250;
 
     function flush() {
       flushTimer = null;
-      const tables = Array.from(pending.keys());
-      const details = Array.from(pending.values());
+      const tables = Array.from(pending);
       pending.clear();
       for (const table of tables) {
         for (const key of TABLE_TO_KEYS[table] ?? []) {
           qc.invalidateQueries({ queryKey: key });
         }
       }
-      for (const detail of details) {
-        window.dispatchEvent(new CustomEvent("gc-realtime-change", { detail }));
-      }
     }
+
 
     function refetchAllActive() {
       // On reconnect after a gap, we may have missed events — force a
