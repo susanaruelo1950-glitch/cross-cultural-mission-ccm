@@ -22,6 +22,7 @@ import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProg
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
 import { ocrLetter } from "@/lib/ocr-letter.functions";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 
 interface Props {
@@ -456,6 +457,8 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const [open, setOpen] = useState(false);
   const [ocrStatus, setOcrStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
+  const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
   const runOcr = useServerFn(ocrLetter);
 
   function readAsDataUrl(f: File): Promise<string> {
@@ -471,34 +474,58 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     if (!f.type.startsWith("image/")) return;
     setOcrStatus("running");
     setOcrNote(null);
+    setOcrSuggestions([]);
+    setOcrOverall(null);
     try {
       const dataUrl = await readAsDataUrl(f);
       const result = await runOcr({ data: { imageDataUrl: dataUrl } });
-      const filled: string[] = [];
-      setTitle((prev) => {
-        if (prev.trim()) return prev;
-        if (result.title) { filled.push("title"); return result.title; }
-        if (result.recipient) { filled.push("title"); return `Thank you to ${result.recipient}`; }
-        return prev;
-      });
-      setMessage((prev) => {
-        if (prev.trim()) return prev;
-        if (result.message) { filled.push("message"); return result.message; }
-        return prev;
-      });
-      setLetterDate((prev) => {
-        if (prev) return prev;
-        if (result.date) { filled.push("date"); return result.date; }
-        return prev;
-      });
+      setOcrOverall(result.confidence);
+      const next: OcrSuggestion[] = [];
+      if (result.date) {
+        next.push({ key: "date", label: "Letter date", value: result.date, confidence: result.fieldConfidence.date });
+      }
+      // Prefer explicit title; fall back to a title suggestion from the recipient name.
+      if (result.title) {
+        next.push({ key: "title", label: "Title", value: result.title, confidence: result.fieldConfidence.title });
+      } else if (result.recipient) {
+        next.push({
+          key: "title",
+          label: "Title (from recipient)",
+          value: `Thank you to ${result.recipient}`,
+          confidence: result.fieldConfidence.recipient,
+        });
+      }
+      if (result.recipient) {
+        next.push({
+          key: "recipient",
+          label: "Recipient",
+          value: result.recipient,
+          confidence: result.fieldConfidence.recipient,
+        });
+      }
+      if (result.message) {
+        next.push({
+          key: "message",
+          label: "Message",
+          value: result.message,
+          confidence: result.fieldConfidence.message,
+          multiline: true,
+        });
+      }
+      if (result.amounts) {
+        next.push({
+          key: "amounts",
+          label: "Amounts detected (reference only)",
+          value: result.amounts,
+          confidence: result.fieldConfidence.amounts,
+        });
+      }
+      setOcrSuggestions(next);
       setOcrStatus("done");
-      if (filled.length > 0) {
-        const parts = [`Auto-filled ${filled.join(", ")} from the letter image — please review before posting.`];
-        if (result.amounts) parts.push(`Amounts detected: ${result.amounts}.`);
-        if (result.recipient) parts.push(`Addressed to: ${result.recipient}.`);
-        setOcrNote(parts.join(" "));
-      } else {
+      if (next.length === 0) {
         setOcrNote("Couldn't confidently read this letter — please fill in the fields manually.");
+      } else {
+        setOcrNote("Review each detected field, then choose Use, Edit, or Dismiss. Nothing is applied automatically.");
       }
     } catch (err) {
       console.error("Letter OCR failed", err);
@@ -507,12 +534,28 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     }
   }
 
+  function applyOcrValue(key: string, value: string) {
+    if (key === "date") setLetterDate(value);
+    else if (key === "title") setTitle(value);
+    else if (key === "recipient") {
+      // Recipient isn't its own field — append it to the message for context.
+      setMessage((prev) => (prev.trim() ? prev : `Dear ${value},\n\n`));
+    } else if (key === "message") setMessage(value);
+    // "amounts" is reference-only; accepting appends into the message body.
+    else if (key === "amounts") {
+      setMessage((prev) => (prev.trim() ? `${prev}\n\nAmounts: ${value}` : `Amounts: ${value}`));
+    }
+    setOcrSuggestions((prev) => prev.filter((s) => s.key !== key));
+  }
+
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
       setOcrStatus("idle");
       setOcrNote(null);
+      setOcrSuggestions([]);
+      setOcrOverall(null);
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
@@ -635,7 +678,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         <Label htmlFor="tyl-file" className="flex items-center gap-1.5">
           <FileUp className="h-4 w-4" /> Attach letter (JPG, PNG, WebP, GIF, or PDF · max {MAX_MB} MB)
           <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-            <Sparkles className="h-3 w-3" /> Auto-reads image letters
+            <Sparkles className="h-3 w-3" /> AI-assisted — review each field before applying
           </span>
         </Label>
         <Input
@@ -667,21 +710,26 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             <Loader2 className="h-3 w-3 animate-spin" /> Reading letter with AI…
           </div>
         ) : null}
-        {ocrNote ? (
-          <div
-            className={
-              "mt-1 rounded-lg border px-2.5 py-1.5 text-xs " +
-              (ocrStatus === "error"
-                ? "border-destructive/40 bg-destructive/5 text-destructive"
-                : "border-primary/30 bg-primary/5 text-foreground/80")
-            }
-          >
+        {ocrStatus === "error" && ocrNote ? (
+          <div className="mt-1 rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
             <div className="flex items-start gap-1.5">
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
               <span>{ocrNote}</span>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <OcrReviewPanel
+            overallConfidence={ocrOverall}
+            suggestions={ocrSuggestions}
+            note={ocrNote}
+            onAccept={(key, value) => applyOcrValue(key, value)}
+            onDismiss={(key) => setOcrSuggestions((prev) => prev.filter((s) => s.key !== key))}
+            onAcceptAll={() => {
+              for (const s of ocrSuggestions) applyOcrValue(s.key, s.value);
+            }}
+            onDismissAll={() => setOcrSuggestions([])}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

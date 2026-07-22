@@ -9,12 +9,20 @@ const OcrInput = z.object({
     .refine((s) => s.startsWith("data:image/"), "Must be a data:image/... URL"),
 });
 
+export type OcrFieldConfidence = "high" | "medium" | "low" | null;
+
 export interface ReceiptOcrResult {
   date: string | null; // ISO YYYY-MM-DD
   amount: number | null;
   currency: string | null; // e.g. PHP, USD
   title: string | null; // short auto-suggested title
   confidence: "high" | "medium" | "low" | null;
+  fieldConfidence: {
+    date: OcrFieldConfidence;
+    amount: OcrFieldConfidence;
+    currency: OcrFieldConfidence;
+    title: OcrFieldConfidence;
+  };
   raw: string | null;
 }
 
@@ -24,19 +32,27 @@ const SYSTEM = `You extract structured data from a photo of a financial support 
 
 Schema:
 {
-  "date": "YYYY-MM-DD" or null,        // the transaction/receipt date, not "printed on"
-  "amount": number or null,             // the primary transaction amount, no currency symbol, no commas
+  "date": "YYYY-MM-DD" or null,
+  "amount": number or null,
   "currency": "PHP"|"USD"|"EUR"|... or null,
-  "title": string or null,              // 3-8 words, e.g. "GCash transfer — July 2026"
+  "title": string or null,
   "confidence": "high"|"medium"|"low",
-  "raw": string                          // 1-3 lines of key text you actually read
+  "fieldConfidence": {
+    "date": "high"|"medium"|"low"|null,
+    "amount": "high"|"medium"|"low"|null,
+    "currency": "high"|"medium"|"low"|null,
+    "title": "high"|"medium"|"low"|null
+  },
+  "raw": string
 }
 
 Rules:
 - If several amounts are visible, pick the transaction total (not fees or balance).
 - Convert dates like "22/07/2026", "Jul 22, 2026", "22 Jul 2026" to ISO. Assume the current year only when a year is missing.
 - Default currency to "PHP" for Philippine banks / GCash / PayMaya when the symbol is absent.
-- If unreadable, set that field to null. Never invent values.`;
+- If a field is unreadable, set both its value AND its fieldConfidence to null.
+- Rate fieldConfidence honestly: "high" only when clearly read, "low" when guessed.
+- Never invent values.`;
 
 export const ocrReceipt = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => OcrInput.parse(input))
@@ -92,7 +108,15 @@ export const ocrReceipt = createServerFn({ method: "POST" })
     try {
       parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
     } catch {
-      return { date: null, amount: null, currency: null, title: null, confidence: "low", raw: text || null };
+      return {
+        date: null,
+        amount: null,
+        currency: null,
+        title: null,
+        confidence: "low",
+        fieldConfidence: { date: null, amount: null, currency: null, title: null },
+        raw: text || null,
+      };
     }
 
     const dateRaw = typeof parsed.date === "string" ? parsed.date : null;
@@ -114,11 +138,24 @@ export const ocrReceipt = createServerFn({ method: "POST" })
     const title =
       typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim().slice(0, 120) : null;
 
+    const asConf = (v: unknown): OcrFieldConfidence =>
+      v === "high" || v === "medium" || v === "low" ? v : null;
+
     const conf = parsed.confidence;
-    const confidence: ReceiptOcrResult["confidence"] =
-      conf === "high" || conf === "medium" || conf === "low" ? conf : null;
+    const confidence: ReceiptOcrResult["confidence"] = asConf(conf);
+
+    const fcRaw =
+      parsed.fieldConfidence && typeof parsed.fieldConfidence === "object"
+        ? (parsed.fieldConfidence as Record<string, unknown>)
+        : {};
+    const fieldConfidence: ReceiptOcrResult["fieldConfidence"] = {
+      date: date == null ? null : asConf(fcRaw.date) ?? confidence,
+      amount: amount == null ? null : asConf(fcRaw.amount) ?? confidence,
+      currency: currency == null ? null : asConf(fcRaw.currency) ?? confidence,
+      title: title == null ? null : asConf(fcRaw.title) ?? confidence,
+    };
 
     const raw = typeof parsed.raw === "string" ? parsed.raw.slice(0, 500) : null;
 
-    return { date, amount, currency, title, confidence, raw };
+    return { date, amount, currency, title, confidence, fieldConfidence, raw };
   });

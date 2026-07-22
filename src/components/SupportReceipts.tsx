@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
 import { bulkFileDate } from "@/lib/parse-filename-date";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 interface Props {
   missionaryId: string;
@@ -347,6 +348,8 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
   const [open, setOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
+  const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
 
   async function fileToDataUrl(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -360,41 +363,41 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
   async function runOcr(f: File) {
     setOcrBusy(true);
     setOcrNote(null);
+    setOcrSuggestions([]);
+    setOcrOverall(null);
     try {
       const imageDataUrl = await fileToDataUrl(f);
       const { ocrReceipt } = await import("@/lib/ocr-receipt.functions");
       const result = await ocrReceipt({ data: { imageDataUrl } });
-      const filled: string[] = [];
-      // Only prefill empty fields so the admin's typing is never overwritten.
-      if (result.date && !receiptDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        setReceiptDate(result.date);
-        filled.push("date");
-      } else if (result.date && receiptDate === new Date().toISOString().slice(0, 10)) {
-        // The default is "today" — replace it with the OCR-detected date.
-        setReceiptDate(result.date);
-        filled.push("date");
+      setOcrOverall(result.confidence);
+      const next: OcrSuggestion[] = [];
+      if (result.date) {
+        next.push({ key: "date", label: "Receipt date", value: result.date, confidence: result.fieldConfidence.date });
       }
-      if (result.amount != null && !amount.trim()) {
-        setAmount(String(result.amount));
-        filled.push("amount");
+      if (result.amount != null) {
+        next.push({
+          key: "amount",
+          label: "Amount",
+          value: String(result.amount),
+          confidence: result.fieldConfidence.amount,
+        });
       }
-      if (result.currency && (!currency.trim() || currency === "PHP")) {
-        setCurrency(result.currency);
-        if (result.currency !== "PHP") filled.push("currency");
+      if (result.currency) {
+        next.push({
+          key: "currency",
+          label: "Currency",
+          value: result.currency,
+          confidence: result.fieldConfidence.currency,
+        });
       }
-      if (result.title && !title.trim()) {
-        setTitle(result.title);
-        filled.push("title");
+      if (result.title) {
+        next.push({ key: "title", label: "Title", value: result.title, confidence: result.fieldConfidence.title });
       }
-      if (filled.length > 0) {
-        setOcrNote(
-          `Autofilled ${filled.join(", ")}${
-            result.confidence ? ` (${result.confidence} confidence)` : ""
-          }. Please review before posting.`,
-        );
-        toast.success("Receipt fields autofilled from image.");
-      } else {
+      setOcrSuggestions(next);
+      if (next.length === 0) {
         setOcrNote("Couldn't read the receipt clearly — please fill the fields manually.");
+      } else {
+        setOcrNote("Review each detected field, then choose Use, Edit, or Dismiss. Nothing is applied automatically.");
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "OCR failed.";
@@ -404,11 +407,21 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
     }
   }
 
+  function applyOcrValue(key: string, value: string) {
+    if (key === "date") setReceiptDate(value);
+    else if (key === "amount") setAmount(value);
+    else if (key === "currency") setCurrency(value.toUpperCase());
+    else if (key === "title") setTitle(value);
+    setOcrSuggestions((prev) => prev.filter((s) => s.key !== key));
+  }
+
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
       setOcrNote(null);
+      setOcrSuggestions([]);
+      setOcrOverall(null);
       return;
     }
     const check = validateFile(f, { allowed: IMAGE_MIME, maxMb: MAX_MB });
@@ -420,6 +433,7 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
     setPreviewUrl(URL.createObjectURL(f));
     void runOcr(f);
   }
+
 
 
   async function submit(e: FormEvent) {
@@ -541,7 +555,7 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
       <div className="grid gap-1.5">
         <Label htmlFor="sr-photo" className="flex items-center gap-1.5">
           <ImagePlus className="h-4 w-4" /> Receipt photo (optional, max {MAX_MB} MB)
-          <span className="ml-1 text-[10px] font-normal text-muted-foreground">— we'll auto-read the date &amp; amount</span>
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">— AI reads it, you choose what to apply</span>
         </Label>
         <Input
           id="sr-photo"
@@ -554,9 +568,17 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading receipt with AI…
           </div>
         ) : null}
-        {ocrNote ? (
-          <p className="mt-1 text-xs text-muted-foreground">{ocrNote}</p>
-        ) : null}
+        <OcrReviewPanel
+          overallConfidence={ocrOverall}
+          suggestions={ocrSuggestions}
+          note={ocrNote}
+          onAccept={(key, value) => applyOcrValue(key, value)}
+          onDismiss={(key) => setOcrSuggestions((prev) => prev.filter((s) => s.key !== key))}
+          onAcceptAll={() => {
+            for (const s of ocrSuggestions) applyOcrValue(s.key, s.value);
+          }}
+          onDismissAll={() => setOcrSuggestions([])}
+        />
         {previewUrl ? (
           <div className="relative mt-1 w-fit">
             <img src={previewUrl} alt="" className="max-h-48 rounded-xl object-contain bg-muted/40" />
