@@ -484,7 +484,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     setOcrNote(null);
     setOcrSuggestions([]);
     setOcrOverall(null);
+    setDetectedRecipient(null);
+    setDetectedRecipientConf(null);
     try {
+
       const dataUrl = await readAsDataUrl(f);
       const result = await runOcr({ data: { imageDataUrl: dataUrl } });
       setOcrOverall(result.confidence);
