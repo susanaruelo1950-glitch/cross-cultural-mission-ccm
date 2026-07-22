@@ -318,7 +318,10 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
                 )}
               </article>
             );
-          })
+          })}
+            </div>
+          </details>
+          ))
         )}
       </div>
 
