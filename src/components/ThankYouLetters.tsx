@@ -22,6 +22,7 @@ import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProg
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
 import { ocrLetter } from "@/lib/ocr-letter.functions";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 
 interface Props {
