@@ -52,6 +52,10 @@ function initials(name: string) {
 
 function ReportsPage() {
   const { data, isLoading } = useMinistryUpdatesList();
+  const { isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const [scope, setScope] = useState<"month" | "all">("month");
+  const [busy, setBusy] = useState(false);
 
   const grouped = useMemo(() => {
     const list: LiveUpdate[] = Array.isArray(data) ? data : [];
@@ -63,9 +67,6 @@ function ReportsPage() {
       if (!map.has(key)) map.set(key, { key, label, items: [] });
       map.get(key)!.items.push(u);
     }
-    // Sort months newest → oldest (July 2026 top, February 2026 bottom).
-    // Within each month, sort by report_date desc, then created_at desc
-    // so a mis-ordered payload can never surface an older item on top.
     const groups = Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
     for (const g of groups) {
       g.items.sort((a, b) => {
@@ -80,15 +81,88 @@ function ReportsPage() {
 
   useHashScroll(grouped.length);
 
+  const currentMonth = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
+  async function handleClear() {
+    if (!isAdmin) return;
+    setBusy(true);
+    try {
+      const list: LiveUpdate[] = Array.isArray(data) ? data : [];
+      const ids = list
+        .filter((u) => {
+          if (scope === "all") return true;
+          const src = u.report_date ?? u.created_at;
+          return typeof src === "string" && src.slice(0, 7) === currentMonth;
+        })
+        .map((u) => u.id);
+      if (ids.length === 0) {
+        toast.info("Nothing to clear.");
+        return;
+      }
+      const { error } = await supabase.from("ministry_updates").delete().in("id", ids);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["ministry_updates"] });
+      try {
+        window.localStorage.removeItem("gc.notifications.v2");
+        window.dispatchEvent(new StorageEvent("storage", { key: "gc.notifications.v2" }));
+      } catch { /* noop */ }
+      toast.success(`Cleared ${ids.length} ministry ${ids.length === 1 ? "update" : "updates"}.`);
+    } catch (e) {
+      toast.error("Failed to clear updates", { description: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">Ministry Reports</h1>
-        <p className="mt-1 max-w-2xl text-muted-foreground">
-          Live feed of ministry updates from every field — grouped by month, latest first.
-          Updates in real-time as pastors post from their profiles.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold sm:text-4xl">Ministry Reports</h1>
+          <p className="mt-1 max-w-2xl text-muted-foreground">
+            Live feed of ministry updates from every field — grouped by month, latest first.
+            Updates in real-time as pastors post from their profiles.
+          </p>
+        </div>
+        {isAdmin && grouped.length > 0 ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2" disabled={busy}>
+                <Trash2 className="h-4 w-4" /> Clear reports
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear ministry reports?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently deletes ministry updates so the feed and notifications reset.
+                  Choose the scope below. Thank-you letters, receipts, and prayer requests are untouched.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex flex-col gap-2 rounded-md border p-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="scope" checked={scope === "month"} onChange={() => setScope("month")} />
+                  Only this month ({monthLabel(currentMonth)})
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} />
+                  All ministry updates
+                </label>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
       </header>
+
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
