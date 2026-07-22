@@ -115,6 +115,13 @@ export const ocrLetter = createServerFn({ method: "POST" })
         message: null,
         amounts: null,
         confidence: "low",
+        fieldConfidence: {
+          date: null,
+          recipient: null,
+          title: null,
+          message: null,
+          amounts: null,
+        },
         raw: text || null,
       };
     }
@@ -130,11 +137,25 @@ export const ocrLetter = createServerFn({ method: "POST" })
     const message = str(parsed.message, 5000);
     const amounts = str(parsed.amounts, 300);
 
+    const asConf = (v: unknown): OcrFieldConfidence =>
+      v === "high" || v === "medium" || v === "low" ? v : null;
+
     const conf = parsed.confidence;
-    const confidence: LetterOcrResult["confidence"] =
-      conf === "high" || conf === "medium" || conf === "low" ? conf : null;
+    const confidence: LetterOcrResult["confidence"] = asConf(conf);
+
+    const fcRaw =
+      parsed.fieldConfidence && typeof parsed.fieldConfidence === "object"
+        ? (parsed.fieldConfidence as Record<string, unknown>)
+        : {};
+    const fieldConfidence: LetterOcrResult["fieldConfidence"] = {
+      date: date == null ? null : asConf(fcRaw.date) ?? confidence,
+      recipient: recipient == null ? null : asConf(fcRaw.recipient) ?? confidence,
+      title: title == null ? null : asConf(fcRaw.title) ?? confidence,
+      message: message == null ? null : asConf(fcRaw.message) ?? confidence,
+      amounts: amounts == null ? null : asConf(fcRaw.amounts) ?? confidence,
+    };
 
     const raw = str(parsed.raw, 500);
 
-    return { date, recipient, title, message, amounts, confidence, raw };
+    return { date, recipient, title, message, amounts, confidence, fieldConfidence, raw };
   });
