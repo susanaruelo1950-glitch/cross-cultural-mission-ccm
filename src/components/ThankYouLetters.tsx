@@ -507,13 +507,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         });
       }
       if (result.recipient) {
-        next.push({
-          key: "recipient",
-          label: "Recipient",
-          value: result.recipient,
-          confidence: result.fieldConfidence.recipient,
-        });
+        setDetectedRecipient(result.recipient);
+        setDetectedRecipientConf(result.fieldConfidence.recipient);
       }
+
       if (result.message) {
         next.push({
           key: "message",
