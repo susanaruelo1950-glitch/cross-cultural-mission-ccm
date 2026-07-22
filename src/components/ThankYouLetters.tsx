@@ -678,7 +678,7 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         <Label htmlFor="tyl-file" className="flex items-center gap-1.5">
           <FileUp className="h-4 w-4" /> Attach letter (JPG, PNG, WebP, GIF, or PDF · max {MAX_MB} MB)
           <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-            <Sparkles className="h-3 w-3" /> Auto-reads image letters
+            <Sparkles className="h-3 w-3" /> AI-assisted — review each field before applying
           </span>
         </Label>
         <Input
