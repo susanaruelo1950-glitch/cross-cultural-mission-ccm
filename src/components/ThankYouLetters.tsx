@@ -464,7 +464,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
   const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
+  const [detectedRecipient, setDetectedRecipient] = useState<string | null>(null);
+  const [detectedRecipientConf, setDetectedRecipientConf] = useState<OcrConfidence>(null);
   const runOcr = useServerFn(ocrLetter);
+
 
   function readAsDataUrl(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
