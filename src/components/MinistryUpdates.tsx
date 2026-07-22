@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { createDisplayUrl } from "@/lib/storage-signed";
 
-import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files } from "lucide-react";
+import { Loader2, Plus, ImagePlus, Trash2, Calendar, X, Pencil, Save, Files, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,6 +20,8 @@ import { bulkFileDate } from "@/lib/parse-filename-date";
 import { BulkUploadProgress, type FileResult } from "@/components/BulkUploadProgress";
 import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
+import { ocrMinistryUpdate } from "@/lib/ocr-update.functions";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 interface Props {
   missionaryId: string;
