@@ -15,14 +15,14 @@ import { useHashScroll } from "@/hooks/use-hash-scroll";
 export const Route = createFileRoute("/prayer")({
   head: () => ({
     meta: [
-      { title: "Prayer Center — Cross-Cultural Mission" },
-      { name: "description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Mission church planters." },
-      { property: "og:title", content: "Prayer Center — Cross-Cultural Mission" },
-      { property: "og:description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Mission church planters." },
+      { title: "Prayer Center — Cross-Cultural Ministry" },
+      { name: "description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Ministry church planters." },
+      { property: "og:title", content: "Prayer Center — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Ministry church planters." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/prayer" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "Prayer Center — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Mission church planters." },
+      { name: "twitter:title", content: "Prayer Center — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "Live prayer requests from missionaries in the field — pray with Cross-Cultural Ministry church planters." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/prayer" }],

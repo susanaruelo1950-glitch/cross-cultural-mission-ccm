@@ -1,5 +1,5 @@
 // ============================================================
-// Cross-Cultural Mission Management — Data Model
+// Cross-Cultural Ministry Management — Data Model
 // ------------------------------------------------------------
 //   Phase  →  Area  →  Missionary
 // Seeded with FCL Batch 1 & Batch 2 graduates.

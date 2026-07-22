@@ -30,14 +30,14 @@ import {
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Annual Analytics — Cross-Cultural Mission" },
-      { name: "description", content: "Aggregate ministry analytics across every Cross-Cultural Mission phase and area." },
-      { property: "og:title", content: "Annual Analytics — Cross-Cultural Mission" },
-      { property: "og:description", content: "Aggregate ministry analytics across every Cross-Cultural Mission phase and area." },
+      { title: "Annual Analytics — Cross-Cultural Ministry" },
+      { name: "description", content: "Aggregate ministry analytics across every Cross-Cultural Ministry phase and area." },
+      { property: "og:title", content: "Annual Analytics — Cross-Cultural Ministry" },
+      { property: "og:description", content: "Aggregate ministry analytics across every Cross-Cultural Ministry phase and area." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/analytics" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "Annual Analytics — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "Aggregate ministry analytics across every Cross-Cultural Mission phase and area." },
+      { name: "twitter:title", content: "Annual Analytics — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "Aggregate ministry analytics across every Cross-Cultural Ministry phase and area." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/analytics" }],
@@ -117,7 +117,7 @@ function Analytics() {
 
   function exportReport() {
     const rows: (string | number)[][] = [];
-    rows.push([`Cross-Cultural Mission — Annual Ministry Report ${year}`]);
+    rows.push([`Cross-Cultural Ministry — Annual Ministry Report ${year}`]);
     rows.push([`Generated`, new Date().toISOString()]);
     rows.push([]);
     rows.push(["Summary"]);

@@ -10,10 +10,10 @@ const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unse
 
 export default defineMcp({
   name: "cross-cultural-mission-mcp",
-  title: "Cross-Cultural Mission",
+  title: "Cross-Cultural Ministry",
   version: "0.1.0",
   instructions:
-    "Read-only access to the Cross-Cultural Mission directory. Use these tools to look up missionaries, areas, ministry updates, prayer requests, and announcements as the signed-in user. All tool calls respect the app's row-level security.",
+    "Read-only access to the Cross-Cultural Ministry directory. Use these tools to look up missionaries, areas, ministry updates, prayer requests, and announcements as the signed-in user. All tool calls respect the app's row-level security.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

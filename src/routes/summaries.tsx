@@ -20,14 +20,14 @@ import { summarizeReport } from "@/lib/ai.functions";
 export const Route = createFileRoute("/summaries")({
   head: () => ({
     meta: [
-      { title: "AI Summaries — Cross-Cultural Mission" },
-      { name: "description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
-      { property: "og:title", content: "AI Summaries — Cross-Cultural Mission" },
-      { property: "og:description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
+      { title: "AI Summaries — Cross-Cultural Ministry" },
+      { name: "description", content: "AI-generated summaries of Cross-Cultural Ministry ministry reports." },
+      { property: "og:title", content: "AI Summaries — Cross-Cultural Ministry" },
+      { property: "og:description", content: "AI-generated summaries of Cross-Cultural Ministry ministry reports." },
       { property: "og:url", content: "https://cross-cultural-mission-ccm.lovable.app/summaries" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
-      { name: "twitter:title", content: "AI Summaries — Cross-Cultural Mission" },
-      { name: "twitter:description", content: "AI-generated summaries of Cross-Cultural Mission ministry reports." },
+      { name: "twitter:title", content: "AI Summaries — Cross-Cultural Ministry" },
+      { name: "twitter:description", content: "AI-generated summaries of Cross-Cultural Ministry ministry reports." },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/iKAs0JeJ1gdQab7afxdB6C9laCx2/social-images/social-1783503655346-CCM_LOGO.webp" },
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/summaries" }],

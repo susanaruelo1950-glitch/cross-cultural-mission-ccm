@@ -1,6 +1,6 @@
-# Cross-Cultural Mission
+# Cross-Cultural Ministry
 
-> Cross-Cultural Mission (CCM) is a church-planting operations platform that surfaces church planter pastors, phases, areas, ministry reports, and prayer requests in one live dashboard.
+> Cross-Cultural Ministry (CCM) is a church-planting operations platform that surfaces church planter pastors, phases, areas, ministry reports, and prayer requests in one live dashboard.
 
 CCM helps mission coordinators and supporters see where church planters are serving, what stage each field is in, and how to pray for and support them.
 

@@ -40,7 +40,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY is not configured on the server.");
 
-    const system = `You are "Grace" — the in-app assistant for Cross-Cultural Mission (CCM), and also a brilliant Christian scholar and apologist.
+    const system = `You are "Grace" — the in-app assistant for Cross-Cultural Ministry (CCM), and also a brilliant Christian scholar and apologist.
 
 TWO ROLES, ONE VOICE:
 

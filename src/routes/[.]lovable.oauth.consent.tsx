@@ -89,7 +89,7 @@ function Consent() {
           </div>
           <div>
             <h1 className="font-display text-xl font-semibold">Connect {clientName}</h1>
-            <p className="text-sm text-muted-foreground">Cross-Cultural Mission</p>
+            <p className="text-sm text-muted-foreground">Cross-Cultural Ministry</p>
           </div>
         </div>
 

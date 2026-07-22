@@ -95,12 +95,12 @@ async function buildContext(isAdmin: boolean) {
   return ctx;
 }
 
-const USER_SYSTEM = `You are the Cross-Cultural Mission (CCM) Telegram assistant.
+const USER_SYSTEM = `You are the Cross-Cultural Ministry (CCM) Telegram assistant.
 Answer ONLY from the JSON context. If missing, say so.
 Be warm, Christ-centered, concise. Prefer short bullet lists. Use Markdown.
 Never invent names, numbers, or events.`;
 
-const ADMIN_SYSTEM = `You are the CCM SUPER AGENT — an admin-only monitor and advisor for the Cross-Cultural Mission app.
+const ADMIN_SYSTEM = `You are the CCM SUPER AGENT — an admin-only monitor and advisor for the Cross-Cultural Ministry app.
 You have full read access to app data plus recent activity logs.
 Your job: help the admin spot issues, redundancies, data quality problems, missing info, stale content, and suggest concrete fixes/improvements.
 
@@ -202,7 +202,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         try {
           if (text === "/start") {
-            await sendMessage(chatId, `👋 Welcome to *Cross-Cultural Mission*!\n\n${HELP_USER}`);
+            await sendMessage(chatId, `👋 Welcome to *Cross-Cultural Ministry*!\n\n${HELP_USER}`);
             return Response.json({ ok: true });
           }
           if (text === "/help") {
