@@ -96,6 +96,24 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
     [letters],
   );
 
+  // Group letters by year so the timeline collapses into per-year sections,
+  // matching the Ministry Updates layout.
+  const lettersByYear = useMemo(() => {
+    const map = new Map<string, Letter[]>();
+    for (const l of letters ?? []) {
+      const year = l.letter_date && /^\d{4}/.test(l.letter_date) ? l.letter_date.slice(0, 4) : "Undated";
+      if (!map.has(year)) map.set(year, []);
+      map.get(year)!.push(l);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === "Undated") return 1;
+      if (b[0] === "Undated") return -1;
+      return b[0].localeCompare(a[0]);
+    });
+  }, [letters]);
+  const latestYear = lettersByYear[0]?.[0];
+
+
 
   return (
     <Card className="card-soft p-5 sm:p-6">
