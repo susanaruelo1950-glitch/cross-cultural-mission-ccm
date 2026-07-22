@@ -76,6 +76,10 @@ export function NotificationBell() {
 
   useEffect(() => {
     setItems(loadStore());
+    // Re-prune once an hour so a long-lived tab that crosses midnight into a
+    // new month drops the previous month's notifications automatically.
+    const pruneTimer = setInterval(() => setItems(loadStore()), 60 * 60 * 1000);
+
     function onChange(e: Event) {
       const detail = (e as CustomEvent<RealtimeChangeDetail>).detail;
       if (!detail) return;
