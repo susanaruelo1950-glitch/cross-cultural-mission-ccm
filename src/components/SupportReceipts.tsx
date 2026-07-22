@@ -555,7 +555,7 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
       <div className="grid gap-1.5">
         <Label htmlFor="sr-photo" className="flex items-center gap-1.5">
           <ImagePlus className="h-4 w-4" /> Receipt photo (optional, max {MAX_MB} MB)
-          <span className="ml-1 text-[10px] font-normal text-muted-foreground">— we'll auto-read the date &amp; amount</span>
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">— AI reads it, you choose what to apply</span>
         </Label>
         <Input
           id="sr-photo"
