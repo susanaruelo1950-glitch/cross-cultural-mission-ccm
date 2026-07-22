@@ -38,11 +38,20 @@ function fallbackHref(table: Notif["table"]): string {
   return "/missionaries";
 }
 
+function currentMonthKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function inCurrentMonth(iso: string): boolean {
+  return typeof iso === "string" && iso.slice(0, 7) === currentMonthKey();
+}
 function loadStore(): Notif[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
-    return raw ? (JSON.parse(raw) as Notif[]) : [];
+    const list = raw ? (JSON.parse(raw) as Notif[]) : [];
+    // Auto-reset: drop anything from a prior month so notifications can't
+    // pile up indefinitely — the bell starts fresh at the top of each month.
+    return list.filter((n) => inCurrentMonth(n.at));
   } catch {
     return [];
   }
@@ -67,6 +76,10 @@ export function NotificationBell() {
 
   useEffect(() => {
     setItems(loadStore());
+    // Re-prune once an hour so a long-lived tab that crosses midnight into a
+    // new month drops the previous month's notifications automatically.
+    const pruneTimer = setInterval(() => setItems(loadStore()), 60 * 60 * 1000);
+
     function onChange(e: Event) {
       const detail = (e as CustomEvent<RealtimeChangeDetail>).detail;
       if (!detail) return;
@@ -113,6 +126,7 @@ export function NotificationBell() {
     }
     window.addEventListener("storage", onStorage);
     return () => {
+      clearInterval(pruneTimer);
       window.removeEventListener("gc-realtime-change", onChange);
       window.removeEventListener("storage", onStorage);
     };

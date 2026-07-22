@@ -89,10 +89,18 @@ function Dashboard() {
   const prayerLive = usePrayerCount();
   const updatesLive = useMinistryUpdateCount();
   const updatesList = useMinistryUpdatesList();
-  // Prefer the list length so the badge and /reports can never diverge —
-  // if the list is empty, the badge shows 0 (not a stale head count).
+  // Show only the CURRENT month's updates so the dashboard badge auto-resets
+  // at the start of every month and notifications can't pile up indefinitely.
+  // Falls back to the head count only while the list is still loading.
+  const currentMonthKey = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
   const updatesCount = updatesList.data
-    ? updatesList.data.length
+    ? updatesList.data.filter((u) => {
+        const src = u.report_date ?? u.created_at;
+        return typeof src === "string" && src.slice(0, 7) === currentMonthKey;
+      }).length
     : (updatesLive.data ?? missionStats.totalReports);
 
   const areaMatches = (a: { region?: string; province?: string; phaseId: string }) => {
@@ -208,7 +216,7 @@ function Dashboard() {
         <StatCard label={filterActive ? "Areas (filtered)" : "Areas"} value={filterActive ? filteredAreas.length : missionStats.totalAreas} icon={MapPin} tone="warm" to="/map" hash="mission-map" linkLabel="Jump to mission map" />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={Church} tone="primary" to="/missionaries" hash="directory-list" linkLabel="Jump to church planters list" />
         <StatCard label="Prayer Requests" value={prayerLive.data ?? missionStats.totalPrayerRequests} icon={HeartHandshake} tone="secondary" to="/prayer" hash="prayer-list" linkLabel="Jump to prayer requests" />
-        <StatCard label="Updates" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates" />
+        <StatCard label="Updates this month" value={updatesCount} icon={FileText} tone="warm" to="/reports" hash="reports-list" linkLabel="Jump to ministry updates this month" />
       </section>
 
       {/* Partners now live inside the hero (above) to maximise dashboard space. */}
