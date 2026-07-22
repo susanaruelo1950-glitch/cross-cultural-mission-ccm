@@ -235,6 +235,7 @@ function SortableLetterRow({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
+  const [letterDate, setLetterDate] = useState(letter.letter_date?.slice(0, 10) ?? "");
   const qc = useQueryClient();
   const key = ["thank_you_letters_admin", letter.missionary_id] as const;
   const publicKey = ["thank_you_letters", letter.missionary_id] as const;
@@ -242,10 +243,13 @@ function SortableLetterRow({
 
   async function save() {
     if (!title.trim()) return toast.error("Title is required.");
+    if (!letterDate || !/^\d{4}-\d{2}-\d{2}$/.test(letterDate)) {
+      return toast.error("Please enter a valid date.");
+    }
     setSaving(true);
     const prevAdmin = qc.getQueryData<Row[] | undefined>(key);
     const prevPublic = qc.getQueryData<Row[] | undefined>(publicKey);
-    const patch = { title: title.trim(), message: message.trim() || null };
+    const patch = { title: title.trim(), message: message.trim() || null, letter_date: letterDate };
     // Optimistic
     await qc.cancelQueries({ queryKey: key });
     await qc.cancelQueries({ queryKey: publicKey });
