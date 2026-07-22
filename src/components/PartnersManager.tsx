@@ -224,14 +224,10 @@ function PartnerForm({
         <Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} />
       </div>
       <div className="sm:col-span-2">
-        <Label>Logo URL</Label>
-        <Input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…/logo.png" />
-        {logo ? (
-          <div className="mt-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-border">
-            <img src={logo} alt="Logo preview" className="h-full w-full object-contain p-1" />
-          </div>
-        ) : null}
+        <Label>Logo</Label>
+        <LogoUploader value={logo} onChange={setLogo} slugHint={slug || slugify(short) || "partner"} />
       </div>
+
       <div className="sm:col-span-2">
         <Label>Link URL (optional)</Label>
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />
