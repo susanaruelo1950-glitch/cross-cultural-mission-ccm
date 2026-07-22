@@ -1,15 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMinistryUpdatesList, type LiveUpdate } from "@/hooks/use-ministry-updates";
 
-import { FileText, ImageIcon, Loader2 } from "lucide-react";
+import { FileText, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { getMissionary } from "@/lib/mission-data";
 import { useHashScroll } from "@/hooks/use-hash-scroll";
 import { monthKey, monthLabel } from "@/lib/month-key";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
