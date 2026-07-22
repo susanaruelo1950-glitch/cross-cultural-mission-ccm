@@ -741,7 +741,20 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             onDismissAll={() => setOcrSuggestions([])}
           />
         )}
+        {detectedRecipient ? (
+          <RecipientMatcher
+            detected={detectedRecipient}
+            confidence={detectedRecipientConf}
+            onUse={(name) => {
+              setMessage((prev) => (prev.trim() ? prev : `Dear ${name},\n\n`));
+              setTitle((prev) => (prev.trim() ? prev : `Thank you to ${name}`));
+              setDetectedRecipient(null);
+            }}
+            onDismiss={() => setDetectedRecipient(null)}
+          />
+        ) : null}
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy} className="rounded-full">
