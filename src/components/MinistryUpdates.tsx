@@ -124,6 +124,23 @@ export function MinistryUpdates({ missionaryId, missionaryName }: Props) {
     );
   }, [updates]);
 
+  // Group everything by year so the timeline collapses into per-year sections.
+  const groupsByYear = useMemo(() => {
+    const map = new Map<string, Group[]>();
+    for (const g of groups) {
+      const date = g.kind === "collage" ? g.report_date : g.update.report_date;
+      const year = date && /^\d{4}/.test(date) ? date.slice(0, 4) : "Undated";
+      if (!map.has(year)) map.set(year, []);
+      map.get(year)!.push(g);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === "Undated") return 1;
+      if (b[0] === "Undated") return -1;
+      return b[0].localeCompare(a[0]);
+    });
+  }, [groups]);
+  const latestYear = groupsByYear[0]?.[0];
+
   return (
     <Card className="card-soft p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
