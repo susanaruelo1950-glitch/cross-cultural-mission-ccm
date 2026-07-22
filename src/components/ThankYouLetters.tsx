@@ -155,77 +155,91 @@ export function ThankYouLetters({ missionaryId, missionaryName }: Props) {
             }
           />
         ) : (
-          letters.map((l) => (
-            <article key={l.id} className="rounded-2xl border border-border/60 bg-card p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {new Date(l.letter_date).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </div>
-                  <h4 className="font-display text-base font-semibold">{l.title}</h4>
+          lettersByYear.map(([year, yearLetters]) => (
+            <details key={year} open={year === latestYear} className="group rounded-2xl border border-border/60 bg-card/40">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-4 py-3 hover:bg-muted/40">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-lg font-semibold">{year}</span>
+                  <span className="text-xs text-muted-foreground">{yearLetters.length} {yearLetters.length === 1 ? "letter" : "letters"}</span>
                 </div>
-                {canEdit ? (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingId(editingId === l.id ? null : l.id)}
-                      aria-label="Edit letter"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {isAdmin ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Delete this letter?")) del.mutate(l.id);
+                <span className="text-xs text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <div className="space-y-4 p-3 pt-1">
+                {yearLetters.map((l) => (
+                  <article key={l.id} className="rounded-2xl border border-border/60 bg-card p-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {new Date(l.letter_date).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </div>
+                        <h4 className="font-display text-base font-semibold">{l.title}</h4>
+                      </div>
+                      {canEdit ? (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingId(editingId === l.id ? null : l.id)}
+                            aria-label="Edit letter"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {isAdmin ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                if (confirm("Delete this letter?")) del.mutate(l.id);
+                              }}
+                              aria-label="Delete letter"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                    {editingId === l.id ? (
+                      <LetterEditForm
+                        letter={l}
+                        onClose={() => setEditingId(null)}
+                        onSaved={() => {
+                          setEditingId(null);
+                          qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
+                          qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
                         }}
-                        aria-label="Delete letter"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
+                      />
+                    ) : (
+                      <>
+                        {l.message ? (
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
+                            {l.message}
+                          </p>
+                        ) : null}
+                        {l.letter_url ? (
+                          <LetterAttachment
+                            path={l.letter_url}
+                            title={l.title}
+                            onOpenImage={() => {
+                              const idx = imageLetters.findIndex((x) => x.id === l.id);
+                              setLightboxIndex(idx >= 0 ? idx : 0);
+                            }}
+                          />
+                        ) : null}
+                      </>
+                    )}
+                  </article>
+                ))}
               </div>
-              {editingId === l.id ? (
-                <LetterEditForm
-                  letter={l}
-                  onClose={() => setEditingId(null)}
-                  onSaved={() => {
-                    setEditingId(null);
-                    qc.invalidateQueries({ queryKey: ["thank_you_letters", missionaryId] });
-                    qc.invalidateQueries({ queryKey: ["thank_you_letters_admin", missionaryId] });
-                  }}
-                />
-              ) : (
-                <>
-                  {l.message ? (
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
-                      {l.message}
-                    </p>
-                  ) : null}
-                  {l.letter_url ? (
-                    <LetterAttachment
-                      path={l.letter_url}
-                      title={l.title}
-                      onOpenImage={() => {
-                        const idx = imageLetters.findIndex((x) => x.id === l.id);
-                        setLightboxIndex(idx >= 0 ? idx : 0);
-                      }}
-                    />
-                  ) : null}
-                </>
-              )}
-            </article>
+            </details>
           ))
         )}
+
       </div>
       {lightboxIndex !== null && imageLetters.length > 0 ? (
         <LettersLightbox
