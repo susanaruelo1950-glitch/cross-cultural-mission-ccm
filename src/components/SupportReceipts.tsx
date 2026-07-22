@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { IMAGE_MIME, safeStoragePath, validateFile } from "@/lib/upload-validation";
 import { bulkFileDate } from "@/lib/parse-filename-date";
+import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
 
 interface Props {
   missionaryId: string;
