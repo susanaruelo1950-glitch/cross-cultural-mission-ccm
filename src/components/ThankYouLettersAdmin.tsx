@@ -235,6 +235,7 @@ function SortableLetterRow({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(letter.title);
   const [message, setMessage] = useState(letter.message ?? "");
+  const [letterDate, setLetterDate] = useState(letter.letter_date?.slice(0, 10) ?? "");
   const qc = useQueryClient();
   const key = ["thank_you_letters_admin", letter.missionary_id] as const;
   const publicKey = ["thank_you_letters", letter.missionary_id] as const;
@@ -242,10 +243,13 @@ function SortableLetterRow({
 
   async function save() {
     if (!title.trim()) return toast.error("Title is required.");
+    if (!letterDate || !/^\d{4}-\d{2}-\d{2}$/.test(letterDate)) {
+      return toast.error("Please enter a valid date.");
+    }
     setSaving(true);
     const prevAdmin = qc.getQueryData<Row[] | undefined>(key);
     const prevPublic = qc.getQueryData<Row[] | undefined>(publicKey);
-    const patch = { title: title.trim(), message: message.trim() || null };
+    const patch = { title: title.trim(), message: message.trim() || null, letter_date: letterDate };
     // Optimistic
     await qc.cancelQueries({ queryKey: key });
     await qc.cancelQueries({ queryKey: publicKey });
@@ -288,13 +292,22 @@ function SortableLetterRow({
           {editing ? (
             <div className="space-y-2">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+              <div className="grid gap-1.5">
+                <Label htmlFor={`tyl-date-${letter.id}`} className="text-xs">Letter date</Label>
+                <Input
+                  id={`tyl-date-${letter.id}`}
+                  type="date"
+                  value={letterDate}
+                  onChange={(e) => setLetterDate(e.target.value)}
+                />
+              </div>
               <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message" className="min-h-[80px]" />
               <div className="flex gap-2">
                 <Button size="sm" className="rounded-full" disabled={saving} onClick={save}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save
                 </Button>
-                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => { setEditing(false); setTitle(letter.title); setMessage(letter.message ?? ""); }}>
+                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => { setEditing(false); setTitle(letter.title); setMessage(letter.message ?? ""); setLetterDate(letter.letter_date?.slice(0, 10) ?? ""); }}>
                   <X className="h-4 w-4" /> Cancel
                 </Button>
               </div>
