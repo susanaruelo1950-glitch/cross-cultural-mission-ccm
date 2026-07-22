@@ -143,9 +143,13 @@ export function useGlobalRealtime() {
               new: (payload.new ?? null) as Record<string, unknown> | null,
               old: (payload.old ?? null) as Record<string, unknown> | null,
             };
-            pending.set(table, detail);
+            // Dispatch immediately so per-row consumers (NotificationBell)
+            // never lose an event to burst debouncing.
+            window.dispatchEvent(new CustomEvent("gc-realtime-change", { detail }));
+            pending.add(table);
             if (flushTimer) clearTimeout(flushTimer);
             flushTimer = setTimeout(flush, FLUSH_MS);
+
           },
         );
       }
