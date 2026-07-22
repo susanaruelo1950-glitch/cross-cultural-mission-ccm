@@ -457,6 +457,8 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const [open, setOpen] = useState(false);
   const [ocrStatus, setOcrStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
+  const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
   const runOcr = useServerFn(ocrLetter);
 
   function readAsDataUrl(f: File): Promise<string> {
@@ -472,34 +474,58 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     if (!f.type.startsWith("image/")) return;
     setOcrStatus("running");
     setOcrNote(null);
+    setOcrSuggestions([]);
+    setOcrOverall(null);
     try {
       const dataUrl = await readAsDataUrl(f);
       const result = await runOcr({ data: { imageDataUrl: dataUrl } });
-      const filled: string[] = [];
-      setTitle((prev) => {
-        if (prev.trim()) return prev;
-        if (result.title) { filled.push("title"); return result.title; }
-        if (result.recipient) { filled.push("title"); return `Thank you to ${result.recipient}`; }
-        return prev;
-      });
-      setMessage((prev) => {
-        if (prev.trim()) return prev;
-        if (result.message) { filled.push("message"); return result.message; }
-        return prev;
-      });
-      setLetterDate((prev) => {
-        if (prev) return prev;
-        if (result.date) { filled.push("date"); return result.date; }
-        return prev;
-      });
+      setOcrOverall(result.confidence);
+      const next: OcrSuggestion[] = [];
+      if (result.date) {
+        next.push({ key: "date", label: "Letter date", value: result.date, confidence: result.fieldConfidence.date });
+      }
+      // Prefer explicit title; fall back to a title suggestion from the recipient name.
+      if (result.title) {
+        next.push({ key: "title", label: "Title", value: result.title, confidence: result.fieldConfidence.title });
+      } else if (result.recipient) {
+        next.push({
+          key: "title",
+          label: "Title (from recipient)",
+          value: `Thank you to ${result.recipient}`,
+          confidence: result.fieldConfidence.recipient,
+        });
+      }
+      if (result.recipient) {
+        next.push({
+          key: "recipient",
+          label: "Recipient",
+          value: result.recipient,
+          confidence: result.fieldConfidence.recipient,
+        });
+      }
+      if (result.message) {
+        next.push({
+          key: "message",
+          label: "Message",
+          value: result.message,
+          confidence: result.fieldConfidence.message,
+          multiline: true,
+        });
+      }
+      if (result.amounts) {
+        next.push({
+          key: "amounts",
+          label: "Amounts detected (reference only)",
+          value: result.amounts,
+          confidence: result.fieldConfidence.amounts,
+        });
+      }
+      setOcrSuggestions(next);
       setOcrStatus("done");
-      if (filled.length > 0) {
-        const parts = [`Auto-filled ${filled.join(", ")} from the letter image — please review before posting.`];
-        if (result.amounts) parts.push(`Amounts detected: ${result.amounts}.`);
-        if (result.recipient) parts.push(`Addressed to: ${result.recipient}.`);
-        setOcrNote(parts.join(" "));
-      } else {
+      if (next.length === 0) {
         setOcrNote("Couldn't confidently read this letter — please fill in the fields manually.");
+      } else {
+        setOcrNote("Review each detected field, then choose Use, Edit, or Dismiss. Nothing is applied automatically.");
       }
     } catch (err) {
       console.error("Letter OCR failed", err);
@@ -508,12 +534,28 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     }
   }
 
+  function applyOcrValue(key: string, value: string) {
+    if (key === "date") setLetterDate(value);
+    else if (key === "title") setTitle(value);
+    else if (key === "recipient") {
+      // Recipient isn't its own field — append it to the message for context.
+      setMessage((prev) => (prev.trim() ? prev : `Dear ${value},\n\n`));
+    } else if (key === "message") setMessage(value);
+    // "amounts" is reference-only; accepting appends into the message body.
+    else if (key === "amounts") {
+      setMessage((prev) => (prev.trim() ? `${prev}\n\nAmounts: ${value}` : `Amounts: ${value}`));
+    }
+    setOcrSuggestions((prev) => prev.filter((s) => s.key !== key));
+  }
+
   function pickFile(f: File | null) {
     if (!f) {
       setFile(null);
       setPreviewUrl(null);
       setOcrStatus("idle");
       setOcrNote(null);
+      setOcrSuggestions([]);
+      setOcrOverall(null);
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
