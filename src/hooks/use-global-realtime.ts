@@ -18,6 +18,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
  */
 const TABLE_TO_KEYS: Record<string, string[][]> = {
   ministry_updates: [["ministry_updates"]],
+  support_receipts: [["support_receipts"]],
   thank_you_letters: [["thank_you_letters"], ["thank_you_letters_admin"]],
   prayer_requests_db: [["prayer_requests_db"]],
   scriptures: [["scriptures"]],

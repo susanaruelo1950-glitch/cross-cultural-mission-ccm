@@ -29,6 +29,7 @@ import {
 } from "@/lib/mission-data";
 import { PrayerCounter } from "@/components/PrayerCounter";
 import { MinistryUpdates } from "@/components/MinistryUpdates";
+import { SupportReceipts } from "@/components/SupportReceipts";
 import { ThankYouLetters } from "@/components/ThankYouLetters";
 import { MissionaryPhotoUpload } from "@/components/MissionaryPhotoUpload";
 import { MissionaryCoverUpload } from "@/components/MissionaryCoverUpload";
@@ -224,6 +225,9 @@ function Profile() {
 
       {/* Thank You Letters — replaces the old Support Status Timeline */}
       <ThankYouLetters missionaryId={m.id} missionaryName={m.fullName} />
+
+      {/* Support receipts — monthly transparency ledger, grouped by year */}
+      <SupportReceipts missionaryId={m.id} missionaryName={m.fullName} />
 
       {/* Ministry updates (DB-backed, admin can add with photo) */}
       <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />

@@ -603,6 +603,48 @@ export type Database = {
         }
         Relationships: []
       }
+      support_receipts: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          image_url: string | null
+          missionary_id: string
+          note: string | null
+          receipt_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          image_url?: string | null
+          missionary_id: string
+          note?: string | null
+          receipt_date?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          image_url?: string | null
+          missionary_id?: string
+          note?: string | null
+          receipt_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       telegram_users: {
         Row: {
           chat_id: number
