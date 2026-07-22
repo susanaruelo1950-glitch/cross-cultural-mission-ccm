@@ -23,6 +23,11 @@ import { OrderVerificationLog } from "@/components/OrderVerificationLog";
 import { monthKey } from "@/lib/month-key";
 import { ocrLetter } from "@/lib/ocr-letter.functions";
 import { OcrReviewPanel, type OcrConfidence, type OcrSuggestion } from "@/components/OcrReviewPanel";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePartners } from "@/hooks/use-partners";
+import { useDirectory } from "@/hooks/use-directory";
+import { nameSimilarity } from "@/lib/fuzzy-match";
+
 
 
 interface Props {
@@ -459,7 +464,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [ocrSuggestions, setOcrSuggestions] = useState<OcrSuggestion[]>([]);
   const [ocrOverall, setOcrOverall] = useState<OcrConfidence>(null);
+  const [detectedRecipient, setDetectedRecipient] = useState<string | null>(null);
+  const [detectedRecipientConf, setDetectedRecipientConf] = useState<OcrConfidence>(null);
   const runOcr = useServerFn(ocrLetter);
+
 
   function readAsDataUrl(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -476,7 +484,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
     setOcrNote(null);
     setOcrSuggestions([]);
     setOcrOverall(null);
+    setDetectedRecipient(null);
+    setDetectedRecipientConf(null);
     try {
+
       const dataUrl = await readAsDataUrl(f);
       const result = await runOcr({ data: { imageDataUrl: dataUrl } });
       setOcrOverall(result.confidence);
@@ -496,13 +507,10 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
         });
       }
       if (result.recipient) {
-        next.push({
-          key: "recipient",
-          label: "Recipient",
-          value: result.recipient,
-          confidence: result.fieldConfidence.recipient,
-        });
+        setDetectedRecipient(result.recipient);
+        setDetectedRecipientConf(result.fieldConfidence.recipient);
       }
+
       if (result.message) {
         next.push({
           key: "message",
@@ -556,6 +564,9 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
       setOcrNote(null);
       setOcrSuggestions([]);
       setOcrOverall(null);
+      setDetectedRecipient(null);
+      setDetectedRecipientConf(null);
+
       return;
     }
     const check = validateFile(f, { allowed: LETTER_MIME, maxMb: MAX_MB });
@@ -730,7 +741,20 @@ function LetterForm({ missionaryId }: { missionaryId: string }) {
             onDismissAll={() => setOcrSuggestions([])}
           />
         )}
+        {detectedRecipient ? (
+          <RecipientMatcher
+            detected={detectedRecipient}
+            confidence={detectedRecipientConf}
+            onUse={(name) => {
+              setMessage((prev) => (prev.trim() ? prev : `Dear ${name},\n\n`));
+              setTitle((prev) => (prev.trim() ? prev : `Thank you to ${name}`));
+              setDetectedRecipient(null);
+            }}
+            onDismiss={() => setDetectedRecipient(null)}
+          />
+        ) : null}
       </div>
+
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy} className="rounded-full">
@@ -885,3 +909,160 @@ function BulkLetterUpload({ missionaryId }: { missionaryId: string }) {
     </div>
   );
 }
+
+interface RecipientOption {
+  key: string;
+  name: string;
+  group: "Partners" | "Areas" | "Provinces" | "Regions";
+  meta?: string;
+  score: number;
+}
+
+/**
+ * Fuzzy-matches the AI-detected recipient string against partners, areas,
+ * provinces, and regions, and lets the user pick the correct one from a
+ * grouped dropdown instead of typing it manually.
+ */
+function RecipientMatcher({
+  detected,
+  confidence,
+  onUse,
+  onDismiss,
+}: {
+  detected: string;
+  confidence: OcrConfidence;
+  onUse: (name: string) => void;
+  onDismiss: () => void;
+}) {
+  const { data: partners } = usePartners();
+  const { areas, regions, provinces } = useDirectory();
+
+  const options = useMemo<RecipientOption[]>(() => {
+    const q = detected.trim();
+    const list: RecipientOption[] = [];
+    for (const p of partners ?? []) {
+      const name = p.full_name || p.short_name;
+      list.push({
+        key: `partner:${p.id}`,
+        name,
+        group: "Partners",
+        meta: p.short_name && p.short_name !== name ? p.short_name : undefined,
+        score: Math.max(nameSimilarity(q, name), p.short_name ? nameSimilarity(q, p.short_name) : 0),
+      });
+    }
+    for (const a of areas) {
+      list.push({
+        key: `area:${a.id}`,
+        name: a.name,
+        group: "Areas",
+        meta: [a.province, a.region].filter(Boolean).join(" · ") || undefined,
+        score: nameSimilarity(q, a.name),
+      });
+    }
+    for (const pr of provinces) {
+      list.push({ key: `prov:${pr.id}`, name: pr.name, group: "Provinces", score: nameSimilarity(q, pr.name) });
+    }
+    for (const r of regions) {
+      list.push({ key: `region:${r.id}`, name: r.name, group: "Regions", score: nameSimilarity(q, r.name) });
+    }
+    return list.sort((a, b) => b.score - a.score);
+  }, [detected, partners, areas, provinces, regions]);
+
+  const best = options[0];
+  const [selectedKey, setSelectedKey] = useState<string>(() =>
+    best && best.score >= 0.4 ? best.key : "__raw__",
+  );
+
+  const selectedName =
+    selectedKey === "__raw__"
+      ? detected
+      : options.find((o) => o.key === selectedKey)?.name ?? detected;
+
+  const grouped = useMemo(() => {
+    const g: Record<string, RecipientOption[]> = { Partners: [], Areas: [], Provinces: [], Regions: [] };
+    for (const o of options) g[o.group].push(o);
+    return g;
+  }, [options]);
+
+  const confBadge =
+    confidence === "high"
+      ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300"
+      : confidence === "medium"
+        ? "bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300"
+        : confidence === "low"
+          ? "bg-destructive/10 text-destructive border-destructive/30"
+          : "";
+
+  return (
+    <div className="mt-2 space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span>AI detected recipient — pick the matching person, church, or region</span>
+          {confidence ? (
+            <span
+              className={
+                "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+                confBadge
+              }
+            >
+              {confidence} confidence
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        Detected: <span className="font-medium text-foreground/80">&ldquo;{detected}&rdquo;</span>
+      </div>
+      <Select value={selectedKey} onValueChange={setSelectedKey}>
+        <SelectTrigger className="h-9 text-sm">
+          <SelectValue placeholder="Choose match…" />
+        </SelectTrigger>
+        <SelectContent className="max-h-80">
+          <SelectItem value="__raw__">Use detected text: &ldquo;{detected}&rdquo;</SelectItem>
+          {(["Partners", "Areas", "Provinces", "Regions"] as const).map((group) =>
+            grouped[group].length ? (
+              <SelectGroup key={group}>
+                <SelectLabel>{group}</SelectLabel>
+                {grouped[group].slice(0, 25).map((o) => (
+                  <SelectItem key={o.key} value={o.key}>
+                    <span className="flex items-center gap-2">
+                      <span>{o.name}</span>
+                      {o.meta ? (
+                        <span className="text-[10px] text-muted-foreground">· {o.meta}</span>
+                      ) : null}
+                      {o.score >= 0.6 ? (
+                        <span className="text-[10px] text-primary">· {Math.round(o.score * 100)}% match</span>
+                      ) : null}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ) : null,
+          )}
+        </SelectContent>
+      </Select>
+      <div className="flex flex-wrap gap-1">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-7 rounded-full text-xs"
+          onClick={() => onUse(selectedName)}
+        >
+          Use recipient
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 rounded-full text-xs"
+          onClick={onDismiss}
+        >
+          Dismiss
+        </Button>
+      </div>
+    </div>
+  );
+}
+
