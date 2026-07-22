@@ -226,6 +226,9 @@ function Profile() {
       {/* Thank You Letters — replaces the old Support Status Timeline */}
       <ThankYouLetters missionaryId={m.id} missionaryName={m.fullName} />
 
+      {/* Support receipts — monthly transparency ledger, grouped by year */}
+      <SupportReceipts missionaryId={m.id} missionaryName={m.fullName} />
+
       {/* Ministry updates (DB-backed, admin can add with photo) */}
       <MinistryUpdates missionaryId={m.id} missionaryName={m.fullName} />
 
