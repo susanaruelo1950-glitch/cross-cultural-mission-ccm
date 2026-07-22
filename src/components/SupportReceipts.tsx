@@ -549,6 +549,14 @@ function ReceiptForm({ missionaryId }: { missionaryId: string }) {
           accept="image/*"
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
         />
+        {ocrBusy ? (
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading receipt with AI…
+          </div>
+        ) : null}
+        {ocrNote ? (
+          <p className="mt-1 text-xs text-muted-foreground">{ocrNote}</p>
+        ) : null}
         {previewUrl ? (
           <div className="relative mt-1 w-fit">
             <img src={previewUrl} alt="" className="max-h-48 rounded-xl object-contain bg-muted/40" />
