@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing, Sparkles, Loader2, Copy } from "lucide-react";
+import { generateMonthlySummary } from "@/lib/monthly-report-ai.functions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
