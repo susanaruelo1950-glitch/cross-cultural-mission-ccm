@@ -1245,7 +1245,12 @@ function MonthlyReportPage() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Attachment format</Label>
-              <Select value={aiEmailFormat} onValueChange={(v) => setAiEmailFormat(v as "pdf" | "docx")}>
+              <Select value={aiEmailFormat} onValueChange={(v) => {
+                const fmt = v as "pdf" | "docx";
+                setAiEmailFormat(fmt);
+                setAiEmailSubject(defaultAiEmailSubject(fmt));
+                setAiEmailBody(defaultAiEmailBody(fmt));
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">PDF (.pdf)</SelectItem>
