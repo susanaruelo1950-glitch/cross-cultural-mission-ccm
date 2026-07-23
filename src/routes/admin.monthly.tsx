@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing, Sparkles, Loader2, Copy } from "lucide-react";
+import { generateMonthlySummary } from "@/lib/monthly-report-ai.functions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +66,12 @@ function MonthlyReportPage() {
   const [remindOpen, setRemindOpen] = useState(false);
   const [selectedReminders, setSelectedReminders] = useState<Record<string, boolean>>({});
   const [reminderMessage, setReminderMessage] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReport, setAiReport] = useState("");
+  const [supervisorName, setSupervisorName] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
@@ -451,6 +465,66 @@ function MonthlyReportPage() {
     setRemindOpen(false);
   }
 
+  async function generateAiReport() {
+    setAiLoading(true);
+    setAiReport("");
+    try {
+      const payload = {
+        monthLabel: monthLabel(month),
+        totals: {
+          total: totals.total,
+          complete: totals.complete,
+          withUpd: totals.withUpd,
+          withLet: totals.withLet,
+          withRec: totals.withRec,
+          totalReceived: totals.totalReceived,
+        },
+        rows: rows.map((r) => ({
+          fullName: r.m.fullName,
+          church: r.m.church ?? "",
+          areaName: areaName.get(r.m.areaId) ?? "",
+          hasUpdate: r.hasUpdate,
+          hasLetter: r.hasLetter,
+          hasReceipt: r.hasReceipt,
+          receivedAmount: r.receivedAmount,
+          updateTitles: r.updates.map((u) => u.title).slice(0, 4),
+          letterTitles: r.letters.map((l) => l.title).slice(0, 4),
+          receiptTitles: r.receipts.map((rr) => rr.title).slice(0, 4),
+        })),
+        newMissionaries: (newMissionariesQ.data ?? []).map((n) => {
+          const d = n.data as { fullName?: string; church?: string } | null;
+          return { fullName: d?.fullName ?? "Unnamed", church: d?.church ?? "" };
+        }),
+        announcements: (announcementsQ.data ?? []).map((a) => ({ title: a.title, body: a.body ?? "" })),
+        supervisorName,
+        senderName,
+        tone: aiTone,
+      };
+      const { report } = await generateMonthlySummary({ data: payload });
+      setAiReport(report);
+      toast.success("Report drafted.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate report");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function copyAiReport() {
+    await navigator.clipboard.writeText(aiReport);
+    toast.success("Report copied to clipboard.");
+  }
+
+  function downloadAiReport() {
+    const blob = new Blob([aiReport], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `monthly-report-${month}-formal.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
@@ -505,6 +579,14 @@ function MonthlyReportPage() {
             {totalPending > 0 ? (
               <Badge variant="secondary" className="ml-1 rounded-full">{totalPending}</Badge>
             ) : null}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="rounded-full bg-primary/90 hover:bg-primary"
+            onClick={() => setAiOpen(true)}
+          >
+            <Sparkles className="h-4 w-4" /> AI Report
           </Button>
 
         </div>
@@ -815,6 +897,80 @@ function MonthlyReportPage() {
             <Button onClick={handleSendReminders}>
               <BellRing className="h-4 w-4" /> Open reminder email
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> AI Report Assistant
+            </DialogTitle>
+            <DialogDescription>
+              Draft a formal, submission-ready monthly report for {monthLabel(month)} based on the data on this page. Review before sending to your supervisor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sup" className="text-sm">Supervisor / Head</Label>
+                <Input id="sup" value={supervisorName} onChange={(e) => setSupervisorName(e.target.value)} placeholder="e.g. Bishop Cruz" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="from" className="text-sm">Your name / title</Label>
+                <Input id="from" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="e.g. Pastor Juan, CCM Coordinator" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Tone</Label>
+                <Select value={aiTone} onValueChange={(v) => setAiTone(v as "formal" | "concise" | "pastoral")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="formal">Formal (default)</SelectItem>
+                    <SelectItem value="concise">Concise executive brief</SelectItem>
+                    <SelectItem value="pastoral">Pastoral / encouraging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button onClick={generateAiReport} disabled={aiLoading || rows.length === 0} className="w-full rounded-full">
+              {aiLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Drafting report…</>) : (<><Sparkles className="h-4 w-4" /> {aiReport ? "Regenerate report" : "Generate report"}</>)}
+            </Button>
+
+            {aiReport ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Draft report</Label>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={copyAiReport}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReport}>
+                      <Download className="h-4 w-4" /> .txt
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  value={aiReport}
+                  onChange={(e) => setAiReport(e.target.value)}
+                  rows={18}
+                  className="font-mono text-xs leading-relaxed"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Edit freely before submitting. The AI only used data shown on this page — please double-check names and figures.
+                </p>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAiOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
