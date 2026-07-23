@@ -37,6 +37,12 @@ const STORAGE_VOICE = "ccm-fab-voice";
 const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
 const STORAGE_RATE = "ccm-fab-rate";
 const STORAGE_VOLUME = "ccm-fab-volume";
+const STORAGE_VAD = "ccm-fab-vad";
+// Voice-activity detection thresholds.
+const VAD_SPEECH_LEVEL = 0.08;   // mic level considered "speech"
+const VAD_SILENCE_LEVEL = 0.04;  // mic level considered "silence"
+const VAD_SILENCE_MS = 1400;     // silence duration before auto-stop
+const VAD_MAX_WAIT_MS = 8000;    // give up waiting for speech after this
 
 function vibrate(pattern: number | number[]) {
   try {
