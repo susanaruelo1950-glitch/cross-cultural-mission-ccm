@@ -490,6 +490,22 @@ function MonthlyReportPage() {
           <Button variant="default" size="sm" className="rounded-full" onClick={() => setEmailOpen(true)}>
             <Send className="h-4 w-4" /> Email report
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              setSelectedReminders({});
+              setRemindOpen(true);
+            }}
+            disabled={totalPending === 0}
+            title={totalPending === 0 ? "No pending submissions this month" : "Send reminders to coordinators"}
+          >
+            <BellRing className="h-4 w-4" /> Send reminders
+            {totalPending > 0 ? (
+              <Badge variant="secondary" className="ml-1 rounded-full">{totalPending}</Badge>
+            ) : null}
+          </Button>
 
         </div>
       </header>
