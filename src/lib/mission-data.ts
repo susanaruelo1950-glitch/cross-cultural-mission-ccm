@@ -447,10 +447,10 @@ export const seedMissionaries: Missionary[] = [
     gps: offset(espGps, 0),
   },
 
-  // ── Maguindanao del Sur ────────────────────────────────────
+  // ── Sultan Kudarat (Esperanza) ─────────────────────────────
   {
     id: "m-basilio-sumido",
-    areaId: "area-maguindanao",
+    areaId: "area-esperanza",
     fullName: "Basilio M. Sumido",
     church: "Mao Alliance Church",
     address: "Mao, Datu Abdullah Sangki, Maguindanao del Sur, Philippines",
@@ -461,11 +461,11 @@ export const seedMissionaries: Missionary[] = [
     status: "Active",
     journeyStage: "Church Planting",
     country: "Philippines",
-    region: "BARMM",
-    province: "Maguindanao del Sur",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "Sultan Kudarat",
     municipality: "Datu Abdullah Sangki",
     barangay: "Mao",
-    gps: offset(magGps, 0),
+    gps: offset(espGps, 1),
   },
 
   // ============================================================
