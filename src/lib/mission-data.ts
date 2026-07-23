@@ -241,7 +241,7 @@ export const seedAreas: Area[] = [
     phaseId: "phase-2",
     name: "Arakan Area",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     coordinatorName: "Ronilo E. Dalisay",
     description: "Alliance fellowships and church plants across Arakan Valley.",
     gps: [7.398, 125.135],
