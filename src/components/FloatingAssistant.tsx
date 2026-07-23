@@ -1195,6 +1195,25 @@ export function FloatingAssistant() {
                           <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
                             <ReactMarkdown>{m.content}</ReactMarkdown>
                           </div>
+                          {speakingIdx === i && captionText ? (
+                            <div className="mt-2 rounded-lg border border-primary/30 bg-background/70 px-2 py-1.5 text-[12px] leading-snug" aria-live="polite">
+                              {(() => {
+                                const words = captionText.split(/\s+/);
+                                const spoken = Math.max(1, Math.floor(captionProgress * words.length));
+                                return (
+                                  <p className="whitespace-pre-wrap">
+                                    <span className="font-medium text-foreground">{words.slice(0, spoken).join(" ")}</span>
+                                    {spoken < words.length ? (
+                                      <span className="text-muted-foreground"> {words.slice(spoken).join(" ")}</span>
+                                    ) : null}
+                                  </p>
+                                );
+                              })()}
+                              <div className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${Math.round(captionProgress * 100)}%` }} />
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="mt-1 flex justify-end">
                             <button
                               type="button"
