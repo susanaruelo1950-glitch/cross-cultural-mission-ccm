@@ -712,6 +712,112 @@ function MonthlyReportPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={remindOpen} onOpenChange={setRemindOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send reminder emails</DialogTitle>
+            <DialogDescription>
+              Pick coordinators to remind about their missionaries' pending submissions for {monthLabel(month)}.
+              We'll open a pre-filled email listing exactly what's missing.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Coordinators</Label>
+              {reminderTargets.some((c) => c.pending.length > 0) ? (
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const c of reminderTargets) if (c.pending.length > 0) all[c.id] = true;
+                      setSelectedReminders(all);
+                    }}
+                  >Select all with pending</button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={() => setSelectedReminders({})}
+                  >Clear</button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
+              {coordinatorsQ.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Loading coordinators…</p>
+              ) : reminderTargets.length === 0 ? (
+                <p className="p-3 text-sm text-muted-foreground">No coordinators with email addresses found.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {reminderTargets.map((c) => {
+                    const hasPending = c.pending.length > 0;
+                    return (
+                      <li key={c.id} className="flex items-start gap-3 px-3 py-2">
+                        <Checkbox
+                          id={`rem-${c.id}`}
+                          checked={!!selectedReminders[c.id]}
+                          disabled={!hasPending}
+                          onCheckedChange={(v) =>
+                            setSelectedReminders((prev) => ({ ...prev, [c.id]: v === true }))
+                          }
+                        />
+                        <label htmlFor={`rem-${c.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="text-sm font-medium">{c.full_name || c.email}</div>
+                            <Badge
+                              variant={hasPending ? "destructive" : "secondary"}
+                              className="rounded-full text-[10px]"
+                            >
+                              {hasPending ? `${c.pending.length} pending` : "All submitted"}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{c.email}</div>
+                          {hasPending ? (
+                            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                              {c.pending.slice(0, 4).map((p, i) => (
+                                <li key={i}>
+                                  • {p.name} <span className="opacity-70">({p.areaName})</span> — {p.missing.join(", ")}
+                                </li>
+                              ))}
+                              {c.pending.length > 4 ? (
+                                <li className="opacity-70">…and {c.pending.length - 4} more</li>
+                              ) : null}
+                            </ul>
+                          ) : c.areaIds.length === 0 ? (
+                            <div className="mt-1 text-xs text-muted-foreground">No areas assigned yet.</div>
+                          ) : null}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="reminder-message" className="text-sm">Optional message</Label>
+              <Textarea
+                id="reminder-message"
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                placeholder="Add a personal note for the coordinators…"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemindOpen(false)}>Cancel</Button>
+            <Button onClick={handleSendReminders}>
+              <BellRing className="h-4 w-4" /> Open reminder email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
