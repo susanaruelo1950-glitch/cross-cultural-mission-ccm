@@ -38,11 +38,16 @@ const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
 const STORAGE_RATE = "ccm-fab-rate";
 const STORAGE_VOLUME = "ccm-fab-volume";
 const STORAGE_VAD = "ccm-fab-vad";
-// Voice-activity detection thresholds.
-const VAD_SPEECH_LEVEL = 0.08;   // mic level considered "speech"
-const VAD_SILENCE_LEVEL = 0.04;  // mic level considered "silence"
-const VAD_SILENCE_MS = 1400;     // silence duration before auto-stop
-const VAD_MAX_WAIT_MS = 8000;    // give up waiting for speech after this
+const STORAGE_VAD_SENS = "ccm-fab-vad-sens";
+// Voice-activity detection sensitivity presets.
+type VadSensitivity = "low" | "medium" | "high" | "very-high";
+const VAD_PRESETS: Record<VadSensitivity, { speech: number; silence: number; silenceMs: number; maxWaitMs: number; label: string; hint: string }> = {
+  low:         { speech: 0.12, silence: 0.07, silenceMs: 2400, maxWaitMs: 12000, label: "Low",        hint: "Noisy places · waits longer" },
+  medium:      { speech: 0.08, silence: 0.04, silenceMs: 1400, maxWaitMs: 8000,  label: "Medium",     hint: "Balanced (default)" },
+  high:        { speech: 0.05, silence: 0.03, silenceMs: 900,  maxWaitMs: 6000,  label: "High",       hint: "Quiet room · stops sooner" },
+  "very-high": { speech: 0.035,silence: 0.02, silenceMs: 550,  maxWaitMs: 5000,  label: "Very high",  hint: "Fast turn-taking" },
+};
+
 
 function vibrate(pattern: number | number[]) {
   try {
@@ -271,8 +276,13 @@ export function FloatingAssistant() {
     return "alloy";
   });
   const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_AUTOSPEAK);
+      if (raw === "0") return false;
+      if (raw === "1") return true;
+    } catch { /* noop */ }
+    return true;
   });
   const [rate, setRate] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
@@ -300,6 +310,15 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return true;
   });
+  const [vadSens, setVadSens] = useState<VadSensitivity>(() => {
+    if (typeof window === "undefined") return "medium";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VAD_SENS);
+      if (raw && raw in VAD_PRESETS) return raw as VadSensitivity;
+    } catch { /* noop */ }
+    return "medium";
+  });
+
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -318,10 +337,13 @@ export function FloatingAssistant() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const vadEnabledRef = useRef<boolean>(true);
+  const vadPresetRef = useRef(VAD_PRESETS.medium);
   const vadSpeechDetectedRef = useRef<boolean>(false);
   const vadSilenceStartRef = useRef<number | null>(null);
   const vadStartedAtRef = useRef<number>(0);
   const vadTriggeredRef = useRef<boolean>(false);
+  const speakTokenRef = useRef<number>(0);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
@@ -432,14 +454,22 @@ export function FloatingAssistant() {
     try { window.localStorage.setItem(STORAGE_VAD, vad ? "1" : "0"); } catch { /* noop */ }
   }, [vad]);
   useEffect(() => {
+    vadPresetRef.current = VAD_PRESETS[vadSens];
+    try { window.localStorage.setItem(STORAGE_VAD_SENS, vadSens); } catch { /* noop */ }
+  }, [vadSens]);
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
   function stopPlayback() {
+    speakTokenRef.current++;
     const a = audioRef.current;
     if (a) {
-      a.pause();
+      try { a.pause(); } catch { /* noop */ }
+      a.onended = null;
+      a.onerror = null;
+      a.ontimeupdate = null;
       a.src = "";
       audioRef.current = null;
     }
@@ -448,10 +478,13 @@ export function FloatingAssistant() {
     setCaptionProgress(0);
   }
 
+
   async function speakText(text: string, idx: number | null) {
     const clean = forSpeech(text);
     if (!clean) return;
+    // Cancel any in-flight or currently playing voice so we never overlap.
     stopPlayback();
+    const token = ++speakTokenRef.current;
     try {
       setSpeakingIdx(idx);
       setCaptionText(clean);
@@ -461,34 +494,41 @@ export function FloatingAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: clean, voice }),
       });
+      // A newer request superseded this one — drop the response silently.
+      if (token !== speakTokenRef.current) return;
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         throw new Error(body || `Voice failed (${res.status})`);
       }
       const blob = await res.blob();
+      if (token !== speakTokenRef.current) return;
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.playbackRate = rate;
       audio.volume = volume;
+      // Belt-and-braces: stop whatever might still be attached before swapping.
+      if (audioRef.current) {
+        try { audioRef.current.pause(); } catch { /* noop */ }
+      }
       audioRef.current = audio;
       audio.ontimeupdate = () => {
         if (!audio.duration || !isFinite(audio.duration)) return;
         setCaptionProgress(Math.min(1, audio.currentTime / audio.duration));
       };
-      audio.onended = () => {
+      const cleanup = () => {
         URL.revokeObjectURL(url);
-        setSpeakingIdx(null);
-        setCaptionText("");
-        setCaptionProgress(0);
+        if (audioRef.current === audio) audioRef.current = null;
+        if (token === speakTokenRef.current) {
+          setSpeakingIdx(null);
+          setCaptionText("");
+          setCaptionProgress(0);
+        }
       };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        setSpeakingIdx(null);
-        setCaptionText("");
-        setCaptionProgress(0);
-      };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
       await audio.play();
     } catch (err) {
+      if (token !== speakTokenRef.current) return;
       setSpeakingIdx(null);
       setCaptionText("");
       setCaptionProgress(0);
@@ -619,19 +659,19 @@ export function FloatingAssistant() {
           // Voice-activity detection: auto-stop on trailing silence.
           if (vadEnabledRef.current && !vadTriggeredRef.current) {
             const now = Date.now();
-            if (level >= VAD_SPEECH_LEVEL) {
+            const preset = vadPresetRef.current;
+            if (level >= preset.speech) {
               vadSpeechDetectedRef.current = true;
               vadSilenceStartRef.current = null;
-            } else if (level < VAD_SILENCE_LEVEL) {
+            } else if (level < preset.silence) {
               if (vadSpeechDetectedRef.current) {
                 if (vadSilenceStartRef.current == null) vadSilenceStartRef.current = now;
-                else if (now - vadSilenceStartRef.current >= VAD_SILENCE_MS) {
+                else if (now - vadSilenceStartRef.current >= preset.silenceMs) {
                   vadTriggeredRef.current = true;
                   stopRecording();
                   return;
                 }
-              } else if (now - vadStartedAtRef.current >= VAD_MAX_WAIT_MS) {
-                // No speech detected within window — give up quietly.
+              } else if (now - vadStartedAtRef.current >= preset.maxWaitMs) {
                 vadTriggeredRef.current = true;
                 stopRecording();
                 return;
@@ -1239,6 +1279,27 @@ export function FloatingAssistant() {
                     />
                     Auto-stop when I stop talking (voice-activity detection)
                   </label>
+                  <div className={cn("space-y-1 rounded-md border border-border/60 bg-background/40 p-2", vad ? "" : "opacity-50")}>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Auto-stop sensitivity</span>
+                      <span className="text-foreground">{VAD_PRESETS[vadSens].label}</span>
+                    </div>
+                    <Select value={vadSens} onValueChange={(v) => setVadSens(v as VadSensitivity)} disabled={!vad}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(VAD_PRESETS) as VadSensitivity[]).map((k) => (
+                          <SelectItem key={k} value={k} className="text-xs">
+                            {VAD_PRESETS[k].label} — {VAD_PRESETS[k].hint}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Higher = stops sooner after you pause. Lower = waits longer, better for noisy places.
+                    </p>
+                  </div>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
