@@ -370,32 +370,32 @@ function Analytics() {
       </div>
 
 
-      <div ref={chartsRef} className="grid gap-6 bg-background lg:grid-cols-2">
-        <Card className="card-soft p-6">
-          <h2 className="font-display text-lg font-semibold">Missionaries by phase</h2>
-          <div className="mt-4 h-64">
+      <div ref={chartsRef} className="grid min-w-0 gap-4 bg-background sm:gap-6 lg:grid-cols-2">
+        <Card className="card-soft min-w-0 p-4 sm:p-6">
+          <h2 className="font-display text-base font-semibold sm:text-lg">Missionaries by phase</h2>
+          <div className="mt-4 h-56 w-full sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={byPhase} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90}>
+                <Pie data={byPhase} dataKey="value" nameKey="name" innerRadius="40%" outerRadius="70%">
                   {byPhase.map((_, i) => (
                     <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="card-soft p-6">
-          <h2 className="font-display text-lg font-semibold">Missionaries by area</h2>
-          <div className="mt-4 h-64">
+        <Card className="card-soft min-w-0 p-4 sm:p-6">
+          <h2 className="font-display text-base font-semibold sm:text-lg">Missionaries by area</h2>
+          <div className="mt-4 h-64 w-full sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byArea}>
+              <BarChart data={byArea} margin={{ top: 5, right: 8, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
-                <YAxis allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={80} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Bar dataKey="value" fill={PALETTE[0]} radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -403,31 +403,31 @@ function Analytics() {
           </div>
         </Card>
 
-        <Card className="card-soft p-6">
-          <h2 className="font-display text-lg font-semibold">Ministry focus</h2>
-          <div className="mt-4 h-64">
+        <Card className="card-soft min-w-0 p-4 sm:p-6">
+          <h2 className="font-display text-base font-semibold sm:text-lg">Ministry focus</h2>
+          <div className="mt-4 h-56 w-full sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={byFocus} dataKey="value" nameKey="name" outerRadius={90}>
+                <Pie data={byFocus} dataKey="value" nameKey="name" outerRadius="70%">
                   {byFocus.map((_, i) => (
                     <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="card-soft p-6">
-          <h2 className="font-display text-lg font-semibold">Mission journey stages</h2>
-          <div className="mt-4 h-64">
+        <Card className="card-soft min-w-0 p-4 sm:p-6">
+          <h2 className="font-display text-base font-semibold sm:text-lg">Mission journey stages</h2>
+          <div className="mt-4 h-64 w-full sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byStage}>
+              <BarChart data={byStage} margin={{ top: 5, right: 8, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" height={80} />
-                <YAxis allowDecimals={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Bar dataKey="value" fill={PALETTE[1]} radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -435,6 +435,7 @@ function Analytics() {
           </div>
         </Card>
       </div>
+
     </div>
   );
 }
