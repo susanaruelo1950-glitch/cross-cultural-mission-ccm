@@ -33,11 +33,39 @@ const STORAGE_MSGS = "ccm-fab-msgs"; // legacy — migrated on load
 const STORAGE_SIZE = "ccm-fab-size";
 const STORAGE_CONVOS = "ccm-fab-convos";
 const STORAGE_ACTIVE = "ccm-fab-active";
+const STORAGE_VOICE = "ccm-fab-voice";
+const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
 const FAB_SIZE = 56;
 const EDGE_PAD = 12;
 
 type PanelSize = "compact" | "regular" | "large";
 const SIZE_ORDER: PanelSize[] = ["compact", "regular", "large"];
+
+const VOICES: Array<{ id: string; label: string; hint: string }> = [
+  { id: "alloy", label: "Alloy", hint: "Warm, balanced (default)" },
+  { id: "shimmer", label: "Shimmer", hint: "Bright, friendly" },
+  { id: "nova", label: "Nova", hint: "Clear, upbeat" },
+  { id: "coral", label: "Coral", hint: "Gentle, expressive" },
+  { id: "sage", label: "Sage", hint: "Calm, thoughtful" },
+  { id: "fable", label: "Fable", hint: "Storyteller, British" },
+  { id: "echo", label: "Echo", hint: "Neutral, steady" },
+  { id: "onyx", label: "Onyx", hint: "Deep, authoritative" },
+  { id: "ash", label: "Ash", hint: "Soft, reflective" },
+  { id: "ballad", label: "Ballad", hint: "Lyrical, gentle" },
+  { id: "verse", label: "Verse", hint: "Expressive, dynamic" },
+];
+
+/** Strip markdown so the model reads clean prose aloud. */
+function forSpeech(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_~`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 const SUGGESTIONS = [
   "Who are the missionaries in Kidapawan?",
