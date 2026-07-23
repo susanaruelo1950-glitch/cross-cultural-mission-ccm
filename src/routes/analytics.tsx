@@ -334,40 +334,41 @@ function Analytics() {
 
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold sm:text-4xl">
+    <div className="min-w-0 space-y-6">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-semibold sm:text-4xl">
             Annual Analytics — {year}
           </h1>
-          <p className="mt-1 max-w-2xl text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
             Ministry metrics compiled from the entire missionary directory.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={exportReport} variant="outline" className="rounded-full">
+        <div className="col-span-2 flex flex-wrap gap-2">
+          <Button onClick={exportReport} variant="outline" size="sm" className="rounded-full sm:h-10">
             <Download className="h-4 w-4" /> CSV
           </Button>
-          <Button onClick={exportPdf} disabled={pdfBusy} className="rounded-full" aria-live="polite">
+          <Button onClick={exportPdf} disabled={pdfBusy} size="sm" className="rounded-full sm:h-10" aria-live="polite">
             {pdfBusy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> {pdfStage || "Building PDF…"}
+                <Loader2 className="h-4 w-4 animate-spin" /> <span className="truncate max-w-[160px]">{pdfStage || "Building PDF…"}</span>
               </>
             ) : (
               <>
-                <FileDown className="h-4 w-4" /> PDF (with charts)
+                <FileDown className="h-4 w-4" /> PDF
               </>
             )}
           </Button>
         </div>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Missionaries" value={missionStats.totalMissionaries} icon={BarChart3} />
         <StatCard label="Areas" value={missionStats.totalAreas} icon={BarChart3} />
         <StatCard label="Churches" value={missionStats.totalChurches} icon={BarChart3} />
-        <StatCard label="Provinces reached" value={missionStats.totalProvinces} icon={BarChart3} />
+        <StatCard label="Provinces" value={missionStats.totalProvinces} icon={BarChart3} />
       </div>
+
 
       <div ref={chartsRef} className="grid gap-6 bg-background lg:grid-cols-2">
         <Card className="card-soft p-6">
