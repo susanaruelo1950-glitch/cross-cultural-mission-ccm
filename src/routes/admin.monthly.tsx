@@ -1190,7 +1190,7 @@ function MonthlyReportPage() {
                     <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportTxt}>
                       <Download className="h-4 w-4" /> .txt
                     </Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setAiEmailOpen(true); }}>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={openAiEmailDialog}>
                       <Send className="h-4 w-4" /> Email
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-full" onClick={() => { saveAiVersion("manual", aiReport); toast.success("Saved current draft to history."); }}>
