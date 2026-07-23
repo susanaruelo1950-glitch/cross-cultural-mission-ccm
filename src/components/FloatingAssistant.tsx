@@ -578,6 +578,10 @@ export function FloatingAssistant() {
       rec.start();
       setRecording(true);
       vibrate(30);
+      vadSpeechDetectedRef.current = false;
+      vadSilenceStartRef.current = null;
+      vadStartedAtRef.current = Date.now();
+      vadTriggeredRef.current = false;
 
       // Set up level meter + waveform via Web Audio.
       try {
@@ -611,6 +615,30 @@ export function FloatingAssistant() {
           const level = Math.min(1, (sum / buf.length) * 2);
           setMicLevel(level);
           setWaveform(bars);
+
+          // Voice-activity detection: auto-stop on trailing silence.
+          if (vadEnabledRef.current && !vadTriggeredRef.current) {
+            const now = Date.now();
+            if (level >= VAD_SPEECH_LEVEL) {
+              vadSpeechDetectedRef.current = true;
+              vadSilenceStartRef.current = null;
+            } else if (level < VAD_SILENCE_LEVEL) {
+              if (vadSpeechDetectedRef.current) {
+                if (vadSilenceStartRef.current == null) vadSilenceStartRef.current = now;
+                else if (now - vadSilenceStartRef.current >= VAD_SILENCE_MS) {
+                  vadTriggeredRef.current = true;
+                  stopRecording();
+                  return;
+                }
+              } else if (now - vadStartedAtRef.current >= VAD_MAX_WAIT_MS) {
+                // No speech detected within window — give up quietly.
+                vadTriggeredRef.current = true;
+                stopRecording();
+                return;
+              }
+            }
+          }
+
           rafRef.current = requestAnimationFrame(tick);
         };
         rafRef.current = requestAnimationFrame(tick);
