@@ -365,7 +365,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         tabIndex={-1}
         className={cn("focus:outline-none transition-[padding] duration-200", deskOpen && "lg:pl-72")}
       >
-        <div className="mx-auto max-w-7xl px-3 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-10">
+        <div className="mx-auto w-full max-w-7xl px-2 pb-24 pt-3 sm:px-6 sm:pt-6 lg:px-8 lg:pt-10">
           {children}
         </div>
       </main>
