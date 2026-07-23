@@ -404,6 +404,14 @@ export function FloatingAssistant() {
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_AUTOSPEAK, autoSpeak ? "1" : "0"); } catch { /* noop */ }
   }, [autoSpeak]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_RATE, String(rate)); } catch { /* noop */ }
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+  }, [rate]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
 
   function stopPlayback() {
     const a = audioRef.current;
@@ -413,6 +421,8 @@ export function FloatingAssistant() {
       audioRef.current = null;
     }
     setSpeakingIdx(null);
+    setCaptionText("");
+    setCaptionProgress(0);
   }
 
   async function speakText(text: string, idx: number | null) {
@@ -421,6 +431,8 @@ export function FloatingAssistant() {
     stopPlayback();
     try {
       setSpeakingIdx(idx);
+      setCaptionText(clean);
+      setCaptionProgress(0);
       const res = await fetch("/api/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -433,14 +445,58 @@ export function FloatingAssistant() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      audio.playbackRate = rate;
+      audio.volume = volume;
       audioRef.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
-      audio.onerror = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      audio.ontimeupdate = () => {
+        if (!audio.duration || !isFinite(audio.duration)) return;
+        setCaptionProgress(Math.min(1, audio.currentTime / audio.duration));
+      };
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setSpeakingIdx(null);
+        setCaptionText("");
+        setCaptionProgress(0);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        setSpeakingIdx(null);
+        setCaptionText("");
+        setCaptionProgress(0);
+      };
       await audio.play();
     } catch (err) {
       setSpeakingIdx(null);
+      setCaptionText("");
+      setCaptionProgress(0);
       toast.error(err instanceof Error ? err.message : "Voice playback failed");
     }
+  }
+
+  function stopMeter() {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (analyserRef.current) {
+      try { analyserRef.current.disconnect(); } catch { /* noop */ }
+      analyserRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try { void audioCtxRef.current.close(); } catch { /* noop */ }
+      audioCtxRef.current = null;
+    }
+    setMicLevel(0);
+    setWaveform([]);
+  }
+
+  function stopRecognition() {
+    const rec = recognitionRef.current;
+    if (rec) {
+      try { rec.onresult = null; rec.onerror = null; rec.onend = null; rec.stop(); } catch { /* noop */ }
+      recognitionRef.current = null;
+    }
+    setInterimTranscript("");
   }
 
   async function startRecording() {
@@ -463,6 +519,8 @@ export function FloatingAssistant() {
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        stopMeter();
+        stopRecognition();
         const type = rec.mimeType || "audio/webm";
         const ext = type.includes("mp4") ? "mp4" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "webm";
         const blob = new Blob(chunksRef.current, { type });
@@ -496,6 +554,71 @@ export function FloatingAssistant() {
       mediaRecorderRef.current = rec;
       rec.start();
       setRecording(true);
+      vibrate(30);
+
+      // Set up level meter + waveform via Web Audio.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Ctx: typeof AudioContext = (window.AudioContext || (window as any).webkitAudioContext);
+        const ctx = new Ctx();
+        audioCtxRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.7;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        const buf = new Uint8Array(analyser.fftSize);
+        const BARS = 24;
+        const tick = () => {
+          if (!analyserRef.current) return;
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          const bars: number[] = new Array(BARS).fill(0);
+          const step = Math.floor(buf.length / BARS);
+          for (let b = 0; b < BARS; b++) {
+            let peak = 0;
+            for (let j = 0; j < step; j++) {
+              const v = Math.abs(buf[b * step + j] - 128) / 128;
+              if (v > peak) peak = v;
+              sum += v;
+            }
+            bars[b] = peak;
+          }
+          const level = Math.min(1, (sum / buf.length) * 2);
+          setMicLevel(level);
+          setWaveform(bars);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch { /* meter unsupported */ }
+
+      // Live interim transcription (SpeechRecognition where available).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SR) {
+          const sr = new SR();
+          sr.continuous = true;
+          sr.interimResults = true;
+          sr.lang = navigator.language || "en-US";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sr.onresult = (evt: any) => {
+            let interim = "";
+            let final = "";
+            for (let i = evt.resultIndex; i < evt.results.length; i++) {
+              const r = evt.results[i];
+              if (r.isFinal) final += r[0].transcript;
+              else interim += r[0].transcript;
+            }
+            setInterimTranscript((final + " " + interim).trim());
+          };
+          sr.onerror = () => { /* ignore — server does the real transcription */ };
+          sr.onend = () => { /* no-op */ };
+          sr.start();
+          recognitionRef.current = sr;
+        }
+      } catch { /* preview unsupported */ }
     } catch {
       toast.error("Microphone access denied.");
     }
@@ -506,12 +629,17 @@ export function FloatingAssistant() {
     if (rec && rec.state !== "inactive") rec.stop();
     mediaRecorderRef.current = null;
     setRecording(false);
+    vibrate([15, 40, 15]);
   }
 
   useEffect(() => () => {
     stopPlayback();
+    stopMeter();
+    stopRecognition();
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
   }, []);
+
+
 
 
   function onPointerDown(e: React.PointerEvent) {
