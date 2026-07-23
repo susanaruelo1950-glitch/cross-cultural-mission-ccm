@@ -1097,14 +1097,26 @@ function MonthlyReportPage() {
 
             {aiReport ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label className="text-sm font-medium">Draft report</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" className="rounded-full" onClick={copyAiReport}>
                       <Copy className="h-4 w-4" /> Copy
                     </Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReport}>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportPdf}>
+                      <Download className="h-4 w-4" /> PDF
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportDocx}>
+                      <FileType2 className="h-4 w-4" /> DOCX
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportTxt}>
                       <Download className="h-4 w-4" /> .txt
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { saveAiVersion("manual", aiReport); toast.success("Saved current draft to history."); }}>
+                      <Save className="h-4 w-4" /> Save version
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setHistoryOpen(true)}>
+                      <History className="h-4 w-4" /> History ({aiVersions.length})
                     </Button>
                   </div>
                 </div>
@@ -1115,18 +1127,86 @@ function MonthlyReportPage() {
                   className="font-mono text-xs leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Edit freely before submitting. The AI only used data shown on this page — please double-check names and figures.
+                  Edit freely before submitting. Downloads and saved versions capture your current edits. The AI only used data shown on this page — please double-check names and figures.
                 </p>
               </div>
             ) : (
-              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
-              </p>
+              <div className="space-y-2">
+                <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                  Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
+                </p>
+                {aiVersions.length > 0 ? (
+                  <Button variant="outline" size="sm" className="w-full rounded-full" onClick={() => setHistoryOpen(true)}>
+                    <History className="h-4 w-4" /> Open version history ({aiVersions.length})
+                  </Button>
+                ) : null}
+              </div>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAiOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" /> AI Report — Version History
+            </DialogTitle>
+            <DialogDescription>
+              Previous drafts for {monthLabel(month)} (stored on this device). Restore any version back into the editor, or delete ones you no longer need.
+            </DialogDescription>
+          </DialogHeader>
+          {aiVersions.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No saved versions yet. Generating a report or clicking <strong>Save version</strong> stores a snapshot here.
+            </p>
+          ) : (
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+              {aiVersions.map((v) => (
+                <div key={v.id} className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {new Date(v.createdAt).toLocaleString()}{" "}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          · {v.source === "generated" ? "AI generated" : "Manual save"} · {v.tone}
+                        </span>
+                      </p>
+                      {(v.supervisorName || v.senderName) ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {v.supervisorName ? `To: ${v.supervisorName}` : ""}
+                          {v.supervisorName && v.senderName ? " · " : ""}
+                          {v.senderName ? `From: ${v.senderName}` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => restoreAiVersion(v)}>
+                        <RotateCcw className="h-4 w-4" /> Restore
+                      </Button>
+                      <Button size="sm" variant="ghost" className="rounded-full text-destructive" onClick={() => deleteAiVersion(v.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <pre className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                    {v.content.slice(0, 320)}{v.content.length > 320 ? "…" : ""}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            {aiVersions.length > 0 ? (
+              <Button variant="ghost" className="text-destructive" onClick={clearAiVersions}>
+                <Trash2 className="h-4 w-4" /> Clear all
+              </Button>
+            ) : <span />}
+            <Button variant="ghost" onClick={() => setHistoryOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
