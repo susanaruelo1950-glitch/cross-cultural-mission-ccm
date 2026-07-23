@@ -268,15 +268,43 @@ export function FloatingAssistant() {
     if (typeof window === "undefined") return false;
     try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
   });
+  const [rate, setRate] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_RATE);
+      const n = raw ? parseFloat(raw) : NaN;
+      if (!Number.isNaN(n) && n >= 0.5 && n <= 2) return n;
+    } catch { /* noop */ }
+    return 1;
+  });
+  const [volume, setVolume] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VOLUME);
+      const n = raw ? parseFloat(raw) : NaN;
+      if (!Number.isNaN(n) && n >= 0 && n <= 1) return n;
+    } catch { /* noop */ }
+    return 1;
+  });
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const [captionText, setCaptionText] = useState<string>("");
+  const [captionProgress, setCaptionProgress] = useState<number>(0);
+  const [micLevel, setMicLevel] = useState<number>(0);
+  const [waveform, setWaveform] = useState<number[]>([]);
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   const initial = useMemo(loadConversations, []);
   const [conversations, setConversations] = useState<Conversation[]>(initial.convos);
