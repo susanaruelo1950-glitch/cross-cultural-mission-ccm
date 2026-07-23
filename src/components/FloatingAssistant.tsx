@@ -39,6 +39,7 @@ const STORAGE_RATE = "ccm-fab-rate";
 const STORAGE_VOLUME = "ccm-fab-volume";
 const STORAGE_VAD = "ccm-fab-vad";
 const STORAGE_VAD_SENS = "ccm-fab-vad-sens";
+const STORAGE_LANG = "ccm-fab-stt-lang";
 // Voice-activity detection sensitivity presets.
 type VadSensitivity = "low" | "medium" | "high" | "very-high";
 const VAD_PRESETS: Record<VadSensitivity, { speech: number; silence: number; silenceMs: number; maxWaitMs: number; label: string; hint: string }> = {
@@ -47,6 +48,19 @@ const VAD_PRESETS: Record<VadSensitivity, { speech: number; silence: number; sil
   high:        { speech: 0.05, silence: 0.03, silenceMs: 900,  maxWaitMs: 6000,  label: "High",       hint: "Quiet room · stops sooner" },
   "very-high": { speech: 0.035,silence: 0.02, silenceMs: 550,  maxWaitMs: 5000,  label: "Very high",  hint: "Fast turn-taking" },
 };
+// Spoken-language hints for speech-to-text. "auto" lets the model detect.
+// Cebuano/Hiligaynon/Ilocano aren't ISO-639-1, so we omit the hint (auto-detect)
+// while still labeling the intent so the user knows it's supported.
+type SttLang = "auto" | "en" | "fil" | "tl" | "ceb" | "hil" | "ilo";
+const STT_LANGS: { id: SttLang; label: string; code?: string; srLang: string }[] = [
+  { id: "auto", label: "Auto-detect (any language)", srLang: "en-US" },
+  { id: "en",   label: "English",              code: "en",  srLang: "en-US" },
+  { id: "fil",  label: "Filipino / Tagalog",   code: "tl",  srLang: "fil-PH" },
+  { id: "tl",   label: "Tagalog",              code: "tl",  srLang: "tl-PH" },
+  { id: "ceb",  label: "Cebuano (Bisaya)",                  srLang: "fil-PH" },
+  { id: "hil",  label: "Hiligaynon (Ilonggo)",              srLang: "fil-PH" },
+  { id: "ilo",  label: "Ilocano",                            srLang: "fil-PH" },
+];
 
 
 function vibrate(pattern: number | number[]) {
@@ -318,6 +332,14 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return "medium";
   });
+  const [sttLang, setSttLang] = useState<SttLang>(() => {
+    if (typeof window === "undefined") return "auto";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_LANG);
+      if (raw && STT_LANGS.some((l) => l.id === raw)) return raw as SttLang;
+    } catch { /* noop */ }
+    return "auto";
+  });
 
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -458,6 +480,9 @@ export function FloatingAssistant() {
     try { window.localStorage.setItem(STORAGE_VAD_SENS, vadSens); } catch { /* noop */ }
   }, [vadSens]);
   useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_LANG, sttLang); } catch { /* noop */ }
+  }, [sttLang]);
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
@@ -568,6 +593,15 @@ export function FloatingAssistant() {
       toast.error("Microphone not available on this device.");
       return;
     }
+    // Barge-in: the user is talking again, so silence any in-flight reply
+    // immediately and mark the current last message as already spoken so
+    // auto-speak only fires for the *next* assistant reply.
+    stopPlayback();
+    if (messages.length > 0) {
+      const lastIdx = messages.length - 1;
+      const last = messages[lastIdx];
+      lastSpokenRef.current = `${activeId}:${lastIdx}:${last.content.length}`;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -596,6 +630,8 @@ export function FloatingAssistant() {
         try {
           const fd = new FormData();
           fd.append("file", blob, `recording.${ext}`);
+          const langCode = STT_LANGS.find((l) => l.id === sttLang)?.code;
+          if (langCode) fd.append("language", langCode);
           const res = await fetch("/api/voice/transcribe", { method: "POST", body: fd });
           if (!res.ok) {
             const body = await res.text().catch(() => "");
@@ -692,7 +728,7 @@ export function FloatingAssistant() {
           const sr = new SR();
           sr.continuous = true;
           sr.interimResults = true;
-          sr.lang = navigator.language || "en-US";
+          sr.lang = STT_LANGS.find((l) => l.id === sttLang)?.srLang || navigator.language || "en-US";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sr.onresult = (evt: any) => {
             let interim = "";
@@ -1298,6 +1334,27 @@ export function FloatingAssistant() {
                     </Select>
                     <p className="text-[10px] leading-tight text-muted-foreground">
                       Higher = stops sooner after you pause. Lower = waits longer, better for noisy places.
+                    </p>
+                  </div>
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/40 p-2">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Spoken language</span>
+                      <span className="text-foreground">{STT_LANGS.find((l) => l.id === sttLang)?.label ?? "Auto"}</span>
+                    </div>
+                    <Select value={sttLang} onValueChange={(v) => setSttLang(v as SttLang)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STT_LANGS.map((l) => (
+                          <SelectItem key={l.id} value={l.id} className="text-xs">
+                            {l.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Understands English, Tagalog/Filipino, Cebuano, Hiligaynon, Ilocano and more. Leave on Auto to mix languages freely.
                     </p>
                   </div>
                 </div>
