@@ -580,6 +580,14 @@ function MonthlyReportPage() {
               <Badge variant="secondary" className="ml-1 rounded-full">{totalPending}</Badge>
             ) : null}
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="rounded-full bg-primary/90 hover:bg-primary"
+            onClick={() => setAiOpen(true)}
+          >
+            <Sparkles className="h-4 w-4" /> AI Report
+          </Button>
 
         </div>
       </header>
