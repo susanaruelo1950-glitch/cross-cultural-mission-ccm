@@ -728,7 +728,7 @@ export function FloatingAssistant() {
           const sr = new SR();
           sr.continuous = true;
           sr.interimResults = true;
-          sr.lang = navigator.language || "en-US";
+          sr.lang = STT_LANGS.find((l) => l.id === sttLang)?.srLang || navigator.language || "en-US";
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sr.onresult = (evt: any) => {
             let interim = "";
