@@ -1199,6 +1199,87 @@ function MonthlyReportPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={aiEmailOpen} onOpenChange={setAiEmailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" /> Email AI Report
+            </DialogTitle>
+            <DialogDescription>
+              Choose a format and pick admins/coordinators to send the AI-drafted report for {monthLabel(month)}. The file will download so you can attach it in the email draft that opens.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Attachment format</Label>
+              <Select value={aiEmailFormat} onValueChange={(v) => setAiEmailFormat(v as "pdf" | "docx")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF (.pdf)</SelectItem>
+                  <SelectItem value="docx">Word (.docx)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Recipients</Label>
+                {recipientsQ.data && recipientsQ.data.length > 0 ? (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const r of recipientsQ.data ?? []) all[r.id] = true;
+                      setAiEmailSelected(all);
+                    }}>Select all</Button>
+                    <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => setAiEmailSelected({})}>Clear</Button>
+                  </div>
+                ) : null}
+              </div>
+              {recipientsQ.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading recipients…</p>
+              ) : (recipientsQ.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No admins or coordinators with email addresses on file.</p>
+              ) : (
+                <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
+                  {recipientsQ.data!.map((r) => (
+                    <label key={r.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+                      <Checkbox
+                        checked={!!aiEmailSelected[r.id]}
+                        onCheckedChange={(v) => setAiEmailSelected((s) => ({ ...s, [r.id]: !!v }))}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{r.full_name ?? r.email}</div>
+                        <div className="truncate text-xs text-muted-foreground">{r.email} • {r.role}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-email-msg" className="text-sm">Optional message</Label>
+              <Textarea
+                id="ai-email-msg"
+                value={aiEmailMessage}
+                onChange={(e) => setAiEmailMessage(e.target.value)}
+                rows={3}
+                placeholder="Add a short note for the recipients…"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAiEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleEmailAiReport} disabled={aiEmailSending || !aiReport.trim()}>
+              {aiEmailSending ? (<><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>) : (<><Send className="h-4 w-4" /> Download & open email</>)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
