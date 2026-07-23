@@ -54,6 +54,20 @@ interface Row { id: string; missionary_id: string; }
 interface UpdateRow extends Row { title: string; report_date: string | null; created_at: string; }
 interface LetterRow extends Row { title: string; letter_date: string; created_at: string; }
 interface ReceiptRow extends Row { title: string; amount: number | null; currency: string; receipt_date: string; created_at: string; }
+interface AiReportVersion {
+  id: string;
+  createdAt: string;
+  source: "generated" | "manual";
+  tone: "formal" | "concise" | "pastoral";
+  supervisorName: string;
+  senderName: string;
+  content: string;
+}
+
+function aiVersionsKey(monthKey: string) {
+  return `ccm.ai-report.versions.${monthKey}`;
+}
+
 
 function MonthlyReportPage() {
   const { user, canEdit, loading } = useAuth();
