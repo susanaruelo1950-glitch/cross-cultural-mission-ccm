@@ -566,7 +566,8 @@ function MonthlyReportPage() {
       };
       const { report } = await generateMonthlySummary({ data: payload });
       setAiReport(report);
-      toast.success("Report drafted.");
+      saveAiVersion("generated", report);
+      toast.success("Report drafted and saved to history.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not generate report");
     } finally {
@@ -579,15 +580,106 @@ function MonthlyReportPage() {
     toast.success("Report copied to clipboard.");
   }
 
-  function downloadAiReport() {
-    const blob = new Blob([aiReport], { type: "text/plain;charset=utf-8" });
+  function downloadFile(blob: Blob, ext: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `monthly-report-${month}-formal.txt`;
+    a.download = `monthly-report-${month}-${aiTone}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  function downloadAiReportTxt() {
+    downloadFile(new Blob([aiReport], { type: "text/plain;charset=utf-8" }), "txt");
+  }
+
+  async function downloadAiReportPdf() {
+    if (!aiReport.trim()) return;
+    const [{ default: jsPDF }] = await Promise.all([import("jspdf")]);
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const margin = 54; // 0.75in
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const usableWidth = pageWidth - margin * 2;
+
+    // Title header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Monthly Submission Report — ${monthLabel(month)}`, margin, margin);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generated ${new Date().toLocaleString()}`, margin, margin + 14);
+    doc.setTextColor(0);
+
+    let y = margin + 40;
+    const lineHeight = 14;
+    const paragraphs = aiReport.replace(/\r\n/g, "\n").split("\n");
+    doc.setFontSize(11);
+
+    for (const raw of paragraphs) {
+      const isHeading = /^[A-Z0-9 &/()\-]{4,}$/.test(raw.trim()) && raw.trim() === raw.trim().toUpperCase() && raw.trim().length > 3;
+      if (isHeading) {
+        y += 6;
+        if (y > pageHeight - margin) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(raw.trim(), margin, y);
+        y += lineHeight + 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        continue;
+      }
+      const wrapped = doc.splitTextToSize(raw || " ", usableWidth) as string[];
+      for (const line of wrapped) {
+        if (y > pageHeight - margin) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      }
+    }
+
+    downloadFile(doc.output("blob") as Blob, "pdf");
+  }
+
+  async function downloadAiReportDocx() {
+    if (!aiReport.trim()) return;
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+    const paragraphs: InstanceType<typeof Paragraph>[] = [];
+    paragraphs.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.LEFT,
+        children: [new TextRun({ text: `Monthly Submission Report — ${monthLabel(month)}`, bold: true })],
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: `Generated ${new Date().toLocaleString()}`, italics: true, color: "666666", size: 20 })],
+      }),
+      new Paragraph({ children: [new TextRun("")] }),
+    );
+
+    for (const raw of aiReport.replace(/\r\n/g, "\n").split("\n")) {
+      const trimmed = raw.trim();
+      const isHeading = /^[A-Z0-9 &/()\-]{4,}$/.test(trimmed) && trimmed === trimmed.toUpperCase() && trimmed.length > 3;
+      if (isHeading) {
+        paragraphs.push(new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun({ text: trimmed, bold: true })],
+        }));
+      } else if (trimmed.startsWith("• ") || trimmed.startsWith("- ")) {
+        paragraphs.push(new Paragraph({
+          bullet: { level: 0 },
+          children: [new TextRun(trimmed.replace(/^[•\-]\s*/, ""))],
+        }));
+      } else {
+        paragraphs.push(new Paragraph({ children: [new TextRun(raw)] }));
+      }
+    }
+
+    const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+    const blob = await Packer.toBlob(doc);
+    downloadFile(blob, "docx");
+  }
+
 
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
