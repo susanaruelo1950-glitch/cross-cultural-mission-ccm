@@ -279,7 +279,7 @@ function offset(base: [number, number], i: number): [number, number] {
 const bagumbayan = seedAreas.find((a) => a.id === "area-bagumbayan")!.gps!;
 const snaGps = seedAreas.find((a) => a.id === "area-sen-ninoy-aquino")!.gps!;
 const espGps = seedAreas.find((a) => a.id === "area-esperanza")!.gps!;
-const magGps = seedAreas.find((a) => a.id === "area-maguindanao")!.gps!;
+
 const maitumGps = seedAreas.find((a) => a.id === "area-maitum")!.gps!;
 const bansalanGps = seedAreas.find((a) => a.id === "area-bansalan")!.gps!;
 const digosGps = seedAreas.find((a) => a.id === "area-digos")!.gps!;
