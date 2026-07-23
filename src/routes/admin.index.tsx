@@ -16,7 +16,7 @@ import { PermissionError } from "@/components/PermissionError";
 import { BackupToDrivePanel } from "@/components/BackupToDrivePanel";
 import { BackupToGithubPanel } from "@/components/BackupToGithubPanel";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
       { title: "Admin Console — Cross-Cultural Ministry" },
