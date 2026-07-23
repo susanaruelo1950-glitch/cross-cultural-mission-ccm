@@ -37,6 +37,12 @@ const STORAGE_VOICE = "ccm-fab-voice";
 const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
 const STORAGE_RATE = "ccm-fab-rate";
 const STORAGE_VOLUME = "ccm-fab-volume";
+const STORAGE_VAD = "ccm-fab-vad";
+// Voice-activity detection thresholds.
+const VAD_SPEECH_LEVEL = 0.08;   // mic level considered "speech"
+const VAD_SILENCE_LEVEL = 0.04;  // mic level considered "silence"
+const VAD_SILENCE_MS = 1400;     // silence duration before auto-stop
+const VAD_MAX_WAIT_MS = 8000;    // give up waiting for speech after this
 
 function vibrate(pattern: number | number[]) {
   try {
@@ -286,6 +292,14 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return 1;
   });
+  const [vad, setVad] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VAD);
+      if (raw === "0") return false;
+    } catch { /* noop */ }
+    return true;
+  });
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -303,6 +317,11 @@ export function FloatingAssistant() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
+  const vadEnabledRef = useRef<boolean>(true);
+  const vadSpeechDetectedRef = useRef<boolean>(false);
+  const vadSilenceStartRef = useRef<number | null>(null);
+  const vadStartedAtRef = useRef<number>(0);
+  const vadTriggeredRef = useRef<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
@@ -408,6 +427,10 @@ export function FloatingAssistant() {
     try { window.localStorage.setItem(STORAGE_RATE, String(rate)); } catch { /* noop */ }
     if (audioRef.current) audioRef.current.playbackRate = rate;
   }, [rate]);
+  useEffect(() => {
+    vadEnabledRef.current = vad;
+    try { window.localStorage.setItem(STORAGE_VAD, vad ? "1" : "0"); } catch { /* noop */ }
+  }, [vad]);
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
     if (audioRef.current) audioRef.current.volume = volume;
@@ -555,6 +578,10 @@ export function FloatingAssistant() {
       rec.start();
       setRecording(true);
       vibrate(30);
+      vadSpeechDetectedRef.current = false;
+      vadSilenceStartRef.current = null;
+      vadStartedAtRef.current = Date.now();
+      vadTriggeredRef.current = false;
 
       // Set up level meter + waveform via Web Audio.
       try {
@@ -588,6 +615,30 @@ export function FloatingAssistant() {
           const level = Math.min(1, (sum / buf.length) * 2);
           setMicLevel(level);
           setWaveform(bars);
+
+          // Voice-activity detection: auto-stop on trailing silence.
+          if (vadEnabledRef.current && !vadTriggeredRef.current) {
+            const now = Date.now();
+            if (level >= VAD_SPEECH_LEVEL) {
+              vadSpeechDetectedRef.current = true;
+              vadSilenceStartRef.current = null;
+            } else if (level < VAD_SILENCE_LEVEL) {
+              if (vadSpeechDetectedRef.current) {
+                if (vadSilenceStartRef.current == null) vadSilenceStartRef.current = now;
+                else if (now - vadSilenceStartRef.current >= VAD_SILENCE_MS) {
+                  vadTriggeredRef.current = true;
+                  stopRecording();
+                  return;
+                }
+              } else if (now - vadStartedAtRef.current >= VAD_MAX_WAIT_MS) {
+                // No speech detected within window — give up quietly.
+                vadTriggeredRef.current = true;
+                stopRecording();
+                return;
+              }
+            }
+          }
+
           rafRef.current = requestAnimationFrame(tick);
         };
         rafRef.current = requestAnimationFrame(tick);
@@ -1179,6 +1230,15 @@ export function FloatingAssistant() {
                   >
                     Reset speed & volume
                   </button>
+                  <label className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-primary"
+                      checked={vad}
+                      onChange={(e) => setVad(e.target.checked)}
+                    />
+                    Auto-stop when I stop talking (voice-activity detection)
+                  </label>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
