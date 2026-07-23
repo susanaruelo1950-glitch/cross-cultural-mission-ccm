@@ -4,7 +4,11 @@ import ReactMarkdown from "react-markdown";
 import {
   Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2,
   History, Plus, Search, Trash2, ArrowLeft, Pin, PinOff, Share2, Tag as TagIcon,
+  Mic, MicOff, Volume2, VolumeX, Play, Square,
 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -29,11 +33,39 @@ const STORAGE_MSGS = "ccm-fab-msgs"; // legacy — migrated on load
 const STORAGE_SIZE = "ccm-fab-size";
 const STORAGE_CONVOS = "ccm-fab-convos";
 const STORAGE_ACTIVE = "ccm-fab-active";
+const STORAGE_VOICE = "ccm-fab-voice";
+const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
 const FAB_SIZE = 56;
 const EDGE_PAD = 12;
 
 type PanelSize = "compact" | "regular" | "large";
 const SIZE_ORDER: PanelSize[] = ["compact", "regular", "large"];
+
+const VOICES: Array<{ id: string; label: string; hint: string }> = [
+  { id: "alloy", label: "Alloy", hint: "Warm, balanced (default)" },
+  { id: "shimmer", label: "Shimmer", hint: "Bright, friendly" },
+  { id: "nova", label: "Nova", hint: "Clear, upbeat" },
+  { id: "coral", label: "Coral", hint: "Gentle, expressive" },
+  { id: "sage", label: "Sage", hint: "Calm, thoughtful" },
+  { id: "fable", label: "Fable", hint: "Storyteller, British" },
+  { id: "echo", label: "Echo", hint: "Neutral, steady" },
+  { id: "onyx", label: "Onyx", hint: "Deep, authoritative" },
+  { id: "ash", label: "Ash", hint: "Soft, reflective" },
+  { id: "ballad", label: "Ballad", hint: "Lyrical, gentle" },
+  { id: "verse", label: "Verse", hint: "Expressive, dynamic" },
+];
+
+/** Strip markdown so the model reads clean prose aloud. */
+function forSpeech(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_~`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 const SUGGESTIONS = [
   "Who are the missionaries in Kidapawan?",
@@ -214,6 +246,27 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return "regular";
   });
+  const [voice, setVoice] = useState<string>(() => {
+    if (typeof window === "undefined") return "alloy";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VOICE);
+      if (raw && VOICES.some((v) => v.id === raw)) return raw;
+    } catch { /* noop */ }
+    return "alloy";
+  });
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
+  });
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenRef = useRef<string | null>(null);
 
   const initial = useMemo(loadConversations, []);
   const [conversations, setConversations] = useState<Conversation[]>(initial.convos);
@@ -290,8 +343,138 @@ export function FloatingAssistant() {
   }, [messages, open, view]);
 
   useEffect(() => {
+    if (!autoSpeak || !open || view !== "chat" || busy) return;
+    if (messages.length === 0) return;
+    const lastIdx = messages.length - 1;
+    const last = messages[lastIdx];
+    if (last.role !== "assistant") return;
+    const sig = `${activeId}:${lastIdx}:${last.content.length}`;
+    if (lastSpokenRef.current === sig) return;
+    lastSpokenRef.current = sig;
+    void speakText(last.content, lastIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, autoSpeak, open, view, busy, activeId]);
+
+
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_SIZE, size); } catch { /* noop */ }
   }, [size]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_VOICE, voice); } catch { /* noop */ }
+  }, [voice]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_AUTOSPEAK, autoSpeak ? "1" : "0"); } catch { /* noop */ }
+  }, [autoSpeak]);
+
+  function stopPlayback() {
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.src = "";
+      audioRef.current = null;
+    }
+    setSpeakingIdx(null);
+  }
+
+  async function speakText(text: string, idx: number | null) {
+    const clean = forSpeech(text);
+    if (!clean) return;
+    stopPlayback();
+    try {
+      setSpeakingIdx(idx);
+      const res = await fetch("/api/voice/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, voice }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(body || `Voice failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      audio.onerror = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      await audio.play();
+    } catch (err) {
+      setSpeakingIdx(null);
+      toast.error(err instanceof Error ? err.message : "Voice playback failed");
+    }
+  }
+
+  async function startRecording() {
+    if (recording || transcribing) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Microphone not available on this device.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const type = rec.mimeType || "audio/webm";
+        const ext = type.includes("mp4") ? "mp4" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "webm";
+        const blob = new Blob(chunksRef.current, { type });
+        chunksRef.current = [];
+        if (blob.size < 1500) {
+          toast.error("Recording was too short — try again.");
+          return;
+        }
+        setTranscribing(true);
+        try {
+          const fd = new FormData();
+          fd.append("file", blob, `recording.${ext}`);
+          const res = await fetch("/api/voice/transcribe", { method: "POST", body: fd });
+          if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new Error(body || `Transcription failed (${res.status})`);
+          }
+          const json = (await res.json()) as { text?: string };
+          const text = (json.text ?? "").trim();
+          if (!text) {
+            toast.error("Didn't catch that — please try again.");
+            return;
+          }
+          await send(text);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Voice input failed");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      toast.error("Microphone access denied.");
+    }
+  }
+
+  function stopRecording() {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    mediaRecorderRef.current = null;
+    setRecording(false);
+  }
+
+  useEffect(() => () => {
+    stopPlayback();
+    if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+  }, []);
+
 
   function onPointerDown(e: React.PointerEvent) {
     const rect = btnRef.current?.getBoundingClientRect();
@@ -568,6 +751,27 @@ export function FloatingAssistant() {
             </div>
             {view === "chat" ? (
               <>
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn("h-8 w-8 shrink-0", autoSpeak ? "text-primary" : "")}
+                  onClick={() => {
+                    if (autoSpeak) { stopPlayback(); setAutoSpeak(false); }
+                    else setAutoSpeak(true);
+                  }}
+                  aria-label={autoSpeak ? "Turn off voice replies" : "Turn on voice replies"}
+                  title={autoSpeak ? "Voice replies: on" : "Voice replies: off"}
+                >
+                  {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn("h-8 w-8 shrink-0", voiceSettingsOpen ? "text-primary" : "")}
+                  onClick={() => setVoiceSettingsOpen((v) => !v)}
+                  aria-label="Voice settings"
+                  title="Choose voice"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={startNewConversation} aria-label="New conversation" title="New conversation">
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -737,6 +941,47 @@ export function FloatingAssistant() {
             </>
           ) : (
             <>
+              {voiceSettingsOpen ? (
+                <div className="border-b border-border bg-muted/30 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Voice</div>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-primary"
+                        checked={autoSpeak}
+                        onChange={(e) => {
+                          if (!e.target.checked) stopPlayback();
+                          setAutoSpeak(e.target.checked);
+                        }}
+                      />
+                      Speak replies automatically
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={voice} onValueChange={setVoice}>
+                      <SelectTrigger className="h-9 flex-1 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VOICES.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            <span className="font-medium">{v.label}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">{v.hint}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => speakText(`Hi, I'm Grace, your mission assistant. This is my ${VOICES.find((v) => v.id === voice)?.label ?? voice} voice.`, null)}
+                    >
+                      <Play className="mr-1 h-3.5 w-3.5" /> Preview
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
                 {messages.map((m, i) => (
                   <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
@@ -747,9 +992,25 @@ export function FloatingAssistant() {
                       )}
                     >
                       {m.role === "assistant" ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
-                          <ReactMarkdown>{m.content}</ReactMarkdown>
-                        </div>
+                        <>
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
+                            <ReactMarkdown>{m.content}</ReactMarkdown>
+                          </div>
+                          <div className="mt-1 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => (speakingIdx === i ? stopPlayback() : void speakText(m.content, i))}
+                              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                              aria-label={speakingIdx === i ? "Stop" : "Play aloud"}
+                            >
+                              {speakingIdx === i ? (
+                                <><Square className="h-3 w-3" /> Stop</>
+                              ) : (
+                                <><Play className="h-3 w-3" /> Play</>
+                              )}
+                            </button>
+                          </div>
+                        </>
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
@@ -786,12 +1047,30 @@ export function FloatingAssistant() {
                 style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
                 onSubmit={(e) => { e.preventDefault(); send(input); }}
               >
+                <Button
+                  type="button"
+                  size="icon"
+                  variant={recording ? "destructive" : "outline"}
+                  className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                  onClick={recording ? stopRecording : startRecording}
+                  disabled={busy || transcribing}
+                  aria-label={recording ? "Stop recording" : "Start voice input"}
+                  title={recording ? "Tap to stop and send" : "Talk to Grace"}
+                >
+                  {transcribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : recording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about missionaries, prayer, reports…"
+                  placeholder={recording ? "Listening… tap mic to stop" : transcribing ? "Transcribing…" : "Ask about missionaries, prayer, reports…"}
                   className="h-10 rounded-full text-base sm:h-9 sm:text-sm"
-                  disabled={busy}
+                  disabled={busy || recording || transcribing}
                   autoFocus
                 />
                 <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9" disabled={busy || !input.trim()} aria-label="Send">
