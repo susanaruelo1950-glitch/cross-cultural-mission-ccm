@@ -900,6 +900,80 @@ function MonthlyReportPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> AI Report Assistant
+            </DialogTitle>
+            <DialogDescription>
+              Draft a formal, submission-ready monthly report for {monthLabel(month)} based on the data on this page. Review before sending to your supervisor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sup" className="text-sm">Supervisor / Head</Label>
+                <Input id="sup" value={supervisorName} onChange={(e) => setSupervisorName(e.target.value)} placeholder="e.g. Bishop Cruz" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="from" className="text-sm">Your name / title</Label>
+                <Input id="from" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="e.g. Pastor Juan, CCM Coordinator" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Tone</Label>
+                <Select value={aiTone} onValueChange={(v) => setAiTone(v as "formal" | "concise" | "pastoral")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="formal">Formal (default)</SelectItem>
+                    <SelectItem value="concise">Concise executive brief</SelectItem>
+                    <SelectItem value="pastoral">Pastoral / encouraging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button onClick={generateAiReport} disabled={aiLoading || rows.length === 0} className="w-full rounded-full">
+              {aiLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Drafting report…</>) : (<><Sparkles className="h-4 w-4" /> {aiReport ? "Regenerate report" : "Generate report"}</>)}
+            </Button>
+
+            {aiReport ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Draft report</Label>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={copyAiReport}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReport}>
+                      <Download className="h-4 w-4" /> .txt
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  value={aiReport}
+                  onChange={(e) => setAiReport(e.target.value)}
+                  rows={18}
+                  className="font-mono text-xs leading-relaxed"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Edit freely before submitting. The AI only used data shown on this page — please double-check names and figures.
+                </p>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAiOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
