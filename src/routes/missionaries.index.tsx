@@ -38,10 +38,12 @@ export const Route = createFileRoute("/missionaries/")({
     ],
     links: [{ rel: "canonical", href: "https://cross-cultural-mission-ccm.lovable.app/missionaries" }],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
-    q: typeof s.q === "string" ? s.q : undefined,
-    area: typeof s.area === "string" ? s.area : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>) => {
+    const out: { q?: string; area?: string } = {};
+    if (typeof s.q === "string") out.q = s.q;
+    if (typeof s.area === "string") out.area = s.area;
+    return out;
+  },
   component: Directory,
 });
 
