@@ -751,6 +751,27 @@ export function FloatingAssistant() {
             </div>
             {view === "chat" ? (
               <>
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn("h-8 w-8 shrink-0", autoSpeak ? "text-primary" : "")}
+                  onClick={() => {
+                    if (autoSpeak) { stopPlayback(); setAutoSpeak(false); }
+                    else setAutoSpeak(true);
+                  }}
+                  aria-label={autoSpeak ? "Turn off voice replies" : "Turn on voice replies"}
+                  title={autoSpeak ? "Voice replies: on" : "Voice replies: off"}
+                >
+                  {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost" size="icon"
+                  className={cn("h-8 w-8 shrink-0", voiceSettingsOpen ? "text-primary" : "")}
+                  onClick={() => setVoiceSettingsOpen((v) => !v)}
+                  aria-label="Voice settings"
+                  title="Choose voice"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={startNewConversation} aria-label="New conversation" title="New conversation">
                   <Plus className="h-4 w-4" />
                 </Button>
