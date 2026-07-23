@@ -598,8 +598,7 @@ function MonthlyReportPage() {
     downloadFile(new Blob([aiReport], { type: "text/plain;charset=utf-8" }), "txt");
   }
 
-  async function downloadAiReportPdf() {
-    if (!aiReport.trim()) return;
+  async function buildAiReportPdfBlob(): Promise<Blob> {
     const [{ default: jsPDF }] = await Promise.all([import("jspdf")]);
     const doc = new jsPDF({ unit: "pt", format: "letter" });
     const margin = 54; // 0.75in
@@ -607,7 +606,6 @@ function MonthlyReportPage() {
     const pageHeight = doc.internal.pageSize.getHeight();
     const usableWidth = pageWidth - margin * 2;
 
-    // Title header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(`Monthly Submission Report — ${monthLabel(month)}`, margin, margin);
@@ -643,11 +641,15 @@ function MonthlyReportPage() {
       }
     }
 
-    downloadFile(doc.output("blob") as Blob, "pdf");
+    return doc.output("blob") as Blob;
   }
 
-  async function downloadAiReportDocx() {
+  async function downloadAiReportPdf() {
     if (!aiReport.trim()) return;
+    downloadFile(await buildAiReportPdfBlob(), "pdf");
+  }
+
+  async function buildAiReportDocxBlob(): Promise<Blob> {
     const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
     const paragraphs: InstanceType<typeof Paragraph>[] = [];
     paragraphs.push(
@@ -681,9 +683,48 @@ function MonthlyReportPage() {
     }
 
     const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
-    const blob = await Packer.toBlob(doc);
-    downloadFile(blob, "docx");
+    return await Packer.toBlob(doc);
   }
+
+  async function downloadAiReportDocx() {
+    if (!aiReport.trim()) return;
+    downloadFile(await buildAiReportDocxBlob(), "docx");
+  }
+
+  async function handleEmailAiReport() {
+    const chosen = (recipientsQ.data ?? []).filter((r) => aiEmailSelected[r.id]);
+    if (chosen.length === 0) {
+      toast.error("Select at least one recipient");
+      return;
+    }
+    if (!aiReport.trim()) {
+      toast.error("Generate a report first");
+      return;
+    }
+    setAiEmailSending(true);
+    try {
+      const blob = aiEmailFormat === "pdf" ? await buildAiReportPdfBlob() : await buildAiReportDocxBlob();
+      downloadFile(blob, aiEmailFormat);
+    } catch (e) {
+      console.error(e);
+      toast.error(`Failed to generate ${aiEmailFormat.toUpperCase()}`);
+      setAiEmailSending(false);
+      return;
+    }
+    const label = monthLabel(month);
+    const filename = `monthly-report-${month}.${aiEmailFormat}`;
+    const subject = `AI Monthly Submission Report — ${label}`;
+    const extra = aiEmailMessage.trim() ? `\n\n${aiEmailMessage.trim()}` : "";
+    const body = `Hi,\n\nPlease find attached the AI-drafted monthly submission report for ${label}. The file (${filename}) has been downloaded to your device — please attach it before sending.${extra}\n\n— Cross-Cultural Ministry`;
+    const to = chosen.map((c) => c.email).join(",");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+    toast.success(`${aiEmailFormat.toUpperCase()} downloaded. Attach it in the email draft to ${chosen.length} recipient${chosen.length > 1 ? "s" : ""}.`);
+    setAiEmailSending(false);
+    setAiEmailOpen(false);
+  }
+
+
 
 
 
