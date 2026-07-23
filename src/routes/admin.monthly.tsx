@@ -316,8 +316,45 @@ function MonthlyReportPage() {
         }
       }
     }
-    doc.save(`monthly-report-${month}.pdf`);
+    if (save) doc.save(`monthly-report-${month}.pdf`);
+    return doc;
   }
+
+  async function handleSendEmail() {
+    const chosen = (recipientsQ.data ?? []).filter((r) => selectedRecipients[r.id]);
+    if (chosen.length === 0) {
+      toast.error("Select at least one recipient");
+      return;
+    }
+    try {
+      await exportPdf({ save: true });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to generate PDF");
+      return;
+    }
+    const label = monthLabel(month);
+    const subject = `Monthly Submission Report — ${label}`;
+    const summary = [
+      `Cross-Cultural Ministry — ${label}`,
+      "",
+      `• Fully submitted: ${totals.complete} of ${totals.total}`,
+      `• Ministry updates: ${totals.withUpd}`,
+      `• Thank you letters: ${totals.withLet}`,
+      `• Support receipts filed: ${totals.withRec}`,
+      `• Total received: PHP ${totals.totalReceived.toLocaleString()}`,
+      `• New missionaries: ${newMissionariesQ.data?.length ?? 0}`,
+      `• Announcements: ${announcementsQ.data?.length ?? 0}`,
+    ].join("\n");
+    const extra = emailMessage.trim() ? `\n\n${emailMessage.trim()}` : "";
+    const body = `Hi,\n\nAttached is the monthly submission report for ${label}. The PDF (monthly-report-${month}.pdf) has been downloaded to your device — please attach it before sending.\n\n${summary}${extra}\n\n— Cross-Cultural Ministry`;
+    const to = chosen.map((c) => c.email).join(",");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+    toast.success(`PDF downloaded. Attach it in the email draft to ${chosen.length} recipient${chosen.length > 1 ? "s" : ""}.`);
+    setEmailOpen(false);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
