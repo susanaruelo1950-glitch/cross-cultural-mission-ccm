@@ -52,6 +52,39 @@ function MonthlyReportPage() {
   const { missionaries, areas } = useDataStore();
   const [month, setMonth] = useState<string>(currentMonthKey());
   const [query, setQuery] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<Record<string, boolean>>({});
+  const [emailMessage, setEmailMessage] = useState("");
+
+  const recipientsQ = useQuery({
+    queryKey: ["monthly", "recipients"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["admin", "coordinator"]);
+      if (rolesErr) throw rolesErr;
+      const ids = Array.from(new Set((roles ?? []).map((r) => r.user_id)));
+      if (!ids.length) return [] as { id: string; email: string; full_name: string | null; role: string }[];
+      const { data: profs, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", ids);
+      if (profErr) throw profErr;
+      const roleMap = new Map<string, string>();
+      for (const r of roles ?? []) {
+        // admin wins over coordinator
+        if (r.role === "admin" || !roleMap.has(r.user_id)) roleMap.set(r.user_id, r.role);
+      }
+      return (profs ?? [])
+        .filter((p) => p.email)
+        .map((p) => ({ id: p.id, email: p.email as string, full_name: p.full_name, role: roleMap.get(p.id) ?? "coordinator" }))
+        .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
+    },
+    enabled: emailOpen,
+    staleTime: 60_000,
+  });
+
 
   const { startISO, endISO, startDate, endDate } = useMemo(() => monthBounds(month), [month]);
 
