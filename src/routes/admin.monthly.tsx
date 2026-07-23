@@ -519,6 +519,87 @@ function MonthlyReportPage() {
           )}
         </Card>
       </div>
+
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Email monthly report</DialogTitle>
+            <DialogDescription>
+              We'll download the PDF for {monthLabel(month)} and open a pre-filled email to the people you pick.
+              Attach the downloaded PDF before sending.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Recipients</Label>
+              {recipientsQ.data && recipientsQ.data.length > 0 ? (
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const r of recipientsQ.data ?? []) all[r.id] = true;
+                      setSelectedRecipients(all);
+                    }}
+                  >Select all</button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={() => setSelectedRecipients({})}
+                  >Clear</button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="max-h-60 overflow-y-auto rounded-lg border border-border">
+              {recipientsQ.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Loading recipients…</p>
+              ) : (recipientsQ.data ?? []).length === 0 ? (
+                <p className="p-3 text-sm text-muted-foreground">No admins or coordinators with email addresses found.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {recipientsQ.data!.map((r) => (
+                    <li key={r.id} className="flex items-center gap-3 px-3 py-2">
+                      <Checkbox
+                        id={`rcpt-${r.id}`}
+                        checked={!!selectedRecipients[r.id]}
+                        onCheckedChange={(v) =>
+                          setSelectedRecipients((prev) => ({ ...prev, [r.id]: v === true }))
+                        }
+                      />
+                      <label htmlFor={`rcpt-${r.id}`} className="flex-1 cursor-pointer">
+                        <div className="text-sm font-medium">{r.full_name || r.email}</div>
+                        <div className="text-xs text-muted-foreground">{r.email}</div>
+                      </label>
+                      <Badge variant="secondary" className="rounded-full text-[10px] capitalize">{r.role}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email-message" className="text-sm">Optional message</Label>
+              <Textarea
+                id="email-message"
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Add a short note for the recipients…"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleSendEmail}>
+              <Send className="h-4 w-4" /> Download PDF &amp; open email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
