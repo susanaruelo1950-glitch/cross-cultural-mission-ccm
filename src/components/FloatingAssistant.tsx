@@ -4,7 +4,11 @@ import ReactMarkdown from "react-markdown";
 import {
   Sparkles, Send, X, Loader2, Minus, GripVertical, Maximize2, Minimize2,
   History, Plus, Search, Trash2, ArrowLeft, Pin, PinOff, Share2, Tag as TagIcon,
+  Mic, MicOff, Volume2, VolumeX, Play, Square,
 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
