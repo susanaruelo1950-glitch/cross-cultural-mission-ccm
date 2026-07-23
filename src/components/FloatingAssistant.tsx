@@ -1146,6 +1146,39 @@ export function FloatingAssistant() {
                       <Play className="mr-1 h-3.5 w-3.5" /> Preview
                     </Button>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Speed</span>
+                        <span className="tabular-nums text-foreground">{rate.toFixed(2)}×</span>
+                      </div>
+                      <input
+                        type="range" min={0.5} max={2} step={0.05} value={rate}
+                        onChange={(e) => setRate(parseFloat(e.target.value))}
+                        className="h-1.5 w-full cursor-pointer accent-primary"
+                        aria-label="Voice speed"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Volume</span>
+                        <span className="tabular-nums text-foreground">{Math.round(volume * 100)}%</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={1} step={0.05} value={volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        className="h-1.5 w-full cursor-pointer accent-primary"
+                        aria-label="Voice volume"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    onClick={() => { setRate(1); setVolume(1); }}
+                  >
+                    Reset speed & volume
+                  </button>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
