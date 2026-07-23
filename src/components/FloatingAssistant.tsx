@@ -1336,6 +1336,27 @@ export function FloatingAssistant() {
                       Higher = stops sooner after you pause. Lower = waits longer, better for noisy places.
                     </p>
                   </div>
+                  <div className="space-y-1 rounded-md border border-border/60 bg-background/40 p-2">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Spoken language</span>
+                      <span className="text-foreground">{STT_LANGS.find((l) => l.id === sttLang)?.label ?? "Auto"}</span>
+                    </div>
+                    <Select value={sttLang} onValueChange={(v) => setSttLang(v as SttLang)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STT_LANGS.map((l) => (
+                          <SelectItem key={l.id} value={l.id} className="text-xs">
+                            {l.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Understands English, Tagalog/Filipino, Cebuano, Hiligaynon, Ilocano and more. Leave on Auto to mix languages freely.
+                    </p>
+                  </div>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
