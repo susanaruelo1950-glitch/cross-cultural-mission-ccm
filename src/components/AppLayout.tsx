@@ -343,7 +343,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           )}
           aria-hidden={collapseHeader}
         >
-          <div className="min-h-0 border-t border-border/60 px-3 pb-2 pt-2">
+          <div className="min-h-0 border-t border-border/60 px-2 pb-1.5 pt-1.5">
             <HeaderSearch />
           </div>
         </div>
