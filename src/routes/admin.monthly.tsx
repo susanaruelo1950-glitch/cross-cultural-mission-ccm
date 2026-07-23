@@ -233,7 +233,8 @@ function MonthlyReportPage() {
     URL.revokeObjectURL(url);
   }
 
-  async function exportPdf() {
+  async function exportPdf(opts?: { save?: boolean }) {
+    const save = opts?.save ?? true;
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
