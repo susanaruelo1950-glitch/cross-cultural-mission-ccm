@@ -162,7 +162,7 @@ function MonthlyReportPage() {
         .map((p) => ({ id: p.id, email: p.email as string, full_name: p.full_name, role: roleMap.get(p.id) ?? "coordinator" }))
         .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
     },
-    enabled: emailOpen,
+    enabled: emailOpen || aiEmailOpen,
     staleTime: 60_000,
   });
   const coordinatorsQ = useQuery({
