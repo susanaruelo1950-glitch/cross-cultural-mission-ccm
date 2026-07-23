@@ -343,6 +343,20 @@ export function FloatingAssistant() {
   }, [messages, open, view]);
 
   useEffect(() => {
+    if (!autoSpeak || !open || view !== "chat" || busy) return;
+    if (messages.length === 0) return;
+    const lastIdx = messages.length - 1;
+    const last = messages[lastIdx];
+    if (last.role !== "assistant") return;
+    const sig = `${activeId}:${lastIdx}:${last.content.length}`;
+    if (lastSpokenRef.current === sig) return;
+    lastSpokenRef.current = sig;
+    void speakText(last.content, lastIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, autoSpeak, open, view, busy, activeId]);
+
+
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_SIZE, size); } catch { /* noop */ }
   }, [size]);
 
