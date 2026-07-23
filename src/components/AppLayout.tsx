@@ -353,7 +353,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             collapseHeader ? "grid-rows-[0fr] opacity-0 lg:grid-rows-[1fr] lg:opacity-100" : "grid-rows-[1fr] opacity-100",
           )}
         >
-          <div className="min-h-0 border-t border-border/60 bg-primary/[0.03] px-3 py-2 sm:px-6">
+          <div className="min-h-0 border-t border-border/60 bg-primary/[0.03] px-2 py-1.5 sm:px-6 sm:py-2">
             <ScriptureOfTheDay compact />
           </div>
         </div>
