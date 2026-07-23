@@ -72,6 +72,56 @@ function MonthlyReportPage() {
   const [supervisorName, setSupervisorName] = useState("");
   const [senderName, setSenderName] = useState("");
   const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
+  const [aiVersions, setAiVersions] = useState<AiReportVersion[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Load versions for the selected month from localStorage.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(aiVersionsKey(month));
+      setAiVersions(raw ? (JSON.parse(raw) as AiReportVersion[]) : []);
+    } catch {
+      setAiVersions([]);
+    }
+  }, [month]);
+
+  function persistVersions(next: AiReportVersion[]) {
+    setAiVersions(next);
+    try { localStorage.setItem(aiVersionsKey(month), JSON.stringify(next)); } catch { /* ignore quota */ }
+  }
+
+  function saveAiVersion(source: "generated" | "manual", content: string) {
+    if (!content.trim()) return;
+    const v: AiReportVersion = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      source,
+      tone: aiTone,
+      supervisorName,
+      senderName,
+      content,
+    };
+    // Keep last 20 versions per month.
+    persistVersions([v, ...aiVersions].slice(0, 20));
+  }
+
+  function restoreAiVersion(v: AiReportVersion) {
+    setAiReport(v.content);
+    setAiTone(v.tone);
+    if (v.supervisorName) setSupervisorName(v.supervisorName);
+    if (v.senderName) setSenderName(v.senderName);
+    setHistoryOpen(false);
+    toast.success("Version restored into the editor.");
+  }
+
+  function deleteAiVersion(id: string) {
+    persistVersions(aiVersions.filter((v) => v.id !== id));
+  }
+
+  function clearAiVersions() {
+    persistVersions([]);
+    toast.success("Version history cleared.");
+  }
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
