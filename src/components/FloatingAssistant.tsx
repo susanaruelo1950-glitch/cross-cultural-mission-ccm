@@ -332,6 +332,14 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return "medium";
   });
+  const [sttLang, setSttLang] = useState<SttLang>(() => {
+    if (typeof window === "undefined") return "auto";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_LANG);
+      if (raw && STT_LANGS.some((l) => l.id === raw)) return raw as SttLang;
+    } catch { /* noop */ }
+    return "auto";
+  });
 
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
