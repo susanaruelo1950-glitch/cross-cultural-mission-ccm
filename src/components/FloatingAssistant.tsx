@@ -332,10 +332,13 @@ export function FloatingAssistant() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const vadEnabledRef = useRef<boolean>(true);
+  const vadPresetRef = useRef(VAD_PRESETS.medium);
   const vadSpeechDetectedRef = useRef<boolean>(false);
   const vadSilenceStartRef = useRef<number | null>(null);
   const vadStartedAtRef = useRef<number>(0);
   const vadTriggeredRef = useRef<boolean>(false);
+  const speakTokenRef = useRef<number>(0);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
