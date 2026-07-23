@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,9 @@ function MonthlyReportPage() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState<Record<string, boolean>>({});
   const [emailMessage, setEmailMessage] = useState("");
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [selectedReminders, setSelectedReminders] = useState<Record<string, boolean>>({});
+  const [reminderMessage, setReminderMessage] = useState("");
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
@@ -84,6 +87,42 @@ function MonthlyReportPage() {
     enabled: emailOpen,
     staleTime: 60_000,
   });
+  const coordinatorsQ = useQuery({
+    queryKey: ["monthly", "coordinators"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "coordinator");
+      if (rolesErr) throw rolesErr;
+      const ids = Array.from(new Set((roles ?? []).map((r) => r.user_id)));
+      if (!ids.length) return [] as { id: string; email: string; full_name: string | null; areaIds: string[] }[];
+      const [{ data: profs, error: profErr }, { data: assigns, error: aErr }] = await Promise.all([
+        supabase.from("profiles").select("id, email, full_name").in("id", ids),
+        supabase.from("coordinator_assignments").select("user_id, area_id").in("user_id", ids),
+      ]);
+      if (profErr) throw profErr;
+      if (aErr) throw aErr;
+      const areaMap = new Map<string, string[]>();
+      for (const a of assigns ?? []) {
+        const list = areaMap.get(a.user_id) ?? [];
+        list.push(a.area_id);
+        areaMap.set(a.user_id, list);
+      }
+      return (profs ?? [])
+        .filter((p) => p.email)
+        .map((p) => ({
+          id: p.id,
+          email: p.email as string,
+          full_name: p.full_name,
+          areaIds: areaMap.get(p.id) ?? [],
+        }))
+        .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
+    },
+    enabled: remindOpen,
+    staleTime: 60_000,
+  });
+
 
 
   const { startISO, endISO, startDate, endDate } = useMemo(() => monthBounds(month), [month]);
@@ -355,6 +394,63 @@ function MonthlyReportPage() {
     setEmailOpen(false);
   }
 
+  // Coordinators with pending missionaries in their assigned areas for the selected month.
+  const reminderTargets = useMemo(() => {
+    const pendingByArea = new Map<string, { name: string; missing: string[] }[]>();
+    for (const r of rows) {
+      if (r.allSubmitted) continue;
+      const missing: string[] = [];
+      if (!r.hasUpdate) missing.push("ministry update");
+      if (!r.hasLetter) missing.push("thank you letter");
+      if (!r.hasReceipt) missing.push("support receipt");
+      const list = pendingByArea.get(r.m.areaId) ?? [];
+      list.push({ name: r.m.fullName, missing });
+      pendingByArea.set(r.m.areaId, list);
+    }
+    return (coordinatorsQ.data ?? []).map((c) => {
+      const pending: { name: string; missing: string[]; areaName: string }[] = [];
+      for (const areaId of c.areaIds) {
+        const items = pendingByArea.get(areaId) ?? [];
+        for (const it of items) pending.push({ ...it, areaName: areaName.get(areaId) ?? "—" });
+      }
+      pending.sort((a, b) => a.name.localeCompare(b.name));
+      return { ...c, pending };
+    });
+  }, [rows, coordinatorsQ.data, areaName]);
+
+  const totalPending = useMemo(() => rows.filter((r) => !r.allSubmitted).length, [rows]);
+
+  async function handleSendReminders() {
+    const chosen = reminderTargets.filter((c) => selectedReminders[c.id] && c.pending.length > 0);
+    if (chosen.length === 0) {
+      toast.error("Select at least one coordinator with pending missionaries");
+      return;
+    }
+    const label = monthLabel(month);
+    const subject = `Reminder: pending monthly submissions — ${label}`;
+    const to = chosen.map((c) => c.email).join(",");
+    const lines: string[] = [
+      `Hi coordinators,`,
+      ``,
+      `This is a friendly reminder that the following missionaries still have pending submissions for ${label}:`,
+      ``,
+    ];
+    for (const c of chosen) {
+      lines.push(`— For ${c.full_name || c.email}:`);
+      for (const p of c.pending) {
+        lines.push(`   • ${p.name} (${p.areaName}) — missing: ${p.missing.join(", ")}`);
+      }
+      lines.push("");
+    }
+    lines.push(`Please help nudge them to upload their ministry update, thank you letter, and support receipt before month-end.`);
+    if (reminderMessage.trim()) lines.push("", reminderMessage.trim());
+    lines.push("", "— Cross-Cultural Ministry");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    window.location.href = href;
+    toast.success(`Opened reminder email for ${chosen.length} coordinator${chosen.length > 1 ? "s" : ""}.`);
+    setRemindOpen(false);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
@@ -393,6 +489,22 @@ function MonthlyReportPage() {
           </Button>
           <Button variant="default" size="sm" className="rounded-full" onClick={() => setEmailOpen(true)}>
             <Send className="h-4 w-4" /> Email report
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              setSelectedReminders({});
+              setRemindOpen(true);
+            }}
+            disabled={totalPending === 0}
+            title={totalPending === 0 ? "No pending submissions this month" : "Send reminders to coordinators"}
+          >
+            <BellRing className="h-4 w-4" /> Send reminders
+            {totalPending > 0 ? (
+              <Badge variant="secondary" className="ml-1 rounded-full">{totalPending}</Badge>
+            ) : null}
           </Button>
 
         </div>
@@ -596,6 +708,112 @@ function MonthlyReportPage() {
             <Button variant="ghost" onClick={() => setEmailOpen(false)}>Cancel</Button>
             <Button onClick={handleSendEmail}>
               <Send className="h-4 w-4" /> Download PDF &amp; open email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={remindOpen} onOpenChange={setRemindOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send reminder emails</DialogTitle>
+            <DialogDescription>
+              Pick coordinators to remind about their missionaries' pending submissions for {monthLabel(month)}.
+              We'll open a pre-filled email listing exactly what's missing.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Coordinators</Label>
+              {reminderTargets.some((c) => c.pending.length > 0) ? (
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const c of reminderTargets) if (c.pending.length > 0) all[c.id] = true;
+                      setSelectedReminders(all);
+                    }}
+                  >Select all with pending</button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={() => setSelectedReminders({})}
+                  >Clear</button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
+              {coordinatorsQ.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Loading coordinators…</p>
+              ) : reminderTargets.length === 0 ? (
+                <p className="p-3 text-sm text-muted-foreground">No coordinators with email addresses found.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {reminderTargets.map((c) => {
+                    const hasPending = c.pending.length > 0;
+                    return (
+                      <li key={c.id} className="flex items-start gap-3 px-3 py-2">
+                        <Checkbox
+                          id={`rem-${c.id}`}
+                          checked={!!selectedReminders[c.id]}
+                          disabled={!hasPending}
+                          onCheckedChange={(v) =>
+                            setSelectedReminders((prev) => ({ ...prev, [c.id]: v === true }))
+                          }
+                        />
+                        <label htmlFor={`rem-${c.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="text-sm font-medium">{c.full_name || c.email}</div>
+                            <Badge
+                              variant={hasPending ? "destructive" : "secondary"}
+                              className="rounded-full text-[10px]"
+                            >
+                              {hasPending ? `${c.pending.length} pending` : "All submitted"}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{c.email}</div>
+                          {hasPending ? (
+                            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                              {c.pending.slice(0, 4).map((p, i) => (
+                                <li key={i}>
+                                  • {p.name} <span className="opacity-70">({p.areaName})</span> — {p.missing.join(", ")}
+                                </li>
+                              ))}
+                              {c.pending.length > 4 ? (
+                                <li className="opacity-70">…and {c.pending.length - 4} more</li>
+                              ) : null}
+                            </ul>
+                          ) : c.areaIds.length === 0 ? (
+                            <div className="mt-1 text-xs text-muted-foreground">No areas assigned yet.</div>
+                          ) : null}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="reminder-message" className="text-sm">Optional message</Label>
+              <Textarea
+                id="reminder-message"
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                placeholder="Add a personal note for the coordinators…"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemindOpen(false)}>Cancel</Button>
+            <Button onClick={handleSendReminders}>
+              <BellRing className="h-4 w-4" /> Open reminder email
             </Button>
           </DialogFooter>
         </DialogContent>
