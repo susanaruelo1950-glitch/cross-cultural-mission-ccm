@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing, Sparkles, Loader2, Copy } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send, BellRing, Sparkles, Loader2, Copy, History, RotateCcw, Save, Trash2, FileType2 } from "lucide-react";
 import { generateMonthlySummary } from "@/lib/monthly-report-ai.functions";
 import {
   Select,
@@ -54,6 +54,20 @@ interface Row { id: string; missionary_id: string; }
 interface UpdateRow extends Row { title: string; report_date: string | null; created_at: string; }
 interface LetterRow extends Row { title: string; letter_date: string; created_at: string; }
 interface ReceiptRow extends Row { title: string; amount: number | null; currency: string; receipt_date: string; created_at: string; }
+interface AiReportVersion {
+  id: string;
+  createdAt: string;
+  source: "generated" | "manual";
+  tone: "formal" | "concise" | "pastoral";
+  supervisorName: string;
+  senderName: string;
+  content: string;
+}
+
+function aiVersionsKey(monthKey: string) {
+  return `ccm.ai-report.versions.${monthKey}`;
+}
+
 
 function MonthlyReportPage() {
   const { user, canEdit, loading } = useAuth();
@@ -72,6 +86,56 @@ function MonthlyReportPage() {
   const [supervisorName, setSupervisorName] = useState("");
   const [senderName, setSenderName] = useState("");
   const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
+  const [aiVersions, setAiVersions] = useState<AiReportVersion[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Load versions for the selected month from localStorage.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(aiVersionsKey(month));
+      setAiVersions(raw ? (JSON.parse(raw) as AiReportVersion[]) : []);
+    } catch {
+      setAiVersions([]);
+    }
+  }, [month]);
+
+  function persistVersions(next: AiReportVersion[]) {
+    setAiVersions(next);
+    try { localStorage.setItem(aiVersionsKey(month), JSON.stringify(next)); } catch { /* ignore quota */ }
+  }
+
+  function saveAiVersion(source: "generated" | "manual", content: string) {
+    if (!content.trim()) return;
+    const v: AiReportVersion = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      source,
+      tone: aiTone,
+      supervisorName,
+      senderName,
+      content,
+    };
+    // Keep last 20 versions per month.
+    persistVersions([v, ...aiVersions].slice(0, 20));
+  }
+
+  function restoreAiVersion(v: AiReportVersion) {
+    setAiReport(v.content);
+    setAiTone(v.tone);
+    if (v.supervisorName) setSupervisorName(v.supervisorName);
+    if (v.senderName) setSenderName(v.senderName);
+    setHistoryOpen(false);
+    toast.success("Version restored into the editor.");
+  }
+
+  function deleteAiVersion(id: string) {
+    persistVersions(aiVersions.filter((v) => v.id !== id));
+  }
+
+  function clearAiVersions() {
+    persistVersions([]);
+    toast.success("Version history cleared.");
+  }
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
@@ -502,7 +566,8 @@ function MonthlyReportPage() {
       };
       const { report } = await generateMonthlySummary({ data: payload });
       setAiReport(report);
-      toast.success("Report drafted.");
+      saveAiVersion("generated", report);
+      toast.success("Report drafted and saved to history.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not generate report");
     } finally {
@@ -515,15 +580,106 @@ function MonthlyReportPage() {
     toast.success("Report copied to clipboard.");
   }
 
-  function downloadAiReport() {
-    const blob = new Blob([aiReport], { type: "text/plain;charset=utf-8" });
+  function downloadFile(blob: Blob, ext: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `monthly-report-${month}-formal.txt`;
+    a.download = `monthly-report-${month}-${aiTone}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  function downloadAiReportTxt() {
+    downloadFile(new Blob([aiReport], { type: "text/plain;charset=utf-8" }), "txt");
+  }
+
+  async function downloadAiReportPdf() {
+    if (!aiReport.trim()) return;
+    const [{ default: jsPDF }] = await Promise.all([import("jspdf")]);
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const margin = 54; // 0.75in
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const usableWidth = pageWidth - margin * 2;
+
+    // Title header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Monthly Submission Report — ${monthLabel(month)}`, margin, margin);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generated ${new Date().toLocaleString()}`, margin, margin + 14);
+    doc.setTextColor(0);
+
+    let y = margin + 40;
+    const lineHeight = 14;
+    const paragraphs = aiReport.replace(/\r\n/g, "\n").split("\n");
+    doc.setFontSize(11);
+
+    for (const raw of paragraphs) {
+      const isHeading = /^[A-Z0-9 &/()\-]{4,}$/.test(raw.trim()) && raw.trim() === raw.trim().toUpperCase() && raw.trim().length > 3;
+      if (isHeading) {
+        y += 6;
+        if (y > pageHeight - margin) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(raw.trim(), margin, y);
+        y += lineHeight + 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        continue;
+      }
+      const wrapped = doc.splitTextToSize(raw || " ", usableWidth) as string[];
+      for (const line of wrapped) {
+        if (y > pageHeight - margin) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      }
+    }
+
+    downloadFile(doc.output("blob") as Blob, "pdf");
+  }
+
+  async function downloadAiReportDocx() {
+    if (!aiReport.trim()) return;
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+    const paragraphs: InstanceType<typeof Paragraph>[] = [];
+    paragraphs.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.LEFT,
+        children: [new TextRun({ text: `Monthly Submission Report — ${monthLabel(month)}`, bold: true })],
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: `Generated ${new Date().toLocaleString()}`, italics: true, color: "666666", size: 20 })],
+      }),
+      new Paragraph({ children: [new TextRun("")] }),
+    );
+
+    for (const raw of aiReport.replace(/\r\n/g, "\n").split("\n")) {
+      const trimmed = raw.trim();
+      const isHeading = /^[A-Z0-9 &/()\-]{4,}$/.test(trimmed) && trimmed === trimmed.toUpperCase() && trimmed.length > 3;
+      if (isHeading) {
+        paragraphs.push(new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun({ text: trimmed, bold: true })],
+        }));
+      } else if (trimmed.startsWith("• ") || trimmed.startsWith("- ")) {
+        paragraphs.push(new Paragraph({
+          bullet: { level: 0 },
+          children: [new TextRun(trimmed.replace(/^[•\-]\s*/, ""))],
+        }));
+      } else {
+        paragraphs.push(new Paragraph({ children: [new TextRun(raw)] }));
+      }
+    }
+
+    const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+    const blob = await Packer.toBlob(doc);
+    downloadFile(blob, "docx");
+  }
+
 
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
@@ -941,14 +1097,26 @@ function MonthlyReportPage() {
 
             {aiReport ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label className="text-sm font-medium">Draft report</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" className="rounded-full" onClick={copyAiReport}>
                       <Copy className="h-4 w-4" /> Copy
                     </Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReport}>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportPdf}>
+                      <Download className="h-4 w-4" /> PDF
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportDocx}>
+                      <FileType2 className="h-4 w-4" /> DOCX
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportTxt}>
                       <Download className="h-4 w-4" /> .txt
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { saveAiVersion("manual", aiReport); toast.success("Saved current draft to history."); }}>
+                      <Save className="h-4 w-4" /> Save version
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setHistoryOpen(true)}>
+                      <History className="h-4 w-4" /> History ({aiVersions.length})
                     </Button>
                   </div>
                 </div>
@@ -959,18 +1127,86 @@ function MonthlyReportPage() {
                   className="font-mono text-xs leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Edit freely before submitting. The AI only used data shown on this page — please double-check names and figures.
+                  Edit freely before submitting. Downloads and saved versions capture your current edits. The AI only used data shown on this page — please double-check names and figures.
                 </p>
               </div>
             ) : (
-              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
-              </p>
+              <div className="space-y-2">
+                <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                  Click <strong>Generate report</strong> and Grace will draft a formal monthly submission using the current month's data.
+                </p>
+                {aiVersions.length > 0 ? (
+                  <Button variant="outline" size="sm" className="w-full rounded-full" onClick={() => setHistoryOpen(true)}>
+                    <History className="h-4 w-4" /> Open version history ({aiVersions.length})
+                  </Button>
+                ) : null}
+              </div>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAiOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" /> AI Report — Version History
+            </DialogTitle>
+            <DialogDescription>
+              Previous drafts for {monthLabel(month)} (stored on this device). Restore any version back into the editor, or delete ones you no longer need.
+            </DialogDescription>
+          </DialogHeader>
+          {aiVersions.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No saved versions yet. Generating a report or clicking <strong>Save version</strong> stores a snapshot here.
+            </p>
+          ) : (
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+              {aiVersions.map((v) => (
+                <div key={v.id} className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {new Date(v.createdAt).toLocaleString()}{" "}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          · {v.source === "generated" ? "AI generated" : "Manual save"} · {v.tone}
+                        </span>
+                      </p>
+                      {(v.supervisorName || v.senderName) ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {v.supervisorName ? `To: ${v.supervisorName}` : ""}
+                          {v.supervisorName && v.senderName ? " · " : ""}
+                          {v.senderName ? `From: ${v.senderName}` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => restoreAiVersion(v)}>
+                        <RotateCcw className="h-4 w-4" /> Restore
+                      </Button>
+                      <Button size="sm" variant="ghost" className="rounded-full text-destructive" onClick={() => deleteAiVersion(v.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <pre className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                    {v.content.slice(0, 320)}{v.content.length > 320 ? "…" : ""}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            {aiVersions.length > 0 ? (
+              <Button variant="ghost" className="text-destructive" onClick={clearAiVersions}>
+                <Trash2 className="h-4 w-4" /> Clear all
+              </Button>
+            ) : <span />}
+            <Button variant="ghost" onClick={() => setHistoryOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
