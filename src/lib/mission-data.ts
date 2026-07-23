@@ -205,15 +205,6 @@ export const seedAreas: Area[] = [
     province: "Sultan Kudarat",
     gps: [6.700, 124.720],
   },
-  {
-    id: "area-maguindanao",
-    phaseId: "phase-1",
-    name: "Maguindanao del Sur Area",
-    region: "BARMM",
-    province: "Maguindanao del Sur",
-    description: "Cross-cultural ministry among Muslim communities.",
-    gps: [6.898, 124.520],
-  },
   // ── Phase 2 ─────────────────────────────
   {
     id: "area-maitum",
@@ -250,7 +241,7 @@ export const seedAreas: Area[] = [
     phaseId: "phase-2",
     name: "Arakan Area",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     coordinatorName: "Ronilo E. Dalisay",
     description: "Alliance fellowships and church plants across Arakan Valley.",
     gps: [7.398, 125.135],
@@ -288,7 +279,7 @@ function offset(base: [number, number], i: number): [number, number] {
 const bagumbayan = seedAreas.find((a) => a.id === "area-bagumbayan")!.gps!;
 const snaGps = seedAreas.find((a) => a.id === "area-sen-ninoy-aquino")!.gps!;
 const espGps = seedAreas.find((a) => a.id === "area-esperanza")!.gps!;
-const magGps = seedAreas.find((a) => a.id === "area-maguindanao")!.gps!;
+
 const maitumGps = seedAreas.find((a) => a.id === "area-maitum")!.gps!;
 const bansalanGps = seedAreas.find((a) => a.id === "area-bansalan")!.gps!;
 const digosGps = seedAreas.find((a) => a.id === "area-digos")!.gps!;
@@ -456,10 +447,10 @@ export const seedMissionaries: Missionary[] = [
     gps: offset(espGps, 0),
   },
 
-  // ── Maguindanao del Sur ────────────────────────────────────
+  // ── Sultan Kudarat (Esperanza) ─────────────────────────────
   {
     id: "m-basilio-sumido",
-    areaId: "area-maguindanao",
+    areaId: "area-esperanza",
     fullName: "Basilio M. Sumido",
     church: "Mao Alliance Church",
     address: "Mao, Datu Abdullah Sangki, Maguindanao del Sur, Philippines",
@@ -470,11 +461,11 @@ export const seedMissionaries: Missionary[] = [
     status: "Active",
     journeyStage: "Church Planting",
     country: "Philippines",
-    region: "BARMM",
-    province: "Maguindanao del Sur",
+    region: "SOCCSKSARGEN (Region XII)",
+    province: "Sultan Kudarat",
     municipality: "Datu Abdullah Sangki",
     barangay: "Mao",
-    gps: offset(magGps, 0),
+    gps: offset(espGps, 1),
   },
 
   // ============================================================
@@ -882,7 +873,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Regional Leadership",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Matalam",
     gps: offset(arakanGps, 0),
   },
@@ -899,7 +890,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Magpet",
     gps: offset(arakanGps, 1),
   },
@@ -916,7 +907,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Magpet",
     gps: offset(arakanGps, 2),
   },
@@ -933,7 +924,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Magpet",
     gps: offset(arakanGps, 3),
   },
@@ -950,7 +941,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Arakan",
     gps: offset(arakanGps, 4),
   },
@@ -967,7 +958,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Antipas",
     gps: offset(arakanGps, 5),
   },
@@ -983,7 +974,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Arakan",
     gps: offset(arakanGps, 6),
   },
@@ -1000,7 +991,7 @@ export const seedMissionaries: Missionary[] = [
     journeyStage: "Church Planting",
     country: "Philippines",
     region: "SOCCSKSARGEN (Region XII)",
-    province: "Cotabato",
+    province: "North Cotabato",
     municipality: "Antipas",
     gps: offset(arakanGps, 7),
   },
