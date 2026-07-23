@@ -693,6 +693,26 @@ function MonthlyReportPage() {
     downloadFile(await buildAiReportDocxBlob(), "docx");
   }
 
+  function defaultAiEmailSubject(fmt: "pdf" | "docx" = aiEmailFormat) {
+    return `AI Monthly Submission Report — ${monthLabel(month)} (${fmt.toUpperCase()})`;
+  }
+  function defaultAiEmailBody(fmt: "pdf" | "docx" = aiEmailFormat) {
+    const filename = `monthly-report-${month}.${fmt}`;
+    return `Hi {recipient},\n\nPlease find attached the AI-drafted monthly submission report for ${monthLabel(month)}.\nThe file ({filename}) has been downloaded to your device — please attach it before sending.\n\n{note}\n\n— Cross-Cultural Ministry`
+      .replace("{filename}", filename);
+  }
+  function resetAiEmailTemplate() {
+    setAiEmailSubject(defaultAiEmailSubject());
+    setAiEmailBody(defaultAiEmailBody());
+    toast.success("Template reset to default");
+  }
+  function openAiEmailDialog() {
+    setAiEmailSubject(defaultAiEmailSubject());
+    setAiEmailBody(defaultAiEmailBody());
+    setAiEmailMessage("");
+    setAiEmailOpen(true);
+  }
+
   async function handleEmailAiReport() {
     const chosen = (recipientsQ.data ?? []).filter((r) => aiEmailSelected[r.id]);
     if (chosen.length === 0) {
@@ -713,11 +733,21 @@ function MonthlyReportPage() {
       setAiEmailSending(false);
       return;
     }
-    const label = monthLabel(month);
     const filename = `monthly-report-${month}.${aiEmailFormat}`;
-    const subject = `AI Monthly Submission Report — ${label}`;
-    const extra = aiEmailMessage.trim() ? `\n\n${aiEmailMessage.trim()}` : "";
-    const body = `Hi,\n\nPlease find attached the AI-drafted monthly submission report for ${label}. The file (${filename}) has been downloaded to your device — please attach it before sending.${extra}\n\n— Cross-Cultural Ministry`;
+    const recipientNames = chosen.map((c) => c.full_name || c.email).join(", ");
+    const note = aiEmailMessage.trim();
+    const subject = (aiEmailSubject.trim() || defaultAiEmailSubject())
+      .replace(/\{month\}/g, monthLabel(month))
+      .replace(/\{filename\}/g, filename)
+      .replace(/\{format\}/g, aiEmailFormat.toUpperCase())
+      .replace(/\{recipient\}/g, recipientNames)
+      .replace(/\{note\}/g, note);
+    const body = (aiEmailBody.trim() || defaultAiEmailBody())
+      .replace(/\{month\}/g, monthLabel(month))
+      .replace(/\{filename\}/g, filename)
+      .replace(/\{format\}/g, aiEmailFormat.toUpperCase())
+      .replace(/\{recipient\}/g, recipientNames)
+      .replace(/\{note\}/g, note);
     const to = chosen.map((c) => c.email).join(",");
     const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = href;
