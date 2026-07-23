@@ -463,9 +463,13 @@ export function FloatingAssistant() {
   }, [volume]);
 
   function stopPlayback() {
+    speakTokenRef.current++;
     const a = audioRef.current;
     if (a) {
-      a.pause();
+      try { a.pause(); } catch { /* noop */ }
+      a.onended = null;
+      a.onerror = null;
+      a.ontimeupdate = null;
       a.src = "";
       audioRef.current = null;
     }
@@ -473,6 +477,7 @@ export function FloatingAssistant() {
     setCaptionText("");
     setCaptionProgress(0);
   }
+
 
   async function speakText(text: string, idx: number | null) {
     const clean = forSpeech(text);
