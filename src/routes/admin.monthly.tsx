@@ -194,6 +194,91 @@ function MonthlyReportPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function exportPdf() {
+    const [{ default: jsPDF }, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = (autoTableMod as { default: (doc: unknown, opts: unknown) => void }).default;
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
+    const label = monthLabel(month);
+    doc.setFontSize(16);
+    doc.text("Monthly Submission Report", 40, 40);
+    doc.setFontSize(11);
+    doc.setTextColor(90);
+    doc.text(`Cross-Cultural Ministry — ${label}`, 40, 58);
+    doc.text(
+      `Fully submitted: ${totals.complete}/${totals.total}   •   Updates: ${totals.withUpd}   •   Letters: ${totals.withLet}   •   Receipts: ${totals.withRec}   •   Received: PHP ${totals.totalReceived.toLocaleString()}`,
+      40,
+      74,
+    );
+    autoTable(doc, {
+      startY: 90,
+      head: [["Missionary", "Area", "Update", "Letter", "Receipt", "Received (PHP)", "All"]],
+      body: rows.map((r) => [
+        r.m.fullName,
+        areaName.get(r.m.areaId) ?? "—",
+        r.hasUpdate ? "Yes" : "No",
+        r.hasLetter ? "Yes" : "No",
+        r.hasReceipt ? "Yes" : "No",
+        r.receivedAmount ? r.receivedAmount.toLocaleString() : "—",
+        r.allSubmitted ? "Yes" : "No",
+      ]),
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [15, 27, 61] },
+      columnStyles: {
+        2: { halign: "center" },
+        3: { halign: "center" },
+        4: { halign: "center" },
+        5: { halign: "right" },
+        6: { halign: "center" },
+      },
+    });
+    const newList = newMissionariesQ.data ?? [];
+    const annList = announcementsQ.data ?? [];
+    if (newList.length || annList.length) {
+      const lastY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 90;
+      let y = lastY + 24;
+      doc.setFontSize(12);
+      doc.setTextColor(20);
+      if (newList.length) {
+        doc.text(`New missionaries this month (${newList.length})`, 40, y);
+        y += 14;
+        doc.setFontSize(10);
+        doc.setTextColor(60);
+        for (const r of newList) {
+          const d = r.data as { fullName?: string; church?: string } | null;
+          doc.text(
+            `• ${d?.fullName ?? "Unnamed"}${d?.church ? ` — ${d.church}` : ""} (${new Date(r.created_at).toLocaleDateString()})`,
+            48,
+            y,
+          );
+          y += 12;
+          if (y > 560) { doc.addPage(); y = 40; }
+        }
+        y += 8;
+      }
+      if (annList.length) {
+        doc.setFontSize(12);
+        doc.setTextColor(20);
+        doc.text(`Announcements & approvals (${annList.length})`, 40, y);
+        y += 14;
+        doc.setFontSize(10);
+        doc.setTextColor(60);
+        for (const a of annList) {
+          doc.text(
+            `• ${a.title} (${new Date(a.publish_at).toLocaleDateString()})${a.published ? "" : " [Draft]"}`,
+            48,
+            y,
+          );
+          y += 12;
+          if (y > 560) { doc.addPage(); y = 40; }
+        }
+      }
+    }
+    doc.save(`monthly-report-${month}.pdf`);
+  }
+
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
   if (!canEdit) return <PermissionError title="Admins & coordinators only" message="Ask an administrator to grant you access." />;
