@@ -92,6 +92,8 @@ function MonthlyReportPage() {
   const [aiEmailFormat, setAiEmailFormat] = useState<"pdf" | "docx">("pdf");
   const [aiEmailSelected, setAiEmailSelected] = useState<Record<string, boolean>>({});
   const [aiEmailMessage, setAiEmailMessage] = useState("");
+  const [aiEmailSubject, setAiEmailSubject] = useState("");
+  const [aiEmailBody, setAiEmailBody] = useState("");
   const [aiEmailSending, setAiEmailSending] = useState(false);
 
   // Load versions for the selected month from localStorage.
