@@ -92,6 +92,8 @@ function MonthlyReportPage() {
   const [aiEmailFormat, setAiEmailFormat] = useState<"pdf" | "docx">("pdf");
   const [aiEmailSelected, setAiEmailSelected] = useState<Record<string, boolean>>({});
   const [aiEmailMessage, setAiEmailMessage] = useState("");
+  const [aiEmailSubject, setAiEmailSubject] = useState("");
+  const [aiEmailBody, setAiEmailBody] = useState("");
   const [aiEmailSending, setAiEmailSending] = useState(false);
 
   // Load versions for the selected month from localStorage.
@@ -691,6 +693,26 @@ function MonthlyReportPage() {
     downloadFile(await buildAiReportDocxBlob(), "docx");
   }
 
+  function defaultAiEmailSubject(fmt: "pdf" | "docx" = aiEmailFormat) {
+    return `AI Monthly Submission Report — ${monthLabel(month)} (${fmt.toUpperCase()})`;
+  }
+  function defaultAiEmailBody(fmt: "pdf" | "docx" = aiEmailFormat) {
+    const filename = `monthly-report-${month}.${fmt}`;
+    return `Hi {recipient},\n\nPlease find attached the AI-drafted monthly submission report for ${monthLabel(month)}.\nThe file ({filename}) has been downloaded to your device — please attach it before sending.\n\n{note}\n\n— Cross-Cultural Ministry`
+      .replace("{filename}", filename);
+  }
+  function resetAiEmailTemplate() {
+    setAiEmailSubject(defaultAiEmailSubject());
+    setAiEmailBody(defaultAiEmailBody());
+    toast.success("Template reset to default");
+  }
+  function openAiEmailDialog() {
+    setAiEmailSubject(defaultAiEmailSubject());
+    setAiEmailBody(defaultAiEmailBody());
+    setAiEmailMessage("");
+    setAiEmailOpen(true);
+  }
+
   async function handleEmailAiReport() {
     const chosen = (recipientsQ.data ?? []).filter((r) => aiEmailSelected[r.id]);
     if (chosen.length === 0) {
@@ -711,11 +733,21 @@ function MonthlyReportPage() {
       setAiEmailSending(false);
       return;
     }
-    const label = monthLabel(month);
     const filename = `monthly-report-${month}.${aiEmailFormat}`;
-    const subject = `AI Monthly Submission Report — ${label}`;
-    const extra = aiEmailMessage.trim() ? `\n\n${aiEmailMessage.trim()}` : "";
-    const body = `Hi,\n\nPlease find attached the AI-drafted monthly submission report for ${label}. The file (${filename}) has been downloaded to your device — please attach it before sending.${extra}\n\n— Cross-Cultural Ministry`;
+    const recipientNames = chosen.map((c) => c.full_name || c.email).join(", ");
+    const note = aiEmailMessage.trim();
+    const subject = (aiEmailSubject.trim() || defaultAiEmailSubject())
+      .replace(/\{month\}/g, monthLabel(month))
+      .replace(/\{filename\}/g, filename)
+      .replace(/\{format\}/g, aiEmailFormat.toUpperCase())
+      .replace(/\{recipient\}/g, recipientNames)
+      .replace(/\{note\}/g, note);
+    const body = (aiEmailBody.trim() || defaultAiEmailBody())
+      .replace(/\{month\}/g, monthLabel(month))
+      .replace(/\{filename\}/g, filename)
+      .replace(/\{format\}/g, aiEmailFormat.toUpperCase())
+      .replace(/\{recipient\}/g, recipientNames)
+      .replace(/\{note\}/g, note);
     const to = chosen.map((c) => c.email).join(",");
     const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = href;
@@ -1158,7 +1190,7 @@ function MonthlyReportPage() {
                     <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportTxt}>
                       <Download className="h-4 w-4" /> .txt
                     </Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setAiEmailOpen(true); }}>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={openAiEmailDialog}>
                       <Send className="h-4 w-4" /> Email
                     </Button>
                     <Button size="sm" variant="outline" className="rounded-full" onClick={() => { saveAiVersion("manual", aiReport); toast.success("Saved current draft to history."); }}>
@@ -1213,7 +1245,12 @@ function MonthlyReportPage() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Attachment format</Label>
-              <Select value={aiEmailFormat} onValueChange={(v) => setAiEmailFormat(v as "pdf" | "docx")}>
+              <Select value={aiEmailFormat} onValueChange={(v) => {
+                const fmt = v as "pdf" | "docx";
+                setAiEmailFormat(fmt);
+                setAiEmailSubject(defaultAiEmailSubject(fmt));
+                setAiEmailBody(defaultAiEmailBody(fmt));
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">PDF (.pdf)</SelectItem>
@@ -1259,14 +1296,46 @@ function MonthlyReportPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ai-email-msg" className="text-sm">Optional message</Label>
+              <Label htmlFor="ai-email-msg" className="text-sm">Optional note (inserted as {"{note}"})</Label>
               <Textarea
                 id="ai-email-msg"
                 value={aiEmailMessage}
                 onChange={(e) => setAiEmailMessage(e.target.value)}
-                rows={3}
+                rows={2}
                 placeholder="Add a short note for the recipients…"
               />
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Email template</Label>
+                <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={resetAiEmailTemplate}>
+                  Reset to default
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-email-subject" className="text-xs text-muted-foreground">Subject</Label>
+                <Input
+                  id="ai-email-subject"
+                  value={aiEmailSubject}
+                  onChange={(e) => setAiEmailSubject(e.target.value)}
+                  placeholder="Email subject line"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-email-body" className="text-xs text-muted-foreground">Message body</Label>
+                <Textarea
+                  id="ai-email-body"
+                  value={aiEmailBody}
+                  onChange={(e) => setAiEmailBody(e.target.value)}
+                  rows={8}
+                  className="font-mono text-xs"
+                  placeholder="Write the email body…"
+                />
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Placeholders: <code>{"{month}"}</code>, <code>{"{filename}"}</code>, <code>{"{format}"}</code>, <code>{"{recipient}"}</code>, <code>{"{note}"}</code>
+              </p>
             </div>
           </div>
 
