@@ -276,8 +276,13 @@ export function FloatingAssistant() {
     return "alloy";
   });
   const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_AUTOSPEAK);
+      if (raw === "0") return false;
+      if (raw === "1") return true;
+    } catch { /* noop */ }
+    return true;
   });
   const [rate, setRate] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
