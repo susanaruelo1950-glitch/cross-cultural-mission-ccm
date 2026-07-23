@@ -26,6 +26,7 @@ import { Route as BrilliantRouteImport } from './routes/brilliant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MissionariesIndexRouteImport } from './routes/missionaries.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -124,6 +125,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -135,9 +141,9 @@ const MissionariesIndexRoute = MissionariesIndexRouteImport.update({
   getParentRoute: () => MissionariesRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const MissionariesIdRoute = MissionariesIdRouteImport.update({
   id: '/$id',
@@ -145,19 +151,19 @@ const MissionariesIdRoute = MissionariesIdRouteImport.update({
   getParentRoute: () => MissionariesRoute,
 } as any)
 const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/admin/roles',
-  path: '/admin/roles',
-  getParentRoute: () => rootRouteImport,
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminMonthlyRoute = AdminMonthlyRouteImport.update({
-  id: '/admin/monthly',
-  path: '/admin/monthly',
-  getParentRoute: () => rootRouteImport,
+  id: '/monthly',
+  path: '/monthly',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminActivityRoute = AdminActivityRouteImport.update({
-  id: '/admin/activity',
-  path: '/admin/activity',
-  getParentRoute: () => rootRouteImport,
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AdminRoute,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
@@ -191,6 +197,7 @@ const ApiPublicTelegramWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -286,6 +294,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/analytics'
     | '/assistant'
     | '/auth'
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/analytics'
     | '/assistant'
     | '/auth'
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
@@ -398,10 +409,6 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  AdminActivityRoute: typeof AdminActivityRoute
-  AdminMonthlyRoute: typeof AdminMonthlyRoute
-  AdminRolesRoute: typeof AdminRolesRoute
-  AdminIndexRoute: typeof AdminIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -528,6 +535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -544,10 +558,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/': {
       id: '/admin/'
-      path: '/admin'
+      path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/missionaries/$id': {
       id: '/missionaries/$id'
@@ -558,24 +572,24 @@ declare module '@tanstack/react-router' {
     }
     '/admin/roles': {
       id: '/admin/roles'
-      path: '/admin/roles'
+      path: '/roles'
       fullPath: '/admin/roles'
       preLoaderRoute: typeof AdminRolesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/monthly': {
       id: '/admin/monthly'
-      path: '/admin/monthly'
+      path: '/monthly'
       fullPath: '/admin/monthly'
       preLoaderRoute: typeof AdminMonthlyRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/activity': {
       id: '/admin/activity'
-      path: '/admin/activity'
+      path: '/activity'
       fullPath: '/admin/activity'
       preLoaderRoute: typeof AdminActivityRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
@@ -615,6 +629,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
+  AdminMonthlyRoute: typeof AdminMonthlyRoute
+  AdminRolesRoute: typeof AdminRolesRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
+  AdminMonthlyRoute: AdminMonthlyRoute,
+  AdminRolesRoute: AdminRolesRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface MissionariesRouteChildren {
   MissionariesIdRoute: typeof MissionariesIdRoute
   MissionariesIndexRoute: typeof MissionariesIndexRoute
@@ -631,6 +661,7 @@ const MissionariesRouteWithChildren = MissionariesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
@@ -651,10 +682,6 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
-  AdminActivityRoute: AdminActivityRoute,
-  AdminMonthlyRoute: AdminMonthlyRoute,
-  AdminRolesRoute: AdminRolesRoute,
-  AdminIndexRoute: AdminIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
