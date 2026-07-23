@@ -346,6 +346,122 @@ export function FloatingAssistant() {
     try { window.localStorage.setItem(STORAGE_SIZE, size); } catch { /* noop */ }
   }, [size]);
 
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_VOICE, voice); } catch { /* noop */ }
+  }, [voice]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_AUTOSPEAK, autoSpeak ? "1" : "0"); } catch { /* noop */ }
+  }, [autoSpeak]);
+
+  function stopPlayback() {
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.src = "";
+      audioRef.current = null;
+    }
+    setSpeakingIdx(null);
+  }
+
+  async function speakText(text: string, idx: number | null) {
+    const clean = forSpeech(text);
+    if (!clean) return;
+    stopPlayback();
+    try {
+      setSpeakingIdx(idx);
+      const res = await fetch("/api/voice/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, voice }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(body || `Voice failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      audio.onerror = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      await audio.play();
+    } catch (err) {
+      setSpeakingIdx(null);
+      toast.error(err instanceof Error ? err.message : "Voice playback failed");
+    }
+  }
+
+  async function startRecording() {
+    if (recording || transcribing) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Microphone not available on this device.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const type = rec.mimeType || "audio/webm";
+        const ext = type.includes("mp4") ? "mp4" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "webm";
+        const blob = new Blob(chunksRef.current, { type });
+        chunksRef.current = [];
+        if (blob.size < 1500) {
+          toast.error("Recording was too short — try again.");
+          return;
+        }
+        setTranscribing(true);
+        try {
+          const fd = new FormData();
+          fd.append("file", blob, `recording.${ext}`);
+          const res = await fetch("/api/voice/transcribe", { method: "POST", body: fd });
+          if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new Error(body || `Transcription failed (${res.status})`);
+          }
+          const json = (await res.json()) as { text?: string };
+          const text = (json.text ?? "").trim();
+          if (!text) {
+            toast.error("Didn't catch that — please try again.");
+            return;
+          }
+          await send(text);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Voice input failed");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      toast.error("Microphone access denied.");
+    }
+  }
+
+  function stopRecording() {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    mediaRecorderRef.current = null;
+    setRecording(false);
+  }
+
+  useEffect(() => () => {
+    stopPlayback();
+    if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+  }, []);
+
+
   function onPointerDown(e: React.PointerEvent) {
     const rect = btnRef.current?.getBoundingClientRect();
     if (!rect) return;
