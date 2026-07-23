@@ -1230,6 +1230,15 @@ export function FloatingAssistant() {
                   >
                     Reset speed & volume
                   </button>
+                  <label className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-primary"
+                      checked={vad}
+                      onChange={(e) => setVad(e.target.checked)}
+                    />
+                    Auto-stop when I stop talking (voice-activity detection)
+                  </label>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
