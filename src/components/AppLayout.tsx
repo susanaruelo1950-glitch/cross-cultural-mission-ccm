@@ -292,7 +292,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           deskOpen && "lg:ml-72",
         )}
       >
-        <div className="flex items-center gap-2 px-3 py-2.5 sm:px-6 sm:py-3">
+        <div className="flex items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-6 sm:py-3">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
@@ -343,7 +343,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           )}
           aria-hidden={collapseHeader}
         >
-          <div className="min-h-0 border-t border-border/60 px-3 pb-2 pt-2">
+          <div className="min-h-0 border-t border-border/60 px-2 pb-1.5 pt-1.5">
             <HeaderSearch />
           </div>
         </div>
@@ -353,7 +353,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             collapseHeader ? "grid-rows-[0fr] opacity-0 lg:grid-rows-[1fr] lg:opacity-100" : "grid-rows-[1fr] opacity-100",
           )}
         >
-          <div className="min-h-0 border-t border-border/60 bg-primary/[0.03] px-3 py-2 sm:px-6">
+          <div className="min-h-0 border-t border-border/60 bg-primary/[0.03] px-2 py-1.5 sm:px-6 sm:py-2">
             <ScriptureOfTheDay compact />
           </div>
         </div>
@@ -365,7 +365,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         tabIndex={-1}
         className={cn("focus:outline-none transition-[padding] duration-200", deskOpen && "lg:pl-72")}
       >
-        <div className="mx-auto max-w-7xl px-3 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-10">
+        <div className="mx-auto w-full max-w-7xl px-2 pb-24 pt-3 sm:px-6 sm:pt-6 lg:px-8 lg:pt-10">
           {children}
         </div>
       </main>
