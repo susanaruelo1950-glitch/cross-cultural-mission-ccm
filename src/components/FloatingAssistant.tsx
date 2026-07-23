@@ -941,6 +941,47 @@ export function FloatingAssistant() {
             </>
           ) : (
             <>
+              {voiceSettingsOpen ? (
+                <div className="border-b border-border bg-muted/30 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Voice</div>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-primary"
+                        checked={autoSpeak}
+                        onChange={(e) => {
+                          if (!e.target.checked) stopPlayback();
+                          setAutoSpeak(e.target.checked);
+                        }}
+                      />
+                      Speak replies automatically
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={voice} onValueChange={setVoice}>
+                      <SelectTrigger className="h-9 flex-1 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VOICES.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            <span className="font-medium">{v.label}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">{v.hint}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => speakText(`Hi, I'm Grace, your mission assistant. This is my ${VOICES.find((v) => v.id === voice)?.label ?? voice} voice.`, null)}
+                    >
+                      <Play className="mr-1 h-3.5 w-3.5" /> Preview
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
                 {messages.map((m, i) => (
                   <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
@@ -951,9 +992,25 @@ export function FloatingAssistant() {
                       )}
                     >
                       {m.role === "assistant" ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
-                          <ReactMarkdown>{m.content}</ReactMarkdown>
-                        </div>
+                        <>
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
+                            <ReactMarkdown>{m.content}</ReactMarkdown>
+                          </div>
+                          <div className="mt-1 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => (speakingIdx === i ? stopPlayback() : void speakText(m.content, i))}
+                              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                              aria-label={speakingIdx === i ? "Stop" : "Play aloud"}
+                            >
+                              {speakingIdx === i ? (
+                                <><Square className="h-3 w-3" /> Stop</>
+                              ) : (
+                                <><Play className="h-3 w-3" /> Play</>
+                              )}
+                            </button>
+                          </div>
+                        </>
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
@@ -990,12 +1047,30 @@ export function FloatingAssistant() {
                 style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
                 onSubmit={(e) => { e.preventDefault(); send(input); }}
               >
+                <Button
+                  type="button"
+                  size="icon"
+                  variant={recording ? "destructive" : "outline"}
+                  className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                  onClick={recording ? stopRecording : startRecording}
+                  disabled={busy || transcribing}
+                  aria-label={recording ? "Stop recording" : "Start voice input"}
+                  title={recording ? "Tap to stop and send" : "Talk to Grace"}
+                >
+                  {transcribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : recording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about missionaries, prayer, reports…"
+                  placeholder={recording ? "Listening… tap mic to stop" : transcribing ? "Transcribing…" : "Ask about missionaries, prayer, reports…"}
                   className="h-10 rounded-full text-base sm:h-9 sm:text-sm"
-                  disabled={busy}
+                  disabled={busy || recording || transcribing}
                   autoFocus
                 />
                 <Button type="submit" size="icon" className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9" disabled={busy || !input.trim()} aria-label="Send">
