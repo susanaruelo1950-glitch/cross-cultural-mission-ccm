@@ -640,19 +640,19 @@ export function FloatingAssistant() {
           // Voice-activity detection: auto-stop on trailing silence.
           if (vadEnabledRef.current && !vadTriggeredRef.current) {
             const now = Date.now();
-            if (level >= VAD_SPEECH_LEVEL) {
+            const preset = vadPresetRef.current;
+            if (level >= preset.speech) {
               vadSpeechDetectedRef.current = true;
               vadSilenceStartRef.current = null;
-            } else if (level < VAD_SILENCE_LEVEL) {
+            } else if (level < preset.silence) {
               if (vadSpeechDetectedRef.current) {
                 if (vadSilenceStartRef.current == null) vadSilenceStartRef.current = now;
-                else if (now - vadSilenceStartRef.current >= VAD_SILENCE_MS) {
+                else if (now - vadSilenceStartRef.current >= preset.silenceMs) {
                   vadTriggeredRef.current = true;
                   stopRecording();
                   return;
                 }
-              } else if (now - vadStartedAtRef.current >= VAD_MAX_WAIT_MS) {
-                // No speech detected within window — give up quietly.
+              } else if (now - vadStartedAtRef.current >= preset.maxWaitMs) {
                 vadTriggeredRef.current = true;
                 stopRecording();
                 return;
