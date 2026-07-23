@@ -205,15 +205,6 @@ export const seedAreas: Area[] = [
     province: "Sultan Kudarat",
     gps: [6.700, 124.720],
   },
-  {
-    id: "area-maguindanao",
-    phaseId: "phase-1",
-    name: "Maguindanao del Sur Area",
-    region: "BARMM",
-    province: "Maguindanao del Sur",
-    description: "Cross-cultural ministry among Muslim communities.",
-    gps: [6.898, 124.520],
-  },
   // ── Phase 2 ─────────────────────────────
   {
     id: "area-maitum",
