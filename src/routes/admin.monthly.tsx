@@ -465,6 +465,66 @@ function MonthlyReportPage() {
     setRemindOpen(false);
   }
 
+  async function generateAiReport() {
+    setAiLoading(true);
+    setAiReport("");
+    try {
+      const payload = {
+        monthLabel: monthLabel(month),
+        totals: {
+          total: totals.total,
+          complete: totals.complete,
+          withUpd: totals.withUpd,
+          withLet: totals.withLet,
+          withRec: totals.withRec,
+          totalReceived: totals.totalReceived,
+        },
+        rows: rows.map((r) => ({
+          fullName: r.m.fullName,
+          church: r.m.church ?? "",
+          areaName: areaName.get(r.m.areaId) ?? "",
+          hasUpdate: r.hasUpdate,
+          hasLetter: r.hasLetter,
+          hasReceipt: r.hasReceipt,
+          receivedAmount: r.receivedAmount,
+          updateTitles: r.updates.map((u) => u.title).slice(0, 4),
+          letterTitles: r.letters.map((l) => l.title).slice(0, 4),
+          receiptTitles: r.receipts.map((rr) => rr.title).slice(0, 4),
+        })),
+        newMissionaries: (newMissionariesQ.data ?? []).map((n) => {
+          const d = n.data as { fullName?: string; church?: string } | null;
+          return { fullName: d?.fullName ?? "Unnamed", church: d?.church ?? "" };
+        }),
+        announcements: (announcementsQ.data ?? []).map((a) => ({ title: a.title, body: a.body ?? "" })),
+        supervisorName,
+        senderName,
+        tone: aiTone,
+      };
+      const { report } = await generateMonthlySummary({ data: payload });
+      setAiReport(report);
+      toast.success("Report drafted.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate report");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function copyAiReport() {
+    await navigator.clipboard.writeText(aiReport);
+    toast.success("Report copied to clipboard.");
+  }
+
+  function downloadAiReport() {
+    const blob = new Blob([aiReport], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `monthly-report-${month}-formal.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
