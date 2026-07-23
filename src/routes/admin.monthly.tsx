@@ -88,6 +88,11 @@ function MonthlyReportPage() {
   const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
   const [aiVersions, setAiVersions] = useState<AiReportVersion[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [aiEmailOpen, setAiEmailOpen] = useState(false);
+  const [aiEmailFormat, setAiEmailFormat] = useState<"pdf" | "docx">("pdf");
+  const [aiEmailSelected, setAiEmailSelected] = useState<Record<string, boolean>>({});
+  const [aiEmailMessage, setAiEmailMessage] = useState("");
+  const [aiEmailSending, setAiEmailSending] = useState(false);
 
   // Load versions for the selected month from localStorage.
   useEffect(() => {
