@@ -35,6 +35,16 @@ const STORAGE_CONVOS = "ccm-fab-convos";
 const STORAGE_ACTIVE = "ccm-fab-active";
 const STORAGE_VOICE = "ccm-fab-voice";
 const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
+const STORAGE_RATE = "ccm-fab-rate";
+const STORAGE_VOLUME = "ccm-fab-volume";
+
+function vibrate(pattern: number | number[]) {
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(pattern);
+    }
+  } catch { /* noop */ }
+}
 const FAB_SIZE = 56;
 const EDGE_PAD = 12;
 
