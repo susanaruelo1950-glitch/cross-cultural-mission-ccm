@@ -1296,14 +1296,46 @@ function MonthlyReportPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ai-email-msg" className="text-sm">Optional message</Label>
+              <Label htmlFor="ai-email-msg" className="text-sm">Optional note (inserted as {"{note}"})</Label>
               <Textarea
                 id="ai-email-msg"
                 value={aiEmailMessage}
                 onChange={(e) => setAiEmailMessage(e.target.value)}
-                rows={3}
+                rows={2}
                 placeholder="Add a short note for the recipients…"
               />
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Email template</Label>
+                <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={resetAiEmailTemplate}>
+                  Reset to default
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-email-subject" className="text-xs text-muted-foreground">Subject</Label>
+                <Input
+                  id="ai-email-subject"
+                  value={aiEmailSubject}
+                  onChange={(e) => setAiEmailSubject(e.target.value)}
+                  placeholder="Email subject line"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-email-body" className="text-xs text-muted-foreground">Message body</Label>
+                <Textarea
+                  id="ai-email-body"
+                  value={aiEmailBody}
+                  onChange={(e) => setAiEmailBody(e.target.value)}
+                  rows={8}
+                  className="font-mono text-xs"
+                  placeholder="Write the email body…"
+                />
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Placeholders: <code>{"{month}"}</code>, <code>{"{filename}"}</code>, <code>{"{format}"}</code>, <code>{"{recipient}"}</code>, <code>{"{note}"}</code>
+              </p>
             </div>
           </div>
 
