@@ -87,6 +87,42 @@ function MonthlyReportPage() {
     enabled: emailOpen,
     staleTime: 60_000,
   });
+  const coordinatorsQ = useQuery({
+    queryKey: ["monthly", "coordinators"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "coordinator");
+      if (rolesErr) throw rolesErr;
+      const ids = Array.from(new Set((roles ?? []).map((r) => r.user_id)));
+      if (!ids.length) return [] as { id: string; email: string; full_name: string | null; areaIds: string[] }[];
+      const [{ data: profs, error: profErr }, { data: assigns, error: aErr }] = await Promise.all([
+        supabase.from("profiles").select("id, email, full_name").in("id", ids),
+        supabase.from("coordinator_assignments").select("user_id, area_id").in("user_id", ids),
+      ]);
+      if (profErr) throw profErr;
+      if (aErr) throw aErr;
+      const areaMap = new Map<string, string[]>();
+      for (const a of assigns ?? []) {
+        const list = areaMap.get(a.user_id) ?? [];
+        list.push(a.area_id);
+        areaMap.set(a.user_id, list);
+      }
+      return (profs ?? [])
+        .filter((p) => p.email)
+        .map((p) => ({
+          id: p.id,
+          email: p.email as string,
+          full_name: p.full_name,
+          areaIds: areaMap.get(p.id) ?? [],
+        }))
+        .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
+    },
+    enabled: remindOpen,
+    staleTime: 60_000,
+  });
+
 
 
   const { startISO, endISO, startDate, endDate } = useMemo(() => monthBounds(month), [month]);
