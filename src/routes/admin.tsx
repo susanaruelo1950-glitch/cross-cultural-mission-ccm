@@ -91,6 +91,9 @@ function AdminPage() {
             <Link to="/admin/roles"><Users className="h-4 w-4" /> Manage roles</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-full">
+            <Link to="/admin/monthly"><CalendarCheck className="h-4 w-4" /> Monthly report</Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-full">
             <Link to="/admin/activity"><History className="h-4 w-4" /> Activity log</Link>
           </Button>
           <AdminHistoryDrawer />
