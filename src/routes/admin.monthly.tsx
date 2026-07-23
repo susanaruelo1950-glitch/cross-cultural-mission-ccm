@@ -66,6 +66,12 @@ function MonthlyReportPage() {
   const [remindOpen, setRemindOpen] = useState(false);
   const [selectedReminders, setSelectedReminders] = useState<Record<string, boolean>>({});
   const [reminderMessage, setReminderMessage] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReport, setAiReport] = useState("");
+  const [supervisorName, setSupervisorName] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
