@@ -334,12 +334,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <AuthButton />
           </div>
         </div>
-        {/* Mobile search — full width row so header text no longer wraps. */}
-        <div className="border-t border-border/60 px-3 pb-2 pt-2 lg:hidden">
-          <HeaderSearch />
+        {/* Mobile search — full width row so header text no longer wraps.
+            Collapses away when the user scrolls down to maximize content space. */}
+        <div
+          className={cn(
+            "grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out lg:hidden",
+            collapseHeader ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+          )}
+          aria-hidden={collapseHeader}
+        >
+          <div className="min-h-0 border-t border-border/60 px-3 pb-2 pt-2">
+            <HeaderSearch />
+          </div>
         </div>
-        <div className="border-t border-border/60 bg-primary/[0.03] px-3 py-2 sm:px-6">
-          <ScriptureOfTheDay compact />
+        <div
+          className={cn(
+            "grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out",
+            collapseHeader ? "grid-rows-[0fr] opacity-0 lg:grid-rows-[1fr] lg:opacity-100" : "grid-rows-[1fr] opacity-100",
+          )}
+        >
+          <div className="min-h-0 border-t border-border/60 bg-primary/[0.03] px-3 py-2 sm:px-6">
+            <ScriptureOfTheDay compact />
+          </div>
         </div>
       </header>
 
