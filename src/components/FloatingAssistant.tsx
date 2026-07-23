@@ -630,6 +630,8 @@ export function FloatingAssistant() {
         try {
           const fd = new FormData();
           fd.append("file", blob, `recording.${ext}`);
+          const langCode = STT_LANGS.find((l) => l.id === sttLang)?.code;
+          if (langCode) fd.append("language", langCode);
           const res = await fetch("/api/voice/transcribe", { method: "POST", body: fd });
           if (!res.ok) {
             const body = await res.text().catch(() => "");
