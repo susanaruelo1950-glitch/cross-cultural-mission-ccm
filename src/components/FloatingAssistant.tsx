@@ -246,6 +246,27 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return "regular";
   });
+  const [voice, setVoice] = useState<string>(() => {
+    if (typeof window === "undefined") return "alloy";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VOICE);
+      if (raw && VOICES.some((v) => v.id === raw)) return raw;
+    } catch { /* noop */ }
+    return "alloy";
+  });
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
+  });
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenRef = useRef<string | null>(null);
 
   const initial = useMemo(loadConversations, []);
   const [conversations, setConversations] = useState<Conversation[]>(initial.convos);
