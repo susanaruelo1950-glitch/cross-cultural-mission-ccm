@@ -593,6 +593,15 @@ export function FloatingAssistant() {
       toast.error("Microphone not available on this device.");
       return;
     }
+    // Barge-in: the user is talking again, so silence any in-flight reply
+    // immediately and mark the current last message as already spoken so
+    // auto-speak only fires for the *next* assistant reply.
+    stopPlayback();
+    if (messages.length > 0) {
+      const lastIdx = messages.length - 1;
+      const last = messages[lastIdx];
+      lastSpokenRef.current = `${activeId}:${lastIdx}:${last.content.length}`;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
