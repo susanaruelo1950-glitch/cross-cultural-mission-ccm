@@ -1279,6 +1279,27 @@ export function FloatingAssistant() {
                     />
                     Auto-stop when I stop talking (voice-activity detection)
                   </label>
+                  <div className={cn("space-y-1 rounded-md border border-border/60 bg-background/40 p-2", vad ? "" : "opacity-50")}>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Auto-stop sensitivity</span>
+                      <span className="text-foreground">{VAD_PRESETS[vadSens].label}</span>
+                    </div>
+                    <Select value={vadSens} onValueChange={(v) => setVadSens(v as VadSensitivity)} disabled={!vad}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(VAD_PRESETS) as VadSensitivity[]).map((k) => (
+                          <SelectItem key={k} value={k} className="text-xs">
+                            {VAD_PRESETS[k].label} — {VAD_PRESETS[k].hint}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Higher = stops sooner after you pause. Lower = waits longer, better for noisy places.
+                    </p>
+                  </div>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
