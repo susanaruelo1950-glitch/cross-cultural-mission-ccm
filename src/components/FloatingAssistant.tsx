@@ -1260,6 +1260,39 @@ export function FloatingAssistant() {
                 </div>
               ) : null}
 
+              {recording ? (
+                <div className="border-t border-border bg-destructive/5 px-3 py-2 space-y-1.5" aria-live="polite">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                    </span>
+                    <span className="text-[11px] font-medium text-destructive">Recording…</span>
+                    <div className="ml-1 flex h-6 flex-1 items-center gap-[2px]">
+                      {(waveform.length ? waveform : new Array(24).fill(0)).map((v, i) => (
+                        <span
+                          key={i}
+                          className="w-[3px] rounded-full bg-destructive/70"
+                          style={{ height: `${Math.max(8, Math.min(100, v * 100))}%`, transition: "height 60ms linear" }}
+                        />
+                      ))}
+                    </div>
+                    <div className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-muted" aria-label="Microphone level">
+                      <div
+                        className={cn("h-full transition-[width] duration-75", micLevel > 0.75 ? "bg-destructive" : "bg-primary")}
+                        style={{ width: `${Math.round(micLevel * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="min-h-[1.25rem] text-[12px] leading-snug text-foreground">
+                    {interimTranscript
+                      ? interimTranscript
+                      : <span className="text-muted-foreground">Speak now — tap the mic again to stop and send.</span>}
+                  </p>
+                </div>
+              ) : null}
+
+
               <form
                 className="flex items-center gap-2 border-t border-border bg-background p-2"
                 style={{ paddingBottom: isMobile ? `max(0.5rem, ${safe.bottom / 2}px)` : undefined }}
