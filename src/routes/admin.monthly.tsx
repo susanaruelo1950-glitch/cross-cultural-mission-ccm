@@ -55,6 +55,9 @@ function MonthlyReportPage() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState<Record<string, boolean>>({});
   const [emailMessage, setEmailMessage] = useState("");
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [selectedReminders, setSelectedReminders] = useState<Record<string, boolean>>({});
+  const [reminderMessage, setReminderMessage] = useState("");
 
   const recipientsQ = useQuery({
     queryKey: ["monthly", "recipients"],
