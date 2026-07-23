@@ -259,6 +259,7 @@ function AuthButton() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [deskOpen, setDeskOpen] = useState(true);
+  const collapseHeader = useHideOnScroll(80);
   useMissionaryRealtime();
   useGlobalRealtime();
   return (
