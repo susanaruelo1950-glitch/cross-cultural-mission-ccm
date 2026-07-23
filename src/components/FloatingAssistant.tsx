@@ -39,6 +39,7 @@ const STORAGE_RATE = "ccm-fab-rate";
 const STORAGE_VOLUME = "ccm-fab-volume";
 const STORAGE_VAD = "ccm-fab-vad";
 const STORAGE_VAD_SENS = "ccm-fab-vad-sens";
+const STORAGE_LANG = "ccm-fab-stt-lang";
 // Voice-activity detection sensitivity presets.
 type VadSensitivity = "low" | "medium" | "high" | "very-high";
 const VAD_PRESETS: Record<VadSensitivity, { speech: number; silence: number; silenceMs: number; maxWaitMs: number; label: string; hint: string }> = {
@@ -47,6 +48,19 @@ const VAD_PRESETS: Record<VadSensitivity, { speech: number; silence: number; sil
   high:        { speech: 0.05, silence: 0.03, silenceMs: 900,  maxWaitMs: 6000,  label: "High",       hint: "Quiet room · stops sooner" },
   "very-high": { speech: 0.035,silence: 0.02, silenceMs: 550,  maxWaitMs: 5000,  label: "Very high",  hint: "Fast turn-taking" },
 };
+// Spoken-language hints for speech-to-text. "auto" lets the model detect.
+// Cebuano/Hiligaynon/Ilocano aren't ISO-639-1, so we omit the hint (auto-detect)
+// while still labeling the intent so the user knows it's supported.
+type SttLang = "auto" | "en" | "fil" | "tl" | "ceb" | "hil" | "ilo";
+const STT_LANGS: { id: SttLang; label: string; code?: string; srLang: string }[] = [
+  { id: "auto", label: "Auto-detect (any language)", srLang: "en-US" },
+  { id: "en",   label: "English",              code: "en",  srLang: "en-US" },
+  { id: "fil",  label: "Filipino / Tagalog",   code: "tl",  srLang: "fil-PH" },
+  { id: "tl",   label: "Tagalog",              code: "tl",  srLang: "tl-PH" },
+  { id: "ceb",  label: "Cebuano (Bisaya)",                  srLang: "fil-PH" },
+  { id: "hil",  label: "Hiligaynon (Ilonggo)",              srLang: "fil-PH" },
+  { id: "ilo",  label: "Ilocano",                            srLang: "fil-PH" },
+];
 
 
 function vibrate(pattern: number | number[]) {
