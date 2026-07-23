@@ -305,6 +305,15 @@ export function FloatingAssistant() {
     } catch { /* noop */ }
     return true;
   });
+  const [vadSens, setVadSens] = useState<VadSensitivity>(() => {
+    if (typeof window === "undefined") return "medium";
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VAD_SENS);
+      if (raw && raw in VAD_PRESETS) return raw as VadSensitivity;
+    } catch { /* noop */ }
+    return "medium";
+  });
+
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
