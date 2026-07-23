@@ -394,6 +394,63 @@ function MonthlyReportPage() {
     setEmailOpen(false);
   }
 
+  // Coordinators with pending missionaries in their assigned areas for the selected month.
+  const reminderTargets = useMemo(() => {
+    const pendingByArea = new Map<string, { name: string; missing: string[] }[]>();
+    for (const r of rows) {
+      if (r.allSubmitted) continue;
+      const missing: string[] = [];
+      if (!r.hasUpdate) missing.push("ministry update");
+      if (!r.hasLetter) missing.push("thank you letter");
+      if (!r.hasReceipt) missing.push("support receipt");
+      const list = pendingByArea.get(r.m.areaId) ?? [];
+      list.push({ name: r.m.fullName, missing });
+      pendingByArea.set(r.m.areaId, list);
+    }
+    return (coordinatorsQ.data ?? []).map((c) => {
+      const pending: { name: string; missing: string[]; areaName: string }[] = [];
+      for (const areaId of c.areaIds) {
+        const items = pendingByArea.get(areaId) ?? [];
+        for (const it of items) pending.push({ ...it, areaName: areaName.get(areaId) ?? "—" });
+      }
+      pending.sort((a, b) => a.name.localeCompare(b.name));
+      return { ...c, pending };
+    });
+  }, [rows, coordinatorsQ.data, areaName]);
+
+  const totalPending = useMemo(() => rows.filter((r) => !r.allSubmitted).length, [rows]);
+
+  async function handleSendReminders() {
+    const chosen = reminderTargets.filter((c) => selectedReminders[c.id] && c.pending.length > 0);
+    if (chosen.length === 0) {
+      toast.error("Select at least one coordinator with pending missionaries");
+      return;
+    }
+    const label = monthLabel(month);
+    const subject = `Reminder: pending monthly submissions — ${label}`;
+    const to = chosen.map((c) => c.email).join(",");
+    const lines: string[] = [
+      `Hi coordinators,`,
+      ``,
+      `This is a friendly reminder that the following missionaries still have pending submissions for ${label}:`,
+      ``,
+    ];
+    for (const c of chosen) {
+      lines.push(`— For ${c.full_name || c.email}:`);
+      for (const p of c.pending) {
+        lines.push(`   • ${p.name} (${p.areaName}) — missing: ${p.missing.join(", ")}`);
+      }
+      lines.push("");
+    }
+    lines.push(`Please help nudge them to upload their ministry update, thank you letter, and support receipt before month-end.`);
+    if (reminderMessage.trim()) lines.push("", reminderMessage.trim());
+    lines.push("", "— Cross-Cultural Ministry");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    window.location.href = href;
+    toast.success(`Opened reminder email for ${chosen.length} coordinator${chosen.length > 1 ? "s" : ""}.`);
+    setRemindOpen(false);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
