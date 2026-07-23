@@ -39,6 +39,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionaryRealtime } from "@/hooks/use-missionary-realtime";
 import { useGlobalRealtime } from "@/hooks/use-global-realtime";
+import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ScriptureOfTheDay } from "@/components/ScriptureOfTheDay";
