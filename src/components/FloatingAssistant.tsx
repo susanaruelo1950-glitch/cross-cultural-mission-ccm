@@ -35,6 +35,16 @@ const STORAGE_CONVOS = "ccm-fab-convos";
 const STORAGE_ACTIVE = "ccm-fab-active";
 const STORAGE_VOICE = "ccm-fab-voice";
 const STORAGE_AUTOSPEAK = "ccm-fab-autospeak";
+const STORAGE_RATE = "ccm-fab-rate";
+const STORAGE_VOLUME = "ccm-fab-volume";
+
+function vibrate(pattern: number | number[]) {
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(pattern);
+    }
+  } catch { /* noop */ }
+}
 const FAB_SIZE = 56;
 const EDGE_PAD = 12;
 
@@ -258,15 +268,43 @@ export function FloatingAssistant() {
     if (typeof window === "undefined") return false;
     try { return window.localStorage.getItem(STORAGE_AUTOSPEAK) === "1"; } catch { return false; }
   });
+  const [rate, setRate] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_RATE);
+      const n = raw ? parseFloat(raw) : NaN;
+      if (!Number.isNaN(n) && n >= 0.5 && n <= 2) return n;
+    } catch { /* noop */ }
+    return 1;
+  });
+  const [volume, setVolume] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_VOLUME);
+      const n = raw ? parseFloat(raw) : NaN;
+      if (!Number.isNaN(n) && n >= 0 && n <= 1) return n;
+    } catch { /* noop */ }
+    return 1;
+  });
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const [captionText, setCaptionText] = useState<string>("");
+  const [captionProgress, setCaptionProgress] = useState<number>(0);
+  const [micLevel, setMicLevel] = useState<number>(0);
+  const [waveform, setWaveform] = useState<number[]>([]);
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   const initial = useMemo(loadConversations, []);
   const [conversations, setConversations] = useState<Conversation[]>(initial.convos);
@@ -366,6 +404,14 @@ export function FloatingAssistant() {
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_AUTOSPEAK, autoSpeak ? "1" : "0"); } catch { /* noop */ }
   }, [autoSpeak]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_RATE, String(rate)); } catch { /* noop */ }
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+  }, [rate]);
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
 
   function stopPlayback() {
     const a = audioRef.current;
@@ -375,6 +421,8 @@ export function FloatingAssistant() {
       audioRef.current = null;
     }
     setSpeakingIdx(null);
+    setCaptionText("");
+    setCaptionProgress(0);
   }
 
   async function speakText(text: string, idx: number | null) {
@@ -383,6 +431,8 @@ export function FloatingAssistant() {
     stopPlayback();
     try {
       setSpeakingIdx(idx);
+      setCaptionText(clean);
+      setCaptionProgress(0);
       const res = await fetch("/api/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -395,14 +445,58 @@ export function FloatingAssistant() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      audio.playbackRate = rate;
+      audio.volume = volume;
       audioRef.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
-      audio.onerror = () => { URL.revokeObjectURL(url); setSpeakingIdx(null); };
+      audio.ontimeupdate = () => {
+        if (!audio.duration || !isFinite(audio.duration)) return;
+        setCaptionProgress(Math.min(1, audio.currentTime / audio.duration));
+      };
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setSpeakingIdx(null);
+        setCaptionText("");
+        setCaptionProgress(0);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        setSpeakingIdx(null);
+        setCaptionText("");
+        setCaptionProgress(0);
+      };
       await audio.play();
     } catch (err) {
       setSpeakingIdx(null);
+      setCaptionText("");
+      setCaptionProgress(0);
       toast.error(err instanceof Error ? err.message : "Voice playback failed");
     }
+  }
+
+  function stopMeter() {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (analyserRef.current) {
+      try { analyserRef.current.disconnect(); } catch { /* noop */ }
+      analyserRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try { void audioCtxRef.current.close(); } catch { /* noop */ }
+      audioCtxRef.current = null;
+    }
+    setMicLevel(0);
+    setWaveform([]);
+  }
+
+  function stopRecognition() {
+    const rec = recognitionRef.current;
+    if (rec) {
+      try { rec.onresult = null; rec.onerror = null; rec.onend = null; rec.stop(); } catch { /* noop */ }
+      recognitionRef.current = null;
+    }
+    setInterimTranscript("");
   }
 
   async function startRecording() {
@@ -425,6 +519,8 @@ export function FloatingAssistant() {
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        stopMeter();
+        stopRecognition();
         const type = rec.mimeType || "audio/webm";
         const ext = type.includes("mp4") ? "mp4" : type.includes("mpeg") ? "mp3" : type.includes("wav") ? "wav" : "webm";
         const blob = new Blob(chunksRef.current, { type });
@@ -458,6 +554,71 @@ export function FloatingAssistant() {
       mediaRecorderRef.current = rec;
       rec.start();
       setRecording(true);
+      vibrate(30);
+
+      // Set up level meter + waveform via Web Audio.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Ctx: typeof AudioContext = (window.AudioContext || (window as any).webkitAudioContext);
+        const ctx = new Ctx();
+        audioCtxRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.7;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        const buf = new Uint8Array(analyser.fftSize);
+        const BARS = 24;
+        const tick = () => {
+          if (!analyserRef.current) return;
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          const bars: number[] = new Array(BARS).fill(0);
+          const step = Math.floor(buf.length / BARS);
+          for (let b = 0; b < BARS; b++) {
+            let peak = 0;
+            for (let j = 0; j < step; j++) {
+              const v = Math.abs(buf[b * step + j] - 128) / 128;
+              if (v > peak) peak = v;
+              sum += v;
+            }
+            bars[b] = peak;
+          }
+          const level = Math.min(1, (sum / buf.length) * 2);
+          setMicLevel(level);
+          setWaveform(bars);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch { /* meter unsupported */ }
+
+      // Live interim transcription (SpeechRecognition where available).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SR) {
+          const sr = new SR();
+          sr.continuous = true;
+          sr.interimResults = true;
+          sr.lang = navigator.language || "en-US";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sr.onresult = (evt: any) => {
+            let interim = "";
+            let final = "";
+            for (let i = evt.resultIndex; i < evt.results.length; i++) {
+              const r = evt.results[i];
+              if (r.isFinal) final += r[0].transcript;
+              else interim += r[0].transcript;
+            }
+            setInterimTranscript((final + " " + interim).trim());
+          };
+          sr.onerror = () => { /* ignore — server does the real transcription */ };
+          sr.onend = () => { /* no-op */ };
+          sr.start();
+          recognitionRef.current = sr;
+        }
+      } catch { /* preview unsupported */ }
     } catch {
       toast.error("Microphone access denied.");
     }
@@ -468,12 +629,17 @@ export function FloatingAssistant() {
     if (rec && rec.state !== "inactive") rec.stop();
     mediaRecorderRef.current = null;
     setRecording(false);
+    vibrate([15, 40, 15]);
   }
 
   useEffect(() => () => {
     stopPlayback();
+    stopMeter();
+    stopRecognition();
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
   }, []);
+
+
 
 
   function onPointerDown(e: React.PointerEvent) {
@@ -980,6 +1146,39 @@ export function FloatingAssistant() {
                       <Play className="mr-1 h-3.5 w-3.5" /> Preview
                     </Button>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Speed</span>
+                        <span className="tabular-nums text-foreground">{rate.toFixed(2)}×</span>
+                      </div>
+                      <input
+                        type="range" min={0.5} max={2} step={0.05} value={rate}
+                        onChange={(e) => setRate(parseFloat(e.target.value))}
+                        className="h-1.5 w-full cursor-pointer accent-primary"
+                        aria-label="Voice speed"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>Volume</span>
+                        <span className="tabular-nums text-foreground">{Math.round(volume * 100)}%</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={1} step={0.05} value={volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        className="h-1.5 w-full cursor-pointer accent-primary"
+                        aria-label="Voice volume"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    onClick={() => { setRate(1); setVolume(1); }}
+                  >
+                    Reset speed & volume
+                  </button>
                 </div>
               ) : null}
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
@@ -996,6 +1195,25 @@ export function FloatingAssistant() {
                           <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1">
                             <ReactMarkdown>{m.content}</ReactMarkdown>
                           </div>
+                          {speakingIdx === i && captionText ? (
+                            <div className="mt-2 rounded-lg border border-primary/30 bg-background/70 px-2 py-1.5 text-[12px] leading-snug" aria-live="polite">
+                              {(() => {
+                                const words = captionText.split(/\s+/);
+                                const spoken = Math.max(1, Math.floor(captionProgress * words.length));
+                                return (
+                                  <p className="whitespace-pre-wrap">
+                                    <span className="font-medium text-foreground">{words.slice(0, spoken).join(" ")}</span>
+                                    {spoken < words.length ? (
+                                      <span className="text-muted-foreground"> {words.slice(spoken).join(" ")}</span>
+                                    ) : null}
+                                  </p>
+                                );
+                              })()}
+                              <div className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${Math.round(captionProgress * 100)}%` }} />
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="mt-1 flex justify-end">
                             <button
                               type="button"
@@ -1041,6 +1259,39 @@ export function FloatingAssistant() {
                   ))}
                 </div>
               ) : null}
+
+              {recording ? (
+                <div className="border-t border-border bg-destructive/5 px-3 py-2 space-y-1.5" aria-live="polite">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                    </span>
+                    <span className="text-[11px] font-medium text-destructive">Recording…</span>
+                    <div className="ml-1 flex h-6 flex-1 items-center gap-[2px]">
+                      {(waveform.length ? waveform : new Array(24).fill(0)).map((v, i) => (
+                        <span
+                          key={i}
+                          className="w-[3px] rounded-full bg-destructive/70"
+                          style={{ height: `${Math.max(8, Math.min(100, v * 100))}%`, transition: "height 60ms linear" }}
+                        />
+                      ))}
+                    </div>
+                    <div className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-muted" aria-label="Microphone level">
+                      <div
+                        className={cn("h-full transition-[width] duration-75", micLevel > 0.75 ? "bg-destructive" : "bg-primary")}
+                        style={{ width: `${Math.round(micLevel * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="min-h-[1.25rem] text-[12px] leading-snug text-foreground">
+                    {interimTranscript
+                      ? interimTranscript
+                      : <span className="text-muted-foreground">Speak now — tap the mic again to stop and send.</span>}
+                  </p>
+                </div>
+              ) : null}
+
 
               <form
                 className="flex items-center gap-2 border-t border-border bg-background p-2"
