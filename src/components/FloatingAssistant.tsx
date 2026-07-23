@@ -477,7 +477,9 @@ export function FloatingAssistant() {
   async function speakText(text: string, idx: number | null) {
     const clean = forSpeech(text);
     if (!clean) return;
+    // Cancel any in-flight or currently playing voice so we never overlap.
     stopPlayback();
+    const token = ++speakTokenRef.current;
     try {
       setSpeakingIdx(idx);
       setCaptionText(clean);
@@ -487,34 +489,41 @@ export function FloatingAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: clean, voice }),
       });
+      // A newer request superseded this one — drop the response silently.
+      if (token !== speakTokenRef.current) return;
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         throw new Error(body || `Voice failed (${res.status})`);
       }
       const blob = await res.blob();
+      if (token !== speakTokenRef.current) return;
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.playbackRate = rate;
       audio.volume = volume;
+      // Belt-and-braces: stop whatever might still be attached before swapping.
+      if (audioRef.current) {
+        try { audioRef.current.pause(); } catch { /* noop */ }
+      }
       audioRef.current = audio;
       audio.ontimeupdate = () => {
         if (!audio.duration || !isFinite(audio.duration)) return;
         setCaptionProgress(Math.min(1, audio.currentTime / audio.duration));
       };
-      audio.onended = () => {
+      const cleanup = () => {
         URL.revokeObjectURL(url);
-        setSpeakingIdx(null);
-        setCaptionText("");
-        setCaptionProgress(0);
+        if (audioRef.current === audio) audioRef.current = null;
+        if (token === speakTokenRef.current) {
+          setSpeakingIdx(null);
+          setCaptionText("");
+          setCaptionProgress(0);
+        }
       };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        setSpeakingIdx(null);
-        setCaptionText("");
-        setCaptionProgress(0);
-      };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
       await audio.play();
     } catch (err) {
+      if (token !== speakTokenRef.current) return;
       setSpeakingIdx(null);
       setCaptionText("");
       setCaptionProgress(0);
