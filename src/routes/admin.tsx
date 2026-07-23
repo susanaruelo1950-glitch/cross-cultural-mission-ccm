@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Shield, Users, Key, History, Database, Lock, LogIn } from "lucide-react";
+import { Shield, Users, Key, History, Database, Lock, LogIn, CalendarCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,9 @@ function AdminPage() {
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" className="rounded-full">
             <Link to="/admin/roles"><Users className="h-4 w-4" /> Manage roles</Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/admin/monthly"><CalendarCheck className="h-4 w-4" /> Monthly report</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-full">
             <Link to="/admin/activity"><History className="h-4 w-4" /> Activity log</Link>
