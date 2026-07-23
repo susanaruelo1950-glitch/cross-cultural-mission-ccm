@@ -311,6 +311,9 @@ function MonthlyReportPage() {
           <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={exportPdf}>
+            <FileText className="h-4 w-4" /> Export PDF
+          </Button>
         </div>
       </header>
 
