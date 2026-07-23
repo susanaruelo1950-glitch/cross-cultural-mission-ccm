@@ -88,6 +88,11 @@ function MonthlyReportPage() {
   const [aiTone, setAiTone] = useState<"formal" | "concise" | "pastoral">("formal");
   const [aiVersions, setAiVersions] = useState<AiReportVersion[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [aiEmailOpen, setAiEmailOpen] = useState(false);
+  const [aiEmailFormat, setAiEmailFormat] = useState<"pdf" | "docx">("pdf");
+  const [aiEmailSelected, setAiEmailSelected] = useState<Record<string, boolean>>({});
+  const [aiEmailMessage, setAiEmailMessage] = useState("");
+  const [aiEmailSending, setAiEmailSending] = useState(false);
 
   // Load versions for the selected month from localStorage.
   useEffect(() => {
@@ -162,7 +167,7 @@ function MonthlyReportPage() {
         .map((p) => ({ id: p.id, email: p.email as string, full_name: p.full_name, role: roleMap.get(p.id) ?? "coordinator" }))
         .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
     },
-    enabled: emailOpen,
+    enabled: emailOpen || aiEmailOpen,
     staleTime: 60_000,
   });
   const coordinatorsQ = useQuery({
@@ -593,8 +598,7 @@ function MonthlyReportPage() {
     downloadFile(new Blob([aiReport], { type: "text/plain;charset=utf-8" }), "txt");
   }
 
-  async function downloadAiReportPdf() {
-    if (!aiReport.trim()) return;
+  async function buildAiReportPdfBlob(): Promise<Blob> {
     const [{ default: jsPDF }] = await Promise.all([import("jspdf")]);
     const doc = new jsPDF({ unit: "pt", format: "letter" });
     const margin = 54; // 0.75in
@@ -602,7 +606,6 @@ function MonthlyReportPage() {
     const pageHeight = doc.internal.pageSize.getHeight();
     const usableWidth = pageWidth - margin * 2;
 
-    // Title header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(`Monthly Submission Report — ${monthLabel(month)}`, margin, margin);
@@ -638,11 +641,15 @@ function MonthlyReportPage() {
       }
     }
 
-    downloadFile(doc.output("blob") as Blob, "pdf");
+    return doc.output("blob") as Blob;
   }
 
-  async function downloadAiReportDocx() {
+  async function downloadAiReportPdf() {
     if (!aiReport.trim()) return;
+    downloadFile(await buildAiReportPdfBlob(), "pdf");
+  }
+
+  async function buildAiReportDocxBlob(): Promise<Blob> {
     const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
     const paragraphs: InstanceType<typeof Paragraph>[] = [];
     paragraphs.push(
@@ -676,9 +683,48 @@ function MonthlyReportPage() {
     }
 
     const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
-    const blob = await Packer.toBlob(doc);
-    downloadFile(blob, "docx");
+    return await Packer.toBlob(doc);
   }
+
+  async function downloadAiReportDocx() {
+    if (!aiReport.trim()) return;
+    downloadFile(await buildAiReportDocxBlob(), "docx");
+  }
+
+  async function handleEmailAiReport() {
+    const chosen = (recipientsQ.data ?? []).filter((r) => aiEmailSelected[r.id]);
+    if (chosen.length === 0) {
+      toast.error("Select at least one recipient");
+      return;
+    }
+    if (!aiReport.trim()) {
+      toast.error("Generate a report first");
+      return;
+    }
+    setAiEmailSending(true);
+    try {
+      const blob = aiEmailFormat === "pdf" ? await buildAiReportPdfBlob() : await buildAiReportDocxBlob();
+      downloadFile(blob, aiEmailFormat);
+    } catch (e) {
+      console.error(e);
+      toast.error(`Failed to generate ${aiEmailFormat.toUpperCase()}`);
+      setAiEmailSending(false);
+      return;
+    }
+    const label = monthLabel(month);
+    const filename = `monthly-report-${month}.${aiEmailFormat}`;
+    const subject = `AI Monthly Submission Report — ${label}`;
+    const extra = aiEmailMessage.trim() ? `\n\n${aiEmailMessage.trim()}` : "";
+    const body = `Hi,\n\nPlease find attached the AI-drafted monthly submission report for ${label}. The file (${filename}) has been downloaded to your device — please attach it before sending.${extra}\n\n— Cross-Cultural Ministry`;
+    const to = chosen.map((c) => c.email).join(",");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+    toast.success(`${aiEmailFormat.toUpperCase()} downloaded. Attach it in the email draft to ${chosen.length} recipient${chosen.length > 1 ? "s" : ""}.`);
+    setAiEmailSending(false);
+    setAiEmailOpen(false);
+  }
+
+
 
 
 
@@ -1112,6 +1158,9 @@ function MonthlyReportPage() {
                     <Button size="sm" variant="outline" className="rounded-full" onClick={downloadAiReportTxt}>
                       <Download className="h-4 w-4" /> .txt
                     </Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setAiEmailOpen(true); }}>
+                      <Send className="h-4 w-4" /> Email
+                    </Button>
                     <Button size="sm" variant="outline" className="rounded-full" onClick={() => { saveAiVersion("manual", aiReport); toast.success("Saved current draft to history."); }}>
                       <Save className="h-4 w-4" /> Save version
                     </Button>
@@ -1149,6 +1198,87 @@ function MonthlyReportPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={aiEmailOpen} onOpenChange={setAiEmailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" /> Email AI Report
+            </DialogTitle>
+            <DialogDescription>
+              Choose a format and pick admins/coordinators to send the AI-drafted report for {monthLabel(month)}. The file will download so you can attach it in the email draft that opens.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Attachment format</Label>
+              <Select value={aiEmailFormat} onValueChange={(v) => setAiEmailFormat(v as "pdf" | "docx")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF (.pdf)</SelectItem>
+                  <SelectItem value="docx">Word (.docx)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Recipients</Label>
+                {recipientsQ.data && recipientsQ.data.length > 0 ? (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const r of recipientsQ.data ?? []) all[r.id] = true;
+                      setAiEmailSelected(all);
+                    }}>Select all</Button>
+                    <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs" onClick={() => setAiEmailSelected({})}>Clear</Button>
+                  </div>
+                ) : null}
+              </div>
+              {recipientsQ.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading recipients…</p>
+              ) : (recipientsQ.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No admins or coordinators with email addresses on file.</p>
+              ) : (
+                <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
+                  {recipientsQ.data!.map((r) => (
+                    <label key={r.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+                      <Checkbox
+                        checked={!!aiEmailSelected[r.id]}
+                        onCheckedChange={(v) => setAiEmailSelected((s) => ({ ...s, [r.id]: !!v }))}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{r.full_name ?? r.email}</div>
+                        <div className="truncate text-xs text-muted-foreground">{r.email} • {r.role}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-email-msg" className="text-sm">Optional message</Label>
+              <Textarea
+                id="ai-email-msg"
+                value={aiEmailMessage}
+                onChange={(e) => setAiEmailMessage(e.target.value)}
+                rows={3}
+                placeholder="Add a short note for the recipients…"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAiEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleEmailAiReport} disabled={aiEmailSending || !aiReport.trim()}>
+              {aiEmailSending ? (<><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>) : (<><Send className="h-4 w-4" /> Download & open email</>)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl">
