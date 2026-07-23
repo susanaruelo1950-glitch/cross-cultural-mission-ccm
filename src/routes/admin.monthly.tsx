@@ -1,16 +1,22 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, XCircle, FileText, Mail, Receipt, UserPlus, Megaphone, Download, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useDataStore } from "@/hooks/use-data-store";
 import { supabase } from "@/integrations/supabase/client";
 import { PermissionError } from "@/components/PermissionError";
 import { monthLabel } from "@/lib/month-key";
+
 
 export const Route = createFileRoute("/admin/monthly")({
   head: () => ({
@@ -46,6 +52,39 @@ function MonthlyReportPage() {
   const { missionaries, areas } = useDataStore();
   const [month, setMonth] = useState<string>(currentMonthKey());
   const [query, setQuery] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<Record<string, boolean>>({});
+  const [emailMessage, setEmailMessage] = useState("");
+
+  const recipientsQ = useQuery({
+    queryKey: ["monthly", "recipients"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["admin", "coordinator"]);
+      if (rolesErr) throw rolesErr;
+      const ids = Array.from(new Set((roles ?? []).map((r) => r.user_id)));
+      if (!ids.length) return [] as { id: string; email: string; full_name: string | null; role: string }[];
+      const { data: profs, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", ids);
+      if (profErr) throw profErr;
+      const roleMap = new Map<string, string>();
+      for (const r of roles ?? []) {
+        // admin wins over coordinator
+        if (r.role === "admin" || !roleMap.has(r.user_id)) roleMap.set(r.user_id, r.role);
+      }
+      return (profs ?? [])
+        .filter((p) => p.email)
+        .map((p) => ({ id: p.id, email: p.email as string, full_name: p.full_name, role: roleMap.get(p.id) ?? "coordinator" }))
+        .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
+    },
+    enabled: emailOpen,
+    staleTime: 60_000,
+  });
+
 
   const { startISO, endISO, startDate, endDate } = useMemo(() => monthBounds(month), [month]);
 
@@ -194,7 +233,8 @@ function MonthlyReportPage() {
     URL.revokeObjectURL(url);
   }
 
-  async function exportPdf() {
+  async function exportPdf(opts?: { save?: boolean }) {
+    const save = opts?.save ?? true;
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -276,8 +316,45 @@ function MonthlyReportPage() {
         }
       }
     }
-    doc.save(`monthly-report-${month}.pdf`);
+    if (save) doc.save(`monthly-report-${month}.pdf`);
+    return doc;
   }
+
+  async function handleSendEmail() {
+    const chosen = (recipientsQ.data ?? []).filter((r) => selectedRecipients[r.id]);
+    if (chosen.length === 0) {
+      toast.error("Select at least one recipient");
+      return;
+    }
+    try {
+      await exportPdf({ save: true });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to generate PDF");
+      return;
+    }
+    const label = monthLabel(month);
+    const subject = `Monthly Submission Report — ${label}`;
+    const summary = [
+      `Cross-Cultural Ministry — ${label}`,
+      "",
+      `• Fully submitted: ${totals.complete} of ${totals.total}`,
+      `• Ministry updates: ${totals.withUpd}`,
+      `• Thank you letters: ${totals.withLet}`,
+      `• Support receipts filed: ${totals.withRec}`,
+      `• Total received: PHP ${totals.totalReceived.toLocaleString()}`,
+      `• New missionaries: ${newMissionariesQ.data?.length ?? 0}`,
+      `• Announcements: ${announcementsQ.data?.length ?? 0}`,
+    ].join("\n");
+    const extra = emailMessage.trim() ? `\n\n${emailMessage.trim()}` : "";
+    const body = `Hi,\n\nAttached is the monthly submission report for ${label}. The PDF (monthly-report-${month}.pdf) has been downloaded to your device — please attach it before sending.\n\n${summary}${extra}\n\n— Cross-Cultural Ministry`;
+    const to = chosen.map((c) => c.email).join(",");
+    const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+    toast.success(`PDF downloaded. Attach it in the email draft to ${chosen.length} recipient${chosen.length > 1 ? "s" : ""}.`);
+    setEmailOpen(false);
+  }
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <PermissionError title="Sign in required" message="Please sign in to view the monthly report." />;
@@ -311,9 +388,13 @@ function MonthlyReportPage() {
           <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
-          <Button variant="outline" size="sm" className="rounded-full" onClick={exportPdf}>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => exportPdf()}>
             <FileText className="h-4 w-4" /> Export PDF
           </Button>
+          <Button variant="default" size="sm" className="rounded-full" onClick={() => setEmailOpen(true)}>
+            <Send className="h-4 w-4" /> Email report
+          </Button>
+
         </div>
       </header>
 
@@ -438,6 +519,87 @@ function MonthlyReportPage() {
           )}
         </Card>
       </div>
+
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Email monthly report</DialogTitle>
+            <DialogDescription>
+              We'll download the PDF for {monthLabel(month)} and open a pre-filled email to the people you pick.
+              Attach the downloaded PDF before sending.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Recipients</Label>
+              {recipientsQ.data && recipientsQ.data.length > 0 ? (
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      for (const r of recipientsQ.data ?? []) all[r.id] = true;
+                      setSelectedRecipients(all);
+                    }}
+                  >Select all</button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={() => setSelectedRecipients({})}
+                  >Clear</button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="max-h-60 overflow-y-auto rounded-lg border border-border">
+              {recipientsQ.isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">Loading recipients…</p>
+              ) : (recipientsQ.data ?? []).length === 0 ? (
+                <p className="p-3 text-sm text-muted-foreground">No admins or coordinators with email addresses found.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {recipientsQ.data!.map((r) => (
+                    <li key={r.id} className="flex items-center gap-3 px-3 py-2">
+                      <Checkbox
+                        id={`rcpt-${r.id}`}
+                        checked={!!selectedRecipients[r.id]}
+                        onCheckedChange={(v) =>
+                          setSelectedRecipients((prev) => ({ ...prev, [r.id]: v === true }))
+                        }
+                      />
+                      <label htmlFor={`rcpt-${r.id}`} className="flex-1 cursor-pointer">
+                        <div className="text-sm font-medium">{r.full_name || r.email}</div>
+                        <div className="text-xs text-muted-foreground">{r.email}</div>
+                      </label>
+                      <Badge variant="secondary" className="rounded-full text-[10px] capitalize">{r.role}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email-message" className="text-sm">Optional message</Label>
+              <Textarea
+                id="email-message"
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Add a short note for the recipients…"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleSendEmail}>
+              <Send className="h-4 w-4" /> Download PDF &amp; open email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

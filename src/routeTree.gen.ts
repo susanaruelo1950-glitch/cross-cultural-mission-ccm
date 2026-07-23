@@ -29,6 +29,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MissionariesIndexRouteImport } from './routes/missionaries.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as MissionariesIdRouteImport } from './routes/missionaries.$id'
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminMonthlyRouteImport } from './routes/admin.monthly'
@@ -139,6 +140,11 @@ const MissionariesIndexRoute = MissionariesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => MissionariesRoute,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const MissionariesIdRoute = MissionariesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/admin/monthly': typeof AdminMonthlyRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/missionaries/': typeof MissionariesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -222,7 +229,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
@@ -245,6 +251,7 @@ export interface FileRoutesByTo {
   '/admin/monthly': typeof AdminMonthlyRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
+  '/admin': typeof AdminIndexRoute
   '/missionaries': typeof MissionariesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -277,6 +284,7 @@ export interface FileRoutesById {
   '/admin/monthly': typeof AdminMonthlyRoute
   '/admin/roles': typeof AdminRolesRoute
   '/missionaries/$id': typeof MissionariesIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/missionaries/': typeof MissionariesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -310,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin/monthly'
     | '/admin/roles'
     | '/missionaries/$id'
+    | '/admin/'
     | '/missionaries/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -317,7 +326,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/analytics'
     | '/assistant'
     | '/auth'
@@ -340,6 +348,7 @@ export interface FileRouteTypes {
     | '/admin/monthly'
     | '/admin/roles'
     | '/missionaries/$id'
+    | '/admin'
     | '/missionaries'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/admin/monthly'
     | '/admin/roles'
     | '/missionaries/$id'
+    | '/admin/'
     | '/missionaries/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -546,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MissionariesIndexRouteImport
       parentRoute: typeof MissionariesRoute
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/missionaries/$id': {
       id: '/missionaries/$id'
       path: '/$id'
@@ -616,12 +633,14 @@ interface AdminRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminMonthlyRoute: typeof AdminMonthlyRoute
   AdminRolesRoute: typeof AdminRolesRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminMonthlyRoute: AdminMonthlyRoute,
   AdminRolesRoute: AdminRolesRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
