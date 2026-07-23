@@ -428,6 +428,10 @@ export function FloatingAssistant() {
     if (audioRef.current) audioRef.current.playbackRate = rate;
   }, [rate]);
   useEffect(() => {
+    vadEnabledRef.current = vad;
+    try { window.localStorage.setItem(STORAGE_VAD, vad ? "1" : "0"); } catch { /* noop */ }
+  }, [vad]);
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_VOLUME, String(volume)); } catch { /* noop */ }
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
