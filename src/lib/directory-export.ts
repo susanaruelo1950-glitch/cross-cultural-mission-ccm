@@ -7,6 +7,8 @@
 export type ExportRow = {
   name: string;
   subtitle: string;
+  /** Optional portrait shown beside the name (any fetchable image URL). */
+  photoUrl?: string;
   sections: { title: string; rows: { label: string; value: string }[] }[];
 };
 
@@ -20,6 +22,8 @@ export type ExportMeta = {
   subtitle: string;
   groupedBy: string;
   total: number;
+  /** Optional line listing the fields the user chose to include. */
+  fieldsNote?: string;
 };
 
 function filledSections(r: ExportRow) {
@@ -36,7 +40,54 @@ function today() {
   });
 }
 
+type LoadedImage = { dataUrl: string; type: "PNG" | "JPEG"; width: number; height: number };
+
+/** Fetch + decode an image once so it can be embedded in PDF and DOCX. */
+async function loadImage(url: string): Promise<LoadedImage | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error("read failed"));
+      fr.readAsDataURL(blob);
+    });
+    const size = await new Promise<{ width: number; height: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => resolve({ width: 1, height: 1 });
+      img.src = dataUrl;
+    });
+    const type: "PNG" | "JPEG" = blob.type.includes("png") ? "PNG" : "JPEG";
+    return { dataUrl, type, ...size };
+  } catch {
+    return null;
+  }
+}
+
+async function loadPhotos(groups: ExportGroup[]) {
+  const urls = new Set<string>();
+  for (const g of groups) for (const r of g.rows) if (r.photoUrl) urls.add(r.photoUrl);
+  const entries = await Promise.all(
+    [...urls].map(async (u) => [u, await loadImage(u)] as const),
+  );
+  const map = new Map<string, LoadedImage>();
+  for (const [u, img] of entries) if (img) map.set(u, img);
+  return map;
+}
+
+function dataUrlToBytes(dataUrl: string) {
+  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
 function download(blob: Blob, filename: string) {
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -44,6 +95,7 @@ function download(blob: Blob, filename: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
 
 /* ------------------------------------------------------------------ PDF */
 
@@ -74,7 +126,19 @@ export async function exportDirectoryPdf(groups: ExportGroup[], meta: ExportMeta
   doc.text(`Grouped by ${meta.groupedBy}  ·  ${meta.total} records  ·  Generated ${today()}`, M, 90);
   doc.setTextColor(30, 30, 30);
 
+  const photos = await loadPhotos(groups);
+
   let y = 140;
+
+  if (meta.fieldsNote) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90, 96, 110);
+    const lines = doc.splitTextToSize(`Included fields: ${meta.fieldsNote}`, pageW - M * 2) as string[];
+    doc.text(lines, M, y);
+    y += lines.length * 11 + 12;
+    doc.setTextColor(30, 30, 30);
+  }
 
   function ensure(space: number) {
     if (y + space > pageH - 60) {
@@ -95,18 +159,32 @@ export async function exportDirectoryPdf(groups: ExportGroup[], meta: ExportMeta
     y += 30;
 
     for (const row of group.rows) {
-      ensure(90);
+      const img = row.photoUrl ? photos.get(row.photoUrl) : undefined;
+      const PH = 78;
+      ensure(img ? PH + 40 : 90);
+      const textX = img ? M + PH * 0.8 + 12 : M;
+      const top = y;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11.5);
-      doc.text(row.name, M, y);
+      doc.text(row.name, textX, y);
       y += 14;
       if (row.subtitle) {
         doc.setFont("helvetica", "italic");
         doc.setFontSize(9.5);
         doc.setTextColor(90, 96, 110);
-        doc.text(doc.splitTextToSize(row.subtitle, pageW - M * 2) as string[], M, y);
+        const sub = doc.splitTextToSize(row.subtitle, pageW - textX - M) as string[];
+        doc.text(sub, textX, y);
         doc.setTextColor(30, 30, 30);
-        y += 12;
+        y += sub.length * 11 + 2;
+      }
+      if (img) {
+        const w = PH * 0.8;
+        try {
+          doc.addImage(img.dataUrl, img.type, M, top - 11, w, PH);
+        } catch {
+          /* skip unreadable image */
+        }
+        y = Math.max(y, top - 11 + PH + 6);
       }
 
       const body: string[][] = [];
@@ -114,6 +192,8 @@ export async function exportDirectoryPdf(groups: ExportGroup[], meta: ExportMeta
         body.push([`§ ${s.title}`, ""]);
         for (const f of s.rows) body.push([f.label, f.value]);
       }
+      if (body.length === 0) continue;
+
 
       autoTable(doc, {
         startY: y + 4,
@@ -170,6 +250,7 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
     Packer,
     Paragraph,
     TextRun,
+    ImageRun,
     Table,
     TableRow,
     TableCell,
@@ -191,6 +272,8 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
   const VALUE_W = CONTENT - LABEL_W;
   const NAVY = "0F1B3D";
 
+  const photos = await loadPhotos(groups);
+
   const children: (typeof Paragraph.prototype | typeof Table.prototype)[] = [];
 
   children.push(
@@ -204,7 +287,7 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
       children: [new TextRun({ text: meta.subtitle, size: 22, color: "4A5060" })],
     }),
     new Paragraph({
-      spacing: { after: 320 },
+      spacing: { after: meta.fieldsNote ? 120 : 320 },
       border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: NAVY, space: 6 } },
       children: [
         new TextRun({
@@ -215,6 +298,19 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
       ],
     }),
   );
+
+  if (meta.fieldsNote) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 320 },
+        children: [
+          new TextRun({ text: "Included fields: ", bold: true, size: 18, color: "6B7280" }),
+          new TextRun({ text: meta.fieldsNote, size: 18, color: "6B7280" }),
+        ],
+      }),
+    );
+  }
+
 
   for (const group of groups) {
     children.push(
@@ -248,6 +344,27 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
           }),
         );
       }
+
+      const img = row.photoUrl ? photos.get(row.photoUrl) : undefined;
+      if (img) {
+        const h = 130;
+        const w = Math.max(60, Math.round((img.width / Math.max(1, img.height)) * h));
+        children.push(
+          new Paragraph({
+            spacing: { after: 120 },
+            children: [
+              new ImageRun({
+                type: img.type === "PNG" ? "png" : "jpg",
+                data: dataUrlToBytes(img.dataUrl),
+                transformation: { width: Math.min(w, 200), height: h },
+                altText: { title: row.name, description: `Photo of ${row.name}`, name: row.name },
+              }),
+            ],
+          }),
+        );
+      }
+
+
 
       const tableRows: (typeof TableRow.prototype)[] = [];
       for (const s of filledSections(row)) {
@@ -297,13 +414,16 @@ export async function exportDirectoryDocx(groups: ExportGroup[], meta: ExportMet
         }
       }
 
-      children.push(
-        new Table({
-          width: { size: CONTENT, type: WidthType.DXA },
-          columnWidths: [LABEL_W, VALUE_W],
-          rows: tableRows,
-        }),
-      );
+      if (tableRows.length > 0) {
+        children.push(
+          new Table({
+            width: { size: CONTENT, type: WidthType.DXA },
+            columnWidths: [LABEL_W, VALUE_W],
+            rows: tableRows,
+          }),
+        );
+      }
+
     }
   }
 
