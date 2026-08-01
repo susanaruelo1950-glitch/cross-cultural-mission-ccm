@@ -8,7 +8,11 @@ import {
   Database,
   ExternalLink,
   Printer,
+  FileText,
+  FileType2,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +27,12 @@ import {
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
+import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
+import {
+  exportDirectoryDocx,
+  exportDirectoryPdf,
+  type ExportGroup,
+} from "@/lib/directory-export";
 import type { Missionary } from "@/lib/mission-data";
 
 export const Route = createFileRoute("/records")({
