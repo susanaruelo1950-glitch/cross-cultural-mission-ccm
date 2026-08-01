@@ -40,6 +40,18 @@ export const askAssistant = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY is not configured on the server.");
 
+    // Live-news grounding: only fetched when the question looks current-affairs
+    // related, so ordinary ministry/theology questions stay fast.
+    const { needsLiveNews, fetchLiveNews } = await import("./news.server");
+    const news = needsLiveNews(data.question) ? await fetchLiveNews(data.question, 10) : [];
+    const newsBlock = news.length
+      ? `\n\nLIVE HEADLINES (Google News, fetched ${new Date().toISOString()}) — use these for current-events questions and cite the outlet + date:\n` +
+        news
+          .map((n) => `- ${n.title}${n.source ? ` — ${n.source}` : ""}${n.published ? ` (${n.published})` : ""}`)
+          .join("\n")
+      : "";
+
+
     const system = `You are "Grace" — the in-app assistant for Cross-Cultural Ministry (CCM), and also a brilliant Christian scholar and apologist.
 
 TWO ROLES, ONE VOICE:
