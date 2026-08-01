@@ -494,8 +494,19 @@ function RecordsPage() {
         {rows.length !== missionaries.length ? ` (filtered from ${missionaries.length})` : ""}
       </p>
 
-      <div className="space-y-3">
-        {rows.map(({ m, areaName, phaseName }) => {
+      <div className="space-y-8">
+        {grouped.map((group) => (
+          <section key={group.title} className="space-y-3">
+            {groupBy !== "none" ? (
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h2 className="font-display text-lg font-semibold">{group.title}</h2>
+                <Badge variant="secondary" className="rounded-full">
+                  {group.items.length}
+                </Badge>
+              </div>
+            ) : null}
+            <div className="space-y-3">
+        {group.items.map(({ m, areaName, phaseName }) => {
           const isOpen = !!open[m.id];
           const sections = buildSections(m, areaName, phaseName);
           return (
