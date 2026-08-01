@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Download,
@@ -33,7 +33,13 @@ import {
   exportDirectoryPdf,
   type ExportGroup,
 } from "@/lib/directory-export";
-import type { Missionary } from "@/lib/mission-data";
+import { prayerByMissionary, type Missionary } from "@/lib/mission-data";
+import {
+  DirectoryExportDialog,
+  PHOTO_KEY,
+  fieldKey,
+  type FieldCatalog,
+} from "@/components/DirectoryExportDialog";
 
 export const Route = createFileRoute("/records")({
   head: () => ({
@@ -74,7 +80,18 @@ function joinList(v?: string[]) {
   return v && v.length ? v.join(", ") : "";
 }
 
+function yearsInMinistry(dateSent?: string) {
+  if (!dateSent) return "";
+  const d = new Date(dateSent);
+  if (Number.isNaN(d.getTime())) return "";
+  const years = (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000);
+  if (years < 0) return "";
+  const rounded = Math.floor(years);
+  return rounded < 1 ? "Less than a year" : `${rounded} year${rounded === 1 ? "" : "s"}`;
+}
+
 function buildSections(m: Missionary, areaName: string, phaseName: string) {
+  const prayers = prayerByMissionary(m.id);
   const sections: { title: string; rows: Row[] }[] = [
     {
       title: "Identity & Calling",
@@ -145,9 +162,30 @@ function buildSections(m: Missionary, areaName: string, phaseName: string) {
         { label: "Sending pastor", value: m.sendingPastor ?? "" },
         { label: "Mission agency", value: m.missionAgency ?? "" },
         { label: "Date sent", value: m.dateSent ?? "" },
+        { label: "Years in ministry", value: yearsInMinistry(m.dateSent) },
         { label: "Monthly support needed", value: fmtMoney(m.monthlySupportNeeded) },
         { label: "Support received", value: fmtMoney(m.supportReceived) },
         { label: "Needs", value: joinList(m.needs) },
+      ],
+    },
+    {
+      title: "Prayer & Needs",
+      rows: [
+        {
+          label: "Prayer requests",
+          value: prayers
+            .filter((p) => !p.answered)
+            .map((p) => (p.detail ? `${p.title} — ${p.detail}` : p.title))
+            .join("; "),
+        },
+        {
+          label: "Answered prayers",
+          value: prayers
+            .filter((p) => p.answered)
+            .map((p) => p.title)
+            .join("; "),
+        },
+        { label: "Current needs", value: joinList(m.needs) },
       ],
     },
     {
@@ -171,6 +209,23 @@ function buildSections(m: Missionary, areaName: string, phaseName: string) {
   ];
   return sections;
 }
+
+/** All field labels available for the customizable download, by section. */
+function buildCatalog(): FieldCatalog {
+  const blank = {
+    id: "",
+    areaId: "",
+    fullName: "",
+    church: "",
+    address: "",
+    missionStatement: "",
+  } as Missionary;
+  return buildSections(blank, "", "").map((s) => ({
+    title: s.title,
+    labels: s.rows.map((r) => r.label),
+  }));
+}
+
 
 function csvEscape(v: string) {
   return `"${v.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
@@ -197,6 +252,38 @@ function RecordsPage() {
   const [allOpen, setAllOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupKey>("region");
   const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
+
+  // Field catalog + user's saved field selection for custom downloads.
+  const catalog = useMemo<FieldCatalog>(() => buildCatalog(), []);
+  const allFieldKeys = useMemo(
+    () => new Set<string>([PHOTO_KEY, ...catalog.flatMap((s) => s.labels.map((l) => fieldKey(s.title, l)))]),
+    [catalog],
+  );
+  const [selected, setSelected] = useState<Set<string>>(() => new Set<string>());
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
+
+  useEffect(() => {
+    if (selectionLoaded) return;
+    try {
+      const raw = localStorage.getItem("ccm-records-export-fields");
+      const parsed = raw ? (JSON.parse(raw) as string[]) : null;
+      setSelected(parsed && parsed.length ? new Set(parsed) : new Set(allFieldKeys));
+    } catch {
+      setSelected(new Set(allFieldKeys));
+    }
+    setSelectionLoaded(true);
+  }, [allFieldKeys, selectionLoaded]);
+
+  function updateSelection(next: Set<string>) {
+    setSelected(next);
+    try {
+      localStorage.setItem("ccm-records-export-fields", JSON.stringify([...next]));
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+
 
   const areaById = useMemo(() => {
     const map = new Map<string, (typeof areas)[number]>();
@@ -279,31 +366,74 @@ function RecordsPage() {
       .map(([title, items]) => ({ title, items }));
   }, [rows, groupBy]);
 
-  function toExportGroups(): ExportGroup[] {
+  /** Fetch admin-uploaded photo overrides once per export. */
+  async function photoOverrides(ids: string[]) {
+    const map = new Map<string, string>();
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { createDisplayUrl } = await import("@/lib/storage-signed");
+      const { data } = await supabase
+        .from("missionary_photos")
+        .select("missionary_id, photo_url")
+        .in("missionary_id", ids);
+      for (const row of data ?? []) {
+        if (!row.photo_url) continue;
+        const url = await createDisplayUrl("missionary-photos", row.photo_url);
+        if (url) map.set(row.missionary_id, url);
+      }
+    } catch {
+      /* fall back to bundled photos */
+    }
+    return map;
+  }
+
+  async function toExportGroups(sel: Set<string>): Promise<ExportGroup[]> {
+    const withPhotos = sel.has(PHOTO_KEY);
+    const overrides = withPhotos
+      ? await photoOverrides(rows.map(({ m }) => m.id))
+      : new Map<string, string>();
+
     return grouped.map((g) => ({
       title: g.title,
       rows: g.items.map(({ m, areaName, phaseName }) => ({
         name: m.fullName,
         subtitle: [m.church, m.municipality, m.province].filter(Boolean).join(" · "),
-        sections: buildSections(m, areaName, phaseName),
+        photoUrl: withPhotos ? (overrides.get(m.id) ?? m.photo) : undefined,
+        sections: buildSections(m, areaName, phaseName)
+          .map((s) => ({
+            title: s.title,
+            rows: s.rows.filter((r) => sel.has(fieldKey(s.title, r.label))),
+          }))
+          .filter((s) => s.rows.length > 0),
       })),
     }));
   }
 
-  async function runExport(kind: "pdf" | "docx") {
+  async function runExport(kind: "pdf" | "docx", sel: Set<string> = allFieldKeys) {
     if (rows.length === 0) {
       toast.error("Nothing to export with the current filters.");
       return;
     }
+    if (sel.size === 0) {
+      toast.error("Select at least one field to include.");
+      return;
+    }
     setBusy(kind);
     try {
+      const chosen = catalog.flatMap((s) =>
+        s.labels.filter((l) => sel.has(fieldKey(s.title, l))).map((l) => l),
+      );
       const meta = {
         title: "Cross-Cultural Ministry — Missionary Directory",
-        subtitle: "Complete records of commissioned church planter pastors",
+        subtitle: "Records of commissioned church planter pastors",
         groupedBy: GROUP_LABELS[groupBy],
         total: rows.length,
+        fieldsNote:
+          sel.size === allFieldKeys.size
+            ? undefined
+            : [sel.has(PHOTO_KEY) ? "Photo" : null, ...chosen].filter(Boolean).join(", "),
       };
-      const groups = toExportGroups();
+      const groups = await toExportGroups(sel);
       if (kind === "pdf") await exportDirectoryPdf(groups, meta);
       else await exportDirectoryDocx(groups, meta);
       toast.success(`Directory exported as ${kind.toUpperCase()}.`);
@@ -313,6 +443,7 @@ function RecordsPage() {
       setBusy(null);
     }
   }
+
 
   function exportCsv() {
     if (rows.length === 0) return;
@@ -374,10 +505,19 @@ function RecordsPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
+          <DirectoryExportDialog
+            catalog={catalog}
+            selected={selected}
+            onChange={updateSelection}
+            onExport={(kind) => runExport(kind, selected)}
+            busy={busy}
+            recordCount={rows.length}
+          />
           <Button
             size="sm"
+            variant="secondary"
             className="rounded-full"
-            onClick={() => runExport("pdf")}
+            onClick={() => runExport("pdf", allFieldKeys)}
             disabled={busy !== null}
           >
             {busy === "pdf" ? (
@@ -385,13 +525,13 @@ function RecordsPage() {
             ) : (
               <FileText className="h-4 w-4" />
             )}
-            PDF
+            Full PDF
           </Button>
           <Button
             size="sm"
-            variant="secondary"
+            variant="outline"
             className="rounded-full"
-            onClick={() => runExport("docx")}
+            onClick={() => runExport("docx", allFieldKeys)}
             disabled={busy !== null}
           >
             {busy === "docx" ? (
@@ -399,7 +539,7 @@ function RecordsPage() {
             ) : (
               <FileType2 className="h-4 w-4" />
             )}
-            Word
+            Full Word
           </Button>
           <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv}>
             <Download className="h-4 w-4" /> CSV
