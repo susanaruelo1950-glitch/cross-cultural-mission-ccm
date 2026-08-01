@@ -241,6 +241,64 @@ function RecordsPage() {
     provinceName,
   ]);
 
+
+  // Organised view: region, batch/phase, ministry assignment, area, or flat.
+  const grouped = useMemo(() => {
+    if (groupBy === "none") {
+      return [{ title: `All missionaries`, items: rows }];
+    }
+    const buckets = new Map<string, typeof rows>();
+    for (const r of rows) {
+      let key = "Unassigned";
+      if (groupBy === "region") key = r.area?.region || r.m.region || "Unassigned region";
+      else if (groupBy === "province") key = r.area?.province || r.m.province || "Unassigned province";
+      else if (groupBy === "phase") key = r.phaseName || "Unassigned batch";
+      else if (groupBy === "area") key = r.areaName || "Unassigned area";
+      else if (groupBy === "ministry") key = r.m.ministryFocus || "Unspecified ministry";
+      const list = buckets.get(key) ?? [];
+      list.push(r);
+      buckets.set(key, list);
+    }
+    return [...buckets.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([title, items]) => ({ title, items }));
+  }, [rows, groupBy]);
+
+  function toExportGroups(): ExportGroup[] {
+    return grouped.map((g) => ({
+      title: g.title,
+      rows: g.items.map(({ m, areaName, phaseName }) => ({
+        name: m.fullName,
+        subtitle: [m.church, m.municipality, m.province].filter(Boolean).join(" · "),
+        sections: buildSections(m, areaName, phaseName),
+      })),
+    }));
+  }
+
+  async function runExport(kind: "pdf" | "docx") {
+    if (rows.length === 0) {
+      toast.error("Nothing to export with the current filters.");
+      return;
+    }
+    setBusy(kind);
+    try {
+      const meta = {
+        title: "Cross-Cultural Ministry — Missionary Directory",
+        subtitle: "Complete records of commissioned church planter pastors",
+        groupedBy: GROUP_LABELS[groupBy],
+        total: rows.length,
+      };
+      const groups = toExportGroups();
+      if (kind === "pdf") await exportDirectoryPdf(groups, meta);
+      else await exportDirectoryDocx(groups, meta);
+      toast.success(`Directory exported as ${kind.toUpperCase()}.`);
+    } catch (e) {
+      toast.error(`Export failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function exportCsv() {
     if (rows.length === 0) return;
     const sample = buildSections(rows[0].m, "", "");
