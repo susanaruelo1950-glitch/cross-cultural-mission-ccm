@@ -120,5 +120,5 @@ ${JSON.stringify(data.context).slice(0, 30_000)}${newsBlock}`;
       choices?: { message?: { content?: string } }[];
     };
     const reply = json.choices?.[0]?.message?.content?.trim() ?? "";
-    return { reply };
+    return { reply, newsUsed: news.length, newsSources: news.map((n) => n.source).filter(Boolean) };
   });
