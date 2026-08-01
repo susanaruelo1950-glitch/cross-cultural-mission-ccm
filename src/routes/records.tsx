@@ -366,8 +366,38 @@ function RecordsPage() {
             Every detail of every missionary — mission statements, family, location, sending
             church, support and ministry fruit — in one searchable record book you can export.
           </p>
+          <div className="mt-2 print:hidden">
+            <LiveUpdatesIndicator />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <Button
+            size="sm"
+            className="rounded-full"
+            onClick={() => runExport("pdf")}
+            disabled={busy !== null}
+          >
+            {busy === "pdf" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => runExport("docx")}
+            disabled={busy !== null}
+          >
+            {busy === "docx" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileType2 className="h-4 w-4" />
+            )}
+            Word
+          </Button>
           <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv}>
             <Download className="h-4 w-4" /> CSV
           </Button>
@@ -377,13 +407,14 @@ function RecordsPage() {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full print:hidden"
+            className="rounded-full"
             onClick={() => window.print()}
           >
             <Printer className="h-4 w-4" /> Print
           </Button>
         </div>
       </header>
+
 
       <div className="card-soft grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
         <div className="relative sm:col-span-2 lg:col-span-4">
