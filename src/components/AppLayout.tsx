@@ -13,6 +13,7 @@ import {
   Search,
   
   Layers,
+  Database,
   UserPlus,
   Upload,
   Heart,
@@ -60,6 +61,7 @@ type NavItem = {
 const nav: readonly NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/missionaries", label: "Missionaries", icon: Users },
+  { to: "/records", label: "Master Records", icon: Database },
   { to: "/phases", label: "Phases & Areas", icon: Layers },
   { to: "/map", label: "Mission Map", icon: MapIcon },
   { to: "/pray", label: "Prayer Mode", icon: Heart },
