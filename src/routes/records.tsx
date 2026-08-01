@@ -173,6 +173,18 @@ function csvEscape(v: string) {
   return `"${v.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
 }
 
+type GroupKey = "region" | "province" | "phase" | "area" | "ministry" | "none";
+
+const GROUP_LABELS: Record<GroupKey, string> = {
+  region: "Region",
+  province: "Province",
+  phase: "Batch / Phase",
+  area: "Area assignment",
+  ministry: "Ministry focus",
+  none: "No grouping",
+};
+
+
 function RecordsPage() {
   const { missionaries } = useDataStore();
   const { phases, areas, regions, provinces } = useDirectory();
