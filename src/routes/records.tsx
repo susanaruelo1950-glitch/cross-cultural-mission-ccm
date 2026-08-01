@@ -467,10 +467,27 @@ function RecordsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="secondary" className="rounded-full" onClick={toggleAll}>
-          {allOpen ? "Collapse all" : "Expand all"}
+        <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupKey)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Group by" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(GROUP_LABELS) as GroupKey[]).map((k) => (
+              <SelectItem key={k} value={k}>
+                Group by {GROUP_LABELS[k].toLowerCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="secondary"
+          className="rounded-full sm:col-span-2 lg:col-span-4"
+          onClick={toggleAll}
+        >
+          {allOpen ? "Collapse all records" : "Expand all records"}
         </Button>
       </div>
+
 
       <p className="text-sm text-muted-foreground">
         {rows.length} record{rows.length === 1 ? "" : "s"}
