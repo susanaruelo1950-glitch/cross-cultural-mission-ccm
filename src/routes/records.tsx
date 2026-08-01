@@ -180,6 +180,8 @@ function RecordsPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [allOpen, setAllOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupKey>("region");
+  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
 
   const areaById = useMemo(() => {
     const map = new Map<string, (typeof areas)[number]>();
