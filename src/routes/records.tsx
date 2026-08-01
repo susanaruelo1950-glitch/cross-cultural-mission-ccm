@@ -577,6 +577,9 @@ function RecordsPage() {
             </Card>
           );
         })}
+            </div>
+          </section>
+        ))}
 
         {rows.length === 0 ? (
           <Card className="card-soft flex flex-col items-center gap-2 p-12 text-center">
@@ -588,6 +591,7 @@ function RecordsPage() {
           </Card>
         ) : null}
       </div>
+
     </div>
   );
 }
