@@ -13,6 +13,7 @@ import {
   Search,
   
   Layers,
+  Database,
   UserPlus,
   Upload,
   Heart,
