@@ -102,7 +102,10 @@ function buildSections(m: Missionary, areaName: string, phaseName: string) {
         { label: "Province", value: m.province ?? "" },
         { label: "Region", value: m.region ?? "" },
         { label: "Country", value: m.country ?? "" },
-        { label: "GPS", value: m.gps ? `${m.gps[0]}, ${m.gps[1]}` : "" },
+        {
+          label: "GPS",
+          value: m.gps ? `${m.gps[0].toFixed(5)}, ${m.gps[1].toFixed(5)}` : "",
+        },
       ],
     },
     {
