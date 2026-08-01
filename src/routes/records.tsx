@@ -8,7 +8,11 @@ import {
   Database,
   ExternalLink,
   Printer,
+  FileText,
+  FileType2,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +27,12 @@ import {
 import { useDataStore } from "@/hooks/use-data-store";
 import { useDirectory } from "@/hooks/use-directory";
 import { ALL, useSharedFilters } from "@/hooks/use-shared-filters";
+import { LiveUpdatesIndicator } from "@/components/LiveUpdatesIndicator";
+import {
+  exportDirectoryDocx,
+  exportDirectoryPdf,
+  type ExportGroup,
+} from "@/lib/directory-export";
 import type { Missionary } from "@/lib/mission-data";
 
 export const Route = createFileRoute("/records")({
@@ -92,7 +102,10 @@ function buildSections(m: Missionary, areaName: string, phaseName: string) {
         { label: "Province", value: m.province ?? "" },
         { label: "Region", value: m.region ?? "" },
         { label: "Country", value: m.country ?? "" },
-        { label: "GPS", value: m.gps ? `${m.gps[0]}, ${m.gps[1]}` : "" },
+        {
+          label: "GPS",
+          value: m.gps ? `${m.gps[0].toFixed(5)}, ${m.gps[1].toFixed(5)}` : "",
+        },
       ],
     },
     {
@@ -163,6 +176,18 @@ function csvEscape(v: string) {
   return `"${v.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
 }
 
+type GroupKey = "region" | "province" | "phase" | "area" | "ministry" | "none";
+
+const GROUP_LABELS: Record<GroupKey, string> = {
+  region: "Region",
+  province: "Province",
+  phase: "Batch / Phase",
+  area: "Area assignment",
+  ministry: "Ministry focus",
+  none: "No grouping",
+};
+
+
 function RecordsPage() {
   const { missionaries } = useDataStore();
   const { phases, areas, regions, provinces } = useDirectory();
@@ -170,6 +195,8 @@ function RecordsPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [allOpen, setAllOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupKey>("region");
+  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
 
   const areaById = useMemo(() => {
     const map = new Map<string, (typeof areas)[number]>();
@@ -229,6 +256,64 @@ function RecordsPage() {
     provinceName,
   ]);
 
+
+  // Organised view: region, batch/phase, ministry assignment, area, or flat.
+  const grouped = useMemo(() => {
+    if (groupBy === "none") {
+      return [{ title: `All missionaries`, items: rows }];
+    }
+    const buckets = new Map<string, typeof rows>();
+    for (const r of rows) {
+      let key = "Unassigned";
+      if (groupBy === "region") key = r.area?.region || r.m.region || "Unassigned region";
+      else if (groupBy === "province") key = r.area?.province || r.m.province || "Unassigned province";
+      else if (groupBy === "phase") key = r.phaseName || "Unassigned batch";
+      else if (groupBy === "area") key = r.areaName || "Unassigned area";
+      else if (groupBy === "ministry") key = r.m.ministryFocus || "Unspecified ministry";
+      const list = buckets.get(key) ?? [];
+      list.push(r);
+      buckets.set(key, list);
+    }
+    return [...buckets.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([title, items]) => ({ title, items }));
+  }, [rows, groupBy]);
+
+  function toExportGroups(): ExportGroup[] {
+    return grouped.map((g) => ({
+      title: g.title,
+      rows: g.items.map(({ m, areaName, phaseName }) => ({
+        name: m.fullName,
+        subtitle: [m.church, m.municipality, m.province].filter(Boolean).join(" · "),
+        sections: buildSections(m, areaName, phaseName),
+      })),
+    }));
+  }
+
+  async function runExport(kind: "pdf" | "docx") {
+    if (rows.length === 0) {
+      toast.error("Nothing to export with the current filters.");
+      return;
+    }
+    setBusy(kind);
+    try {
+      const meta = {
+        title: "Cross-Cultural Ministry — Missionary Directory",
+        subtitle: "Complete records of commissioned church planter pastors",
+        groupedBy: GROUP_LABELS[groupBy],
+        total: rows.length,
+      };
+      const groups = toExportGroups();
+      if (kind === "pdf") await exportDirectoryPdf(groups, meta);
+      else await exportDirectoryDocx(groups, meta);
+      toast.success(`Directory exported as ${kind.toUpperCase()}.`);
+    } catch (e) {
+      toast.error(`Export failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function exportCsv() {
     if (rows.length === 0) return;
     const sample = buildSections(rows[0].m, "", "");
@@ -284,8 +369,38 @@ function RecordsPage() {
             Every detail of every missionary — mission statements, family, location, sending
             church, support and ministry fruit — in one searchable record book you can export.
           </p>
+          <div className="mt-2 print:hidden">
+            <LiveUpdatesIndicator />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <Button
+            size="sm"
+            className="rounded-full"
+            onClick={() => runExport("pdf")}
+            disabled={busy !== null}
+          >
+            {busy === "pdf" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => runExport("docx")}
+            disabled={busy !== null}
+          >
+            {busy === "docx" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileType2 className="h-4 w-4" />
+            )}
+            Word
+          </Button>
           <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv}>
             <Download className="h-4 w-4" /> CSV
           </Button>
@@ -295,13 +410,14 @@ function RecordsPage() {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full print:hidden"
+            className="rounded-full"
             onClick={() => window.print()}
           >
             <Printer className="h-4 w-4" /> Print
           </Button>
         </div>
       </header>
+
 
       <div className="card-soft grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
         <div className="relative sm:col-span-2 lg:col-span-4">
@@ -354,18 +470,46 @@ function RecordsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="secondary" className="rounded-full" onClick={toggleAll}>
-          {allOpen ? "Collapse all" : "Expand all"}
+        <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupKey)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Group by" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(GROUP_LABELS) as GroupKey[]).map((k) => (
+              <SelectItem key={k} value={k}>
+                Group by {GROUP_LABELS[k].toLowerCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="secondary"
+          className="rounded-full sm:col-span-2 lg:col-span-4"
+          onClick={toggleAll}
+        >
+          {allOpen ? "Collapse all records" : "Expand all records"}
         </Button>
       </div>
+
 
       <p className="text-sm text-muted-foreground">
         {rows.length} record{rows.length === 1 ? "" : "s"}
         {rows.length !== missionaries.length ? ` (filtered from ${missionaries.length})` : ""}
       </p>
 
-      <div className="space-y-3">
-        {rows.map(({ m, areaName, phaseName }) => {
+      <div className="space-y-8">
+        {grouped.map((group) => (
+          <section key={group.title} className="space-y-3">
+            {groupBy !== "none" ? (
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h2 className="font-display text-lg font-semibold">{group.title}</h2>
+                <Badge variant="secondary" className="rounded-full">
+                  {group.items.length}
+                </Badge>
+              </div>
+            ) : null}
+            <div className="space-y-3">
+        {group.items.map(({ m, areaName, phaseName }) => {
           const isOpen = !!open[m.id];
           const sections = buildSections(m, areaName, phaseName);
           return (
@@ -436,6 +580,9 @@ function RecordsPage() {
             </Card>
           );
         })}
+            </div>
+          </section>
+        ))}
 
         {rows.length === 0 ? (
           <Card className="card-soft flex flex-col items-center gap-2 p-12 text-center">
@@ -447,6 +594,7 @@ function RecordsPage() {
           </Card>
         ) : null}
       </div>
+
     </div>
   );
 }
