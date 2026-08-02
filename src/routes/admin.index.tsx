@@ -15,6 +15,8 @@ import { RealtimeDebugPanel } from "@/components/RealtimeDebugPanel";
 import { PermissionError } from "@/components/PermissionError";
 import { BackupToDrivePanel } from "@/components/BackupToDrivePanel";
 import { BackupToGithubPanel } from "@/components/BackupToGithubPanel";
+import AdminBackupPanel from "@/components/AdminBackupPanel";
+
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -139,7 +141,10 @@ function AdminPage() {
 
       <AdminActivityLog />
 
+      <AdminBackupPanel />
+
       <BackupToDrivePanel />
+
 
       <BackupToGithubPanel />
 
