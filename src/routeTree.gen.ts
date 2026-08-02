@@ -42,6 +42,7 @@ import { Route as ApiVoiceSpeakRouteImport } from './routes/api/voice.speak'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as ApiPublicHooksBackupRouteImport } from './routes/api/public/hooks/backup'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -212,6 +213,11 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksBackupRoute = ApiPublicHooksBackupRouteImport.update({
+  id: '/api/public/hooks/backup',
+  path: '/api/public/hooks/backup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/voice/speak': typeof ApiVoiceSpeakRoute
   '/api/voice/transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/hooks/backup': typeof ApiPublicHooksBackupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/voice/speak': typeof ApiVoiceSpeakRoute
   '/api/voice/transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/hooks/backup': typeof ApiPublicHooksBackupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/voice/speak': typeof ApiVoiceSpeakRoute
   '/api/voice/transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/hooks/backup': typeof ApiPublicHooksBackupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -352,6 +361,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/voice/speak'
     | '/api/voice/transcribe'
+    | '/api/public/hooks/backup'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/voice/speak'
     | '/api/voice/transcribe'
+    | '/api/public/hooks/backup'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -420,6 +431,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/voice/speak'
     | '/api/voice/transcribe'
+    | '/api/public/hooks/backup'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiVoiceSpeakRoute: typeof ApiVoiceSpeakRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
+  ApiPublicHooksBackupRoute: typeof ApiPublicHooksBackupRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -686,6 +699,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/backup': {
+      id: '/api/public/hooks/backup'
+      path: '/api/public/hooks/backup'
+      fullPath: '/api/public/hooks/backup'
+      preLoaderRoute: typeof ApiPublicHooksBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -747,6 +767,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiVoiceSpeakRoute: ApiVoiceSpeakRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
+  ApiPublicHooksBackupRoute: ApiPublicHooksBackupRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
