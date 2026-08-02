@@ -150,6 +150,102 @@ export type Database = {
           },
         ]
       }
+      backup_runs: {
+        Row: {
+          actor_email: string | null
+          bytes: number
+          created_at: string
+          detail: string | null
+          files_count: number
+          id: string
+          kind: string
+          location_url: string | null
+          status: string
+          tables_count: number
+          target: string
+        }
+        Insert: {
+          actor_email?: string | null
+          bytes?: number
+          created_at?: string
+          detail?: string | null
+          files_count?: number
+          id?: string
+          kind: string
+          location_url?: string | null
+          status: string
+          tables_count?: number
+          target: string
+        }
+        Update: {
+          actor_email?: string | null
+          bytes?: number
+          created_at?: string
+          detail?: string | null
+          files_count?: number
+          id?: string
+          kind?: string
+          location_url?: string | null
+          status?: string
+          tables_count?: number
+          target?: string
+        }
+        Relationships: []
+      }
+      backup_settings: {
+        Row: {
+          created_at: string
+          frequency: string
+          github_branch: string | null
+          github_folder: string | null
+          github_owner: string | null
+          github_repo: string | null
+          id: string
+          include_auth_users: boolean
+          include_storage: boolean
+          last_run_at: string | null
+          last_status: string | null
+          singleton: boolean
+          target: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          frequency?: string
+          github_branch?: string | null
+          github_folder?: string | null
+          github_owner?: string | null
+          github_repo?: string | null
+          id?: string
+          include_auth_users?: boolean
+          include_storage?: boolean
+          last_run_at?: string | null
+          last_status?: string | null
+          singleton?: boolean
+          target?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          github_branch?: string | null
+          github_folder?: string | null
+          github_owner?: string | null
+          github_repo?: string | null
+          id?: string
+          include_auth_users?: boolean
+          include_storage?: boolean
+          last_run_at?: string | null
+          last_status?: string | null
+          singleton?: boolean
+          target?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       content_versions: {
         Row: {
           action: string
