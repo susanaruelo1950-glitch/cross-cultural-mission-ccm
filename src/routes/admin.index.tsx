@@ -139,7 +139,10 @@ function AdminPage() {
 
       <AdminActivityLog />
 
+      <AdminBackupPanel />
+
       <BackupToDrivePanel />
+
 
       <BackupToGithubPanel />
 
