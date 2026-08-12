@@ -317,3 +317,9 @@ html[data-contrast="high"] .text-muted-foreground {
   color: var(--muted-foreground);
 }
 
+/* Hide Lovable badge */
+#lovable-badge {
+  display: none !important;
+}
+
+
